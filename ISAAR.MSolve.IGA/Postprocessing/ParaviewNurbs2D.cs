@@ -1,16 +1,27 @@
-﻿using System.IO;
-using ISAAR.MSolve.Discretization.FreedomDegrees;
-using ISAAR.MSolve.IGA.Entities;
-using ISAAR.MSolve.LinearAlgebra.Vectors;
-
-namespace ISAAR.MSolve.IGA.Postprocessing
+namespace MGroup.IGA.Postprocessing
 {
-    public class ParaviewNurbs2D
-	{
-		private Model _model;
-		private IVectorView _solution;
-		private string _filename;
+	using System.IO;
 
+	using MGroup.IGA.Entities;
+	using MGroup.LinearAlgebra.Matrices;
+	using MGroup.LinearAlgebra.Vectors;
+	using MGroup.MSolve.Discretization.FreedomDegrees;
+
+	/// <summary>
+	/// Paraview file  generator for 2D NURBS geometries.
+	/// </summary>
+	public class ParaviewNurbs2D
+	{
+		private readonly Model _model;
+		private readonly IVectorView _solution;
+		private readonly string _filename;
+
+		/// <summary>
+		/// Defines a Paraview FileWriter.
+		/// </summary>
+		/// <param name="model">An isogeometric <see cref="Model"/>.</param>
+		/// <param name="solution">An <see cref="IVectorView"/> containing the solution of the linear system.</param>
+		/// <param name="filename">The name of the paraview file to be generated.</param>
 		public ParaviewNurbs2D(Model model, IVectorView solution, string filename)
 		{
 			_model = model;
@@ -18,6 +29,9 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 			_filename = filename;
 		}
 
+		/// <summary>
+		/// Creates Paraview File of the 2D NURBS geometry.
+		/// </summary>
 		public void CreateParaview2DFile()
 		{
 			var uniqueKnotsKsi = _model.PatchesDictionary[0].KnotValueVectorKsi.RemoveDuplicatesFindMultiplicity();
@@ -39,7 +53,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 					var hetaCoordinate = uniqueKnotsHeta[0][knotHetaIndex];
 					var ksiCoordinate = uniqueKnotsKsi[0][knotKsiIndex];
 					var point3D = SurfacePoint2D(patch.NumberOfControlPointsKsi - 1, patch.DegreeKsi,
-						patch.KnotValueVectorKsi, patch.NumberOfControlPointsHeta-1, patch.DegreeHeta,
+						patch.KnotValueVectorKsi, patch.NumberOfControlPointsHeta - 1, patch.DegreeHeta,
 						patch.KnotValueVectorHeta, projectiveControlPoints, ksiCoordinate, hetaCoordinate);
 					knots[count, 0] = point3D[0] / point3D[3];
 					knots[count, 1] = point3D[1] / point3D[3];
@@ -49,15 +63,14 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 
 			var incrementKsi = numberOfKnotsHeta;
 			var incrementHeta = 1;
-			var nodePattern = new int[] {0, incrementKsi, incrementKsi + 1, 1};
-			var elementConnectivity = CreateElement2DConnectivity(nodePattern, uniqueKnotsKsi[0].Length-1,
-				uniqueKnotsHeta[0].Length-1, incrementKsi, incrementHeta);
-			var knotDisplacements= new double[knots.GetLength(0),2];
-
+			var nodePattern = new int[] { 0, incrementKsi, incrementKsi + 1, 1 };
+			var elementConnectivity = CreateElement2DConnectivity(nodePattern, uniqueKnotsKsi[0].Length - 1,
+				uniqueKnotsHeta[0].Length - 1, incrementKsi, incrementHeta);
+			var knotDisplacements = new double[knots.GetLength(0), 2];
 
 			foreach (var element in _model.Elements)
 			{
-				var localDisplacements = new double[element.ControlPoints.Count, 2];
+				var localDisplacements = Matrix.CreateZero(element.ControlPointsDictionary.Count, 2);
 				var counterCP = 0;
 				foreach (var controlPoint in element.ControlPoints)
 				{
@@ -65,12 +78,12 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 						(!_model.GlobalDofOrdering.GlobalFreeDofs.Contains(controlPoint, StructuralDof.TranslationX))
 							? 0.0
 							: _solution[_model.GlobalDofOrdering.GlobalFreeDofs[controlPoint, StructuralDof.TranslationX]];
-					localDisplacements[counterCP++, 1] = 
+					localDisplacements[counterCP++, 1] =
 						(!_model.GlobalDofOrdering.GlobalFreeDofs.Contains(controlPoint, StructuralDof.TranslationY))
 						? 0.0
 						: _solution[_model.GlobalDofOrdering.GlobalFreeDofs[controlPoint, StructuralDof.TranslationY]];
 				}
-				var elementKnotDisplacements=element.ElementType.CalculateDisplacementsForPostProcessing(element, localDisplacements);
+				var elementKnotDisplacements = element.ElementType.CalculateDisplacementsForPostProcessing(element, localDisplacements);
 				for (int i = 0; i < elementConnectivity.GetLength(1); i++)
 				{
 					var knotConnectivity = elementConnectivity[element.ID, i];
@@ -79,17 +92,16 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 				}
 			}
 
-			Write2DNurbsFile(knots, elementConnectivity,"Quad4",knotDisplacements);
+			Write2DNurbsFile(knots, elementConnectivity, "Quad4", knotDisplacements);
 		}
 
-		public void Write2DNurbsFile(double[,] nodeCoordinates, int[,] elementConnectivity, string elementType,double[,] displacements )
+		private void Write2DNurbsFile(double[,] nodeCoordinates, int[,] elementConnectivity, string elementType, double[,] displacements)
 		{
-			var dimensions = 2;
 			var numberOfNodes = nodeCoordinates.GetLength(0);
 			var numberOfCells = elementConnectivity.GetLength(0);
 
-			int numberOfVerticesPerCell=0;
-			int paraviewCellCode=0;
+			int numberOfVerticesPerCell = 0;
+			int paraviewCellCode = 0;
 
 			if (elementType == "Quad4")
 			{
@@ -97,8 +109,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 				paraviewCellCode = 9;
 			}
 
-			var dofPerVertex = 2;
-			using (StreamWriter outputFile = new StreamWriter($"..\\..\\..\\OutputFiles\\{_filename}Paraview.vtu"))
+			using (StreamWriter outputFile = new StreamWriter($"..\\..\\..\\MGroup.IGA.Tests\\OutputFiles\\{_filename}Paraview.vtu"))
 			{
 				outputFile.WriteLine("<VTKFile type=\"UnstructuredGrid\"  version=\"0.1\"   >");
 				outputFile.WriteLine("<UnstructuredGrid>");
@@ -107,7 +118,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 				outputFile.WriteLine("<Points>");
 				outputFile.WriteLine("<DataArray  type=\"Float64\"  NumberOfComponents=\"3\"  format=\"ascii\" >");
 				for (int i = 0; i < numberOfNodes; i++)
-					outputFile.WriteLine($"{nodeCoordinates[i,0]} {nodeCoordinates[i, 1]} {nodeCoordinates[i, 2]}");
+					outputFile.WriteLine($"{nodeCoordinates[i, 0]} {nodeCoordinates[i, 1]} {nodeCoordinates[i, 2]}");
 
 				outputFile.WriteLine("</DataArray>");
 				outputFile.WriteLine("</Points>");
@@ -117,7 +128,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 				for (int i = 0; i < numberOfCells; i++)
 				{
 					for (int j = 0; j < elementConnectivity.GetLength(1); j++)
-						outputFile.Write($"{elementConnectivity[i,j]} ");
+						outputFile.Write($"{elementConnectivity[i, j]} ");
 					outputFile.WriteLine("");
 				}
 
@@ -144,7 +155,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 				outputFile.WriteLine("<DataArray  type=\"Float64\"  Name=\"U\" NumberOfComponents=\"3\" format=\"ascii\">");
 
 				for (int i = 0; i < numberOfNodes; i++)
-					outputFile.WriteLine($"{displacements[i,0]} {displacements[i, 1]} 0.0");
+					outputFile.WriteLine($"{displacements[i, 0]} {displacements[i, 1]} 0.0");
 
 				outputFile.WriteLine("</DataArray>");
 				outputFile.WriteLine("</PointData>");
@@ -160,7 +171,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 			var increment = 0;
 			var elementConnectivity = new int[numberOfElementsKsi * numberOfElementsHeta, nodePattern.Length];
 			var elementCounter = 0;
-			for (int elementKsi = 0; elementKsi < numberOfElementsKsi; elementKsi++) 
+			for (int elementKsi = 0; elementKsi < numberOfElementsKsi; elementKsi++)
 			{
 				increment = elementKsi * incrementKsi;
 				for (int elementHeta = 0; elementHeta < numberOfElementsHeta; elementHeta++)
@@ -255,7 +266,6 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 			return basisFunctions;
 		}
 
-
 		/// <summary>
 		/// NURBS Book Algoritmh A3.5.
 		/// Based on IGAFEM code.
@@ -290,7 +300,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 
 				for (int i = 0; i <= degreeKsi; i++)
 				{
-					var cpIndex = (indexKsi+i)*(numberOfCPHeta+1)+indexHeta; 
+					var cpIndex = (indexKsi + i) * (numberOfCPHeta + 1) + indexHeta;
 					var cpCoordinates = Vector.CreateFromArray(new double[]
 					{
 						projectiveControlPointCoordinates[cpIndex, 0],

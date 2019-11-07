@@ -1,12 +1,11 @@
-﻿using ISAAR.MSolve.IGA.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace ISAAR.MSolve.IGA.Entities.Loads
+﻿namespace MGroup.IGA.Entities.Loads
 {
-    public class LoadingCondition : IBoundaryCondition
-    {
-    }
+	using MGroup.IGA.Interfaces;
+
+	/// <summary>
+	/// A base class for loading conditions.
+	/// </summary>
+	public class LoadingCondition : IBoundaryCondition
+	{
+	}
 }

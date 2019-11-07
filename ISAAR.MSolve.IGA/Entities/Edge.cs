@@ -1,73 +1,74 @@
-﻿using System;
-using System.Collections.Generic;
-using ISAAR.MSolve.Discretization.FreedomDegrees;
-using ISAAR.MSolve.IGA.Elements;
-using ISAAR.MSolve.IGA.Entities.Loads;
-using ISAAR.MSolve.IGA.Interfaces;
-using ISAAR.MSolve.LinearAlgebra.Vectors;
-
-namespace ISAAR.MSolve.IGA.Entities
+namespace MGroup.IGA.Entities
 {
-    public class Edge : Boundary
+	using System;
+	using System.Collections.Generic;
+
+	using MGroup.IGA.Elements;
+	using MGroup.IGA.Entities.Loads;
+	using MGroup.IGA.Interfaces;
+	using MGroup.LinearAlgebra.Vectors;
+	using MGroup.MSolve.Discretization.FreedomDegrees;
+
+	public class Edge : Boundary
 	{
-		public int ID { get; set; }
+		/// <summary>
+		/// List of BoundaryCondition applied to the edge.
+		/// </summary>
+		public List<IBoundaryCondition> BoundaryConditions { get; } = new List<IBoundaryCondition>();
 
-		public const int NumberOfDimensions = 1;
+		/// <summary>
+		/// Dictionary that contains degrees of freedom that belong to the edge.
+		/// </summary>
+		public Dictionary<int, Dictionary<IDofType, int>> ControlPointDOFsDictionary { get; } = new Dictionary<int, Dictionary<IDofType, int>>();
 
-		public int numberOfControlPoints { get; set; }
+		/// <summary>
+		/// Dictionary that contains <see cref="ControlPoint"/> that belong to the edge.
+		/// </summary>
+		public Dictionary<int, ControlPoint> ControlPointsDictionary { get; } = new Dictionary<int, ControlPoint>();
 
+		/// <summary>
+		/// Polynomial degree used for the representation of the edge.
+		/// </summary>
 		public int Degree { get; set; }
 
-		public Patch Patch { get; set; }
-		//public Patch Patch { get; set; }
+		/// <summary>
+		/// Dictionary containing elements of the edge.
+		/// </summary>
+		public Dictionary<int, Element> ElementsDictionary { get; } = new Dictionary<int, Element>();
 
+		/// <summary>
+		/// Edge ID.
+		/// </summary>
+		public int ID { get; set; }
+
+		/// <summary>
+		/// Knot Value Vector that describes the surface.
+		/// </summary>
 		public Vector KnotValueVector { get; set; }
 
-		private readonly Dictionary<int, ControlPoint> controlPointsDictionary = new Dictionary<int, ControlPoint>();
+		/// <summary>
+		/// List of loading conditions applied to the surface.
+		/// </summary>
+		public List<LoadingCondition> LoadingConditions { get; } = new List<LoadingCondition>();
 
-		private readonly Dictionary<int, Element> elementsDictionary = new Dictionary<int, Element>();
+		/// <summary>
+		/// Multitude of <see cref="ControlPoint"/> of the edge.
+		/// </summary>
+		public int NumberOfControlPoints { get; set; }
 
-		private readonly Dictionary<int, Dictionary<IDofType, int>> controlPointsDOFsDictionary =
-			new Dictionary<int, Dictionary<IDofType, int>>();
+		/// <summary>
+		/// The patch that the edge belong to.
+		/// </summary>
+		public Patch Patch { get; set; }
 
-		private readonly List<IBoundaryCondition> boundaryConditions = new List<IBoundaryCondition>();
-
-		private readonly List<LoadingCondition> loadingConditions = new List<LoadingCondition>();
-
-
-		#region Properties
-
-		public Dictionary<int, ControlPoint> ControlPointsDictionary
-		{
-			get { return controlPointsDictionary; }
-		}
-
-		public Dictionary<int, Element> ElementsDictionary
-		{
-			get { return elementsDictionary; }
-		}
-
-		public Dictionary<int, Dictionary<IDofType, int>> ControlPointDOFsDictionary
-		{
-			get { return controlPointsDOFsDictionary; }
-		}
-
-		public List<IBoundaryCondition> BoundaryConditions
-		{
-			get { return boundaryConditions; }
-		}
-
-		public List<LoadingCondition> LoadingConditions
-		{
-			get { return loadingConditions; }
-		}
-
-		#endregion
-
+		/// <summary>
+		/// Calculates the loads applied to the edge.
+		/// </summary>
+		/// <returns>A <see cref="Dictionary{TKey,TValue}"/> whose keys are the numbering of the degree of freedom and values are the magnitude of the loads.</returns>
 		public Dictionary<int, double> CalculateLoads()
 		{
 			Dictionary<int, double> edgeLoad = new Dictionary<int, double>();
-			foreach (LoadingCondition loading in loadingConditions)
+			foreach (LoadingCondition loading in LoadingConditions)
 			{
 				Dictionary<int, double> load = CalculateLoadingCondition(loading);
 				foreach (int dof in load.Keys)
@@ -88,44 +89,57 @@ namespace ISAAR.MSolve.IGA.Entities
 
 		private Dictionary<int, double> CalculateLoadingCondition(LoadingCondition loading)
 		{
-			LoadProvider provider = new LoadProvider();
-			if (elementsDictionary.Count == 0) CreateEdgeElements();
-			Dictionary<int, double> load = new Dictionary<int, double>();
-			if (loading is NeumannBoundaryCondition)
+			var provider = new LoadProvider();
+			if (ElementsDictionary.Count == 0) CreateEdgeElements();
+			var load = new Dictionary<int, double>();
+			switch (loading)
 			{
-				foreach (Element element in elementsDictionary.Values)
-				{
-					var loadNeumann = provider.LoadNeumann(element, this, loading as NeumannBoundaryCondition);
-					foreach (int dof in loadNeumann.Keys)
-					{
-						if (load.ContainsKey(dof))
-						{
-							load[dof] += loadNeumann[dof];
-						}
-						else
-						{
-							load.Add(dof, loadNeumann[dof]);
-						}
-					}
-				}
+				case NeumannBoundaryCondition condition:
+					CalculateNeumann(provider, condition, load);
+					break;
+
+				case PressureBoundaryCondition condition:
+					CalculatePressure(provider, condition, load);
+					break;
 			}
-			else if (loading is PressureBoundaryCondition)
+			return load;
+		}
+
+		private void CalculateNeumann(LoadProvider provider, NeumannBoundaryCondition condition, Dictionary<int, double> load)
+		{
+			foreach (var element in ElementsDictionary.Values)
 			{
-				foreach (Element element in elementsDictionary.Values)
-				foreach (int dof in provider.LoadPressure(element, this, loading as PressureBoundaryCondition).Keys)
+				var loadNeumann = provider.LoadNeumann(element, this, condition);
+				foreach (int dof in loadNeumann.Keys)
 				{
 					if (load.ContainsKey(dof))
 					{
-						load[dof] += provider.LoadPressure(element, this, loading as PressureBoundaryCondition)[dof];
+						load[dof] += loadNeumann[dof];
 					}
 					else
 					{
-						load.Add(dof, provider.LoadPressure(element, this, loading as PressureBoundaryCondition)[dof]);
+						load.Add(dof, loadNeumann[dof]);
 					}
 				}
 			}
+		}
 
-			return load;
+		private void CalculatePressure(LoadProvider provider, PressureBoundaryCondition condition, Dictionary<int, double> load)
+		{
+			foreach (Element element in ElementsDictionary.Values)
+			{
+				foreach (int dof in provider.LoadPressure(element, this, condition).Keys)
+				{
+					if (load.ContainsKey(dof))
+					{
+						load[dof] += provider.LoadPressure(element, this, condition)[dof];
+					}
+					else
+					{
+						load.Add(dof, provider.LoadPressure(element, this, condition)[dof]);
+					}
+				}
+			}
 		}
 
 		private void CreateEdgeElements()
@@ -139,11 +153,11 @@ namespace ISAAR.MSolve.IGA.Entities
 			int id = 0;
 			for (int i = 0; i < singleKnotValuesKsi.Length; i++)
 			{
-				knots.Add(new Knot() {ID = id, Ksi = singleKnotValuesKsi[i], Heta = 0.0, Zeta = 0.0});
+				knots.Add(new Knot() { ID = id, Ksi = singleKnotValuesKsi[i], Heta = 0.0, Zeta = 0.0 });
 				id++;
 			}
 
-			#endregion
+			#endregion Knots
 
 			#region Elements
 
@@ -152,19 +166,21 @@ namespace ISAAR.MSolve.IGA.Entities
 			int numberOfElementsKsi = singleKnotValuesKsi.Length - 1;
 			if (numberOfElementsKsi == 0)
 			{
-				throw new NullReferenceException("Number of Elements should be defined before Element Connectivity");
+				throw new ArgumentNullException("Number of Elements should be defined before Element Connectivity");
 			}
 
 			for (int i = 0; i < numberOfElementsKsi; i++)
 			{
-				IList<Knot> knotsOfElement = new List<Knot>();
-				knotsOfElement.Add(knots[i]);
-				knotsOfElement.Add(knots[i + 1]);
+				IList<Knot> knotsOfElement = new List<Knot>
+				{
+					knots[i],
+					knots[i + 1]
+				};
 
 				int multiplicityElementKsi = 0;
 				if (multiplicityKsi[i + 1] - this.Degree > 0)
 				{
-					multiplicityElementKsi = (int) multiplicityKsi[i + 1] - this.Degree;
+					multiplicityElementKsi = (int)multiplicityKsi[i + 1] - this.Degree;
 				}
 
 				int nurbsSupportKsi = this.Degree + 1;
@@ -174,14 +190,14 @@ namespace ISAAR.MSolve.IGA.Entities
 				for (int k = 0; k < nurbsSupportKsi; k++)
 				{
 					int controlPointID = i + multiplicityElementKsi + k;
-					elementControlPoints.Add(this.controlPointsDictionary[controlPointID]);
+					elementControlPoints.Add(this.ControlPointsDictionary[controlPointID]);
 				}
 
 				int elementID = i;
-				Element element = new NURBSElement1D()
+				Element element = new NurbsElement1D()
 				{
 					ID = elementID,
-					ElementType = new NURBSElement1D(),
+					ElementType = new NurbsElement1D(),
 					Patch = this.Patch,
 					Degree = this.Degree,
 					Model = Patch.Elements[0].Model
@@ -189,11 +205,10 @@ namespace ISAAR.MSolve.IGA.Entities
 
 				element.AddKnots(knotsOfElement);
 				element.AddControlPoints(elementControlPoints);
-				this.elementsDictionary.Add(elementID, element);
-				//this.PatchesDictionary[1].ElementsDictionary.Add(element.ID, element);
+				this.ElementsDictionary.Add(elementID, element);
 			}
 
-			#endregion
+			#endregion Elements
 		}
 	}
 }

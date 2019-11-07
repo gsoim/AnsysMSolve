@@ -1,17 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ISAAR.MSolve.IGA.Entities
+namespace MGroup.IGA.Entities
 {
-    public class Knot
-    {
-        public int ID { get; set; }
-        public double Ksi { get; set; }
-        public double Heta { get; set; }
-        public double Zeta { get; set; }
+	/// <summary>
+	/// Defines a Knot.
+	/// </summary>
+	public class Knot
+	{
+		/// <summary>
+		/// Parametric coordinate Heta of the <see cref="Knot"/>.
+		/// </summary>
+		public double Heta { get; set; }
 
-    }
+		/// <summary>
+		/// ID of the <see cref="Knot"/>.
+		/// </summary>
+		public int ID { get; set; }
+
+		/// <summary>
+		/// Parametric coordinate Ksi of the <see cref="Knot"/>.
+		/// </summary>
+		public double Ksi { get; set; }
+
+		/// <summary>
+		/// Parametric coordinate Zeta of the <see cref="Knot"/>.
+		/// </summary>
+		public double Zeta { get; set; }
+	}
 }

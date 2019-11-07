@@ -1,18 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using ISAAR.MSolve.IGA.Entities;
-using ISAAR.MSolve.LinearAlgebra.Vectors;
-using ISAAR.MSolve.Materials;
-
-namespace ISAAR.MSolve.IGA.Readers
+namespace MGroup.IGA.Readers
 {
-    public class IsogeometricShellReader
-	{
-		public Model Model { get; }
-		public string Filename { get; private set; }
+	using System;
+	using System.Collections.Generic;
+	using System.Globalization;
 
-		enum Attributes
+	using MGroup.IGA.Entities;
+	using MGroup.LinearAlgebra.Vectors;
+	using MGroup.Materials;
+
+	public enum GeometricalFormulation
+	{
+		Linear,
+		NonLinear,
+		SectionNonLinear
+	}
+
+	/// <summary>
+	/// Reader for custom isogeometric shell model files.
+	/// </summary>
+	public class IsogeometricShellReader
+	{
+		private readonly Model _model;
+		private readonly string _filename;
+
+		private enum Attributes
 		{
 			numberofdimensions,
 			numberofpatches, numberofinterfaces,
@@ -24,143 +35,161 @@ namespace ISAAR.MSolve.IGA.Readers
 			cpcoord, thickness, material, end
 		}
 
+		/// <summary>
+		/// Defines a custom isogeometric shell file reader.
+		/// </summary>
+		/// <param name="modelCreator">An <see cref="ModelCreator"/> object responsible for generating the model.</param>
+		/// <param name="filename">The name of the file to be read.</param>
 		public IsogeometricShellReader(Model model, string filename)
 		{
-			Model = model;
-			Filename = filename;
+			_model = model;
+			_filename = filename;
 		}
 
+		private Dictionary<int, int[]> ControlPointIDsDictionary = new Dictionary<int, int[]>();
 
-		private int patchID = -1;
-		private int numberOfValues = 0;
-		int[] localControlPointIDs;
-		int counterElementID = 0;
-		private int counterCPID;
-		Dictionary<int, int[]> ControlPointIDsDictionary= new Dictionary<int, int[]>();
-
-		public void CreateShellModelFromFile()
+		/// <summary>
+		/// Creates model from custom isogeometric shell file.
+		/// </summary>
+		public void CreateShellModelFromFile(GeometricalFormulation formulation)
 		{
 			char[] delimeters = { ' ', '=', '\t' };
-			IsogeometricShellReader.Attributes? name = null;
+			Attributes? name = null;
 
-			String[] text = System.IO.File.ReadAllLines(Filename);
+			int patchID = -1;
+			int numberOfValues = 0;
+			int[] localControlPointIDs;
+			int counterElementID = 0;
+			int counterCPID;
+
+			string[] text = System.IO.File.ReadAllLines(_filename);
 
 			for (int i = 0; i < text.Length; i++)
 			{
-				String[] line = text[i].Split(delimeters, StringSplitOptions.RemoveEmptyEntries);
+				string[] line = text[i].Split(delimeters, StringSplitOptions.RemoveEmptyEntries);
 				if (line.Length == 0)
 				{
 					continue;
 				}
 				try
 				{
-					name = (IsogeometricShellReader.Attributes)Enum.Parse(typeof(IsogeometricShellReader.Attributes), line[0].ToLower());
+					name = (Attributes)Enum.Parse(typeof(Attributes), line[0].ToLower());
 				}
 				catch (Exception exception)
 				{
-					throw new KeyNotFoundException("Variable name " + line[0] + " is not found.");
+					throw new KeyNotFoundException($"Variable name {line[0]} is not found. {exception.Message}");
 				}
 
 				switch (name)
 				{
-					case IsogeometricShellReader.Attributes.numberofdimensions:
-						Model.PatchesDictionary[patchID].NumberOfDimensions = Int32.Parse(line[1]);
+					case Attributes.numberofdimensions:
+						_model.PatchesDictionary[patchID].NumberOfDimensions = int.Parse(line[1]);
 						break;
-					case IsogeometricShellReader.Attributes.thickness:
-						Model.PatchesDictionary[patchID].Thickness = Double.Parse(line[1], CultureInfo.InvariantCulture);
+
+					case Attributes.thickness:
+						_model.PatchesDictionary[patchID].Thickness = double.Parse(line[1], CultureInfo.InvariantCulture);
 						break;
-					case IsogeometricShellReader.Attributes.numberofpatches:
-						//Model.NumberOfPatches = Int32.Parse(line[1]);
+
+					case Attributes.numberofpatches:
 						break;
-					case IsogeometricShellReader.Attributes.material:
-						Model.PatchesDictionary[patchID].Material = new ElasticMaterial2D(StressState2D.PlaneStrain) { YoungModulus = Double.Parse(line[2], CultureInfo.InvariantCulture), PoissonRatio = Double.Parse(line[3], CultureInfo.InvariantCulture) };
+
+					case Attributes.material:
+						_model.PatchesDictionary[patchID].Material = new ElasticMaterial2D(StressState2D.PlaneStrain) { YoungModulus = double.Parse(line[2], CultureInfo.InvariantCulture), PoissonRatio = double.Parse(line[3], CultureInfo.InvariantCulture) };
 						break;
-					case IsogeometricShellReader.Attributes.patchid:
-						patchID = Int32.Parse(line[1]);
-						Model.PatchesDictionary.Add(patchID,new Patch());
+
+					case Attributes.patchid:
+						patchID = int.Parse(line[1]);
+						_model.PatchesDictionary.Add(patchID, new Patch());
 						break;
-					case IsogeometricShellReader.Attributes.degreeksi:
+
+					case Attributes.degreeksi:
 						if (patchID == -1)
 							throw new ArgumentOutOfRangeException("Degree Ksi of a patch must be defined after the patchID");
-						Model.PatchesDictionary[patchID].DegreeKsi=Int32.Parse(line[1]);
+						_model.PatchesDictionary[patchID].DegreeKsi = int.Parse(line[1]);
 						break;
-					case IsogeometricShellReader.Attributes.degreeheta:
+
+					case Attributes.degreeheta:
 						if (patchID == -1)
 							throw new ArgumentOutOfRangeException("Degree Heta of a patch must be defined after the patchID");
-						Model.PatchesDictionary[patchID].DegreeHeta = Int32.Parse(line[1]);
+						_model.PatchesDictionary[patchID].DegreeHeta = int.Parse(line[1]);
 						break;
-					case IsogeometricShellReader.Attributes.numberofcpksi:
+
+					case Attributes.numberofcpksi:
 						if (patchID == -1)
 							throw new ArgumentOutOfRangeException("Number of Control Points Ksi of a patch must be defined after the patchID");
-						Model.PatchesDictionary[patchID].NumberOfControlPointsKsi= Int32.Parse(line[1]);
+						_model.PatchesDictionary[patchID].NumberOfControlPointsKsi = int.Parse(line[1]);
 						break;
-					case IsogeometricShellReader.Attributes.numberofcpheta:
+
+					case Attributes.numberofcpheta:
 						if (patchID == -1)
 							throw new ArgumentOutOfRangeException("Number of Control Points Heta of a patch must be defined after the patchID");
-						Model.PatchesDictionary[patchID].NumberOfControlPointsHeta= Int32.Parse(line[1]);
+						_model.PatchesDictionary[patchID].NumberOfControlPointsHeta = int.Parse(line[1]);
 						break;
-					case IsogeometricShellReader.Attributes.knotvaluevectorksi:
+
+					case Attributes.knotvaluevectorksi:
 						if (patchID == -1)
 							throw new ArgumentOutOfRangeException("KnotValue Vector Ksi of a patch must be defined after the patchID");
-						if (Model.PatchesDictionary[patchID].DegreeKsi == 0 || Model.PatchesDictionary[patchID].NumberOfControlPointsKsi == 0)
+						if (_model.PatchesDictionary[patchID].DegreeKsi == 0 || _model.PatchesDictionary[patchID].NumberOfControlPointsKsi == 0)
 							throw new ArgumentOutOfRangeException("Degree Ksi and number of Control Points per axis Ksi must be defined before Knot Value Vector Ksi.");
-						numberOfValues = Model.PatchesDictionary[patchID].DegreeKsi + Model.PatchesDictionary[patchID].NumberOfControlPointsKsi + 1;
+						numberOfValues = _model.PatchesDictionary[patchID].DegreeKsi + _model.PatchesDictionary[patchID].NumberOfControlPointsKsi + 1;
 						double[] KnotValueVectorKsi = new double[numberOfValues];
 						for (int j = 0; j < numberOfValues; j++)
-							KnotValueVectorKsi[j] = Double.Parse(line[j + 1], CultureInfo.InvariantCulture);
-						Model.PatchesDictionary[patchID].KnotValueVectorKsi = Vector.CreateFromArray(KnotValueVectorKsi);
+							KnotValueVectorKsi[j] = double.Parse(line[j + 1], CultureInfo.InvariantCulture);
+						_model.PatchesDictionary[patchID].KnotValueVectorKsi = Vector.CreateFromArray(KnotValueVectorKsi);
 						break;
-					case IsogeometricShellReader.Attributes.knotvaluevectorheta:
+
+					case Attributes.knotvaluevectorheta:
 						if (patchID == -1)
 							throw new ArgumentOutOfRangeException("KnotValue Vector Heta of a patch must be defined after the patchID");
-						if (Model.PatchesDictionary[patchID].DegreeHeta == 0 || Model.PatchesDictionary[patchID].NumberOfControlPointsHeta == 0)
+						if (_model.PatchesDictionary[patchID].DegreeHeta == 0 || _model.PatchesDictionary[patchID].NumberOfControlPointsHeta == 0)
 							throw new ArgumentOutOfRangeException("Degree Heta and number of Control Points per axis Heta must be defined before Knot Value Vector Heta.");
-						numberOfValues = Model.PatchesDictionary[patchID].DegreeHeta + Model.PatchesDictionary[patchID].NumberOfControlPointsHeta + 1;
+						numberOfValues = _model.PatchesDictionary[patchID].DegreeHeta + _model.PatchesDictionary[patchID].NumberOfControlPointsHeta + 1;
 						double[] KnotValueVectorHeta = new double[numberOfValues];
 						for (int j = 0; j < numberOfValues; j++)
-							KnotValueVectorHeta[j] = Double.Parse(line[j + 1], CultureInfo.InvariantCulture);
-						Model.PatchesDictionary[patchID].KnotValueVectorHeta = Vector.CreateFromArray(KnotValueVectorHeta);
+							KnotValueVectorHeta[j] = double.Parse(line[j + 1], CultureInfo.InvariantCulture);
+						_model.PatchesDictionary[patchID].KnotValueVectorHeta = Vector.CreateFromArray(KnotValueVectorHeta);
 						break;
-					case IsogeometricShellReader.Attributes.patchcpid:
+
+					case Attributes.patchcpid:
 						if (patchID == -1)
 							throw new ArgumentOutOfRangeException("Control Points ID of a patch must be defined after the patchID");
-						int numberOfPatchCP = Model.PatchesDictionary[patchID].NumberOfControlPointsKsi *
-						                      Model.PatchesDictionary[patchID].NumberOfControlPointsHeta;
+						int numberOfPatchCP = _model.PatchesDictionary[patchID].NumberOfControlPointsKsi *
+											  _model.PatchesDictionary[patchID].NumberOfControlPointsHeta;
 						localControlPointIDs = new int[numberOfPatchCP];
 						for (int j = 0; j < numberOfPatchCP; j++)
 						{
-							localControlPointIDs[j] = Int32.Parse(line[j + 1]);
+							localControlPointIDs[j] = int.Parse(line[j + 1]);
 						}
 						ControlPointIDsDictionary.Add(patchID, localControlPointIDs);
 						break;
-					case IsogeometricShellReader.Attributes.cpcoord:
-						var numberOfControlPoints = Int32.Parse(line[1]);
+
+					case Attributes.cpcoord:
+						var numberOfControlPoints = int.Parse(line[1]);
 						for (int j = 0; j < numberOfControlPoints; j++)
 						{
 							i++;
 							line = text[i].Split(delimeters);
-							int controlPointGlobalID = Int32.Parse(line[0]);
-							double x = Double.Parse(line[1], CultureInfo.InvariantCulture);
-							double y = Double.Parse(line[2], CultureInfo.InvariantCulture);
-							double z = Double.Parse(line[3], CultureInfo.InvariantCulture);
-							double w = Double.Parse(line[4], CultureInfo.InvariantCulture);
+							int controlPointGlobalID = int.Parse(line[0]);
+							double x = double.Parse(line[1], CultureInfo.InvariantCulture);
+							double y = double.Parse(line[2], CultureInfo.InvariantCulture);
+							double z = double.Parse(line[3], CultureInfo.InvariantCulture);
+							double w = double.Parse(line[4], CultureInfo.InvariantCulture);
 							ControlPoint controlPoint = new ControlPoint()
-							{ ID = controlPointGlobalID, X = x, Y =  y, Z = z, WeightFactor = w };
-							Model.ControlPointsDictionary.Add(controlPointGlobalID, controlPoint);
+							{ ID = controlPointGlobalID, X = x, Y = y, Z = z, WeightFactor = w };
+							_model.ControlPointsDictionary.Add(controlPointGlobalID, controlPoint);
 						}
 						break;
-					case IsogeometricShellReader.Attributes.end:
-						for (int j = 0; j < ControlPointIDsDictionary[patchID].Length; j++)
-							((List<ControlPoint>)Model.PatchesDictionary[patchID].ControlPoints).Add( Model.ControlPointsDictionary[ControlPointIDsDictionary[patchID][j]]);
 
-						Model.PatchesDictionary[patchID].CreateNurbsShell();
-						foreach (var element in Model.PatchesDictionary[patchID].Elements)
-							Model.ElementsDictionary.Add(counterElementID++, element);
+					case Attributes.end:
+						for (int j = 0; j < ControlPointIDsDictionary[patchID].Length; j++)
+							((List<ControlPoint>)_model.PatchesDictionary[patchID].ControlPoints).Add(_model.ControlPointsDictionary[ControlPointIDsDictionary[patchID][j]]);
+
+						_model.PatchesDictionary[patchID].CreateNurbsShell(formulation);
+						foreach (var element in _model.PatchesDictionary[patchID].Elements)
+							_model.ElementsDictionary.Add(counterElementID++, element);
 						return;
 				}
 			}
 		}
-
-
 	}
 }

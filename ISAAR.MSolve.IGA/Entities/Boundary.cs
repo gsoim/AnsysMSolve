@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace ISAAR.MSolve.IGA.Entities
+﻿namespace MGroup.IGA.Entities
 {
-    public class Boundary
-    {
-    }
+	/// <summary>
+	/// Base class of boundary Entities.
+	/// </summary>
+	public class Boundary
+	{
+	}
 }

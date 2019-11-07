@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace ISAAR.MSolve.IGA.Interfaces
+﻿namespace MGroup.IGA.Interfaces
 {
-    public interface IBoundaryCondition
-    {
-    }
+	/// <summary>
+	/// Interface for boundary conditions.
+	/// </summary>
+	public interface IBoundaryCondition
+	{
+	}
 }

@@ -1,58 +1,68 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Text;
-using ISAAR.MSolve.IGA.Elements;
-using ISAAR.MSolve.IGA.Entities;
-using ISAAR.MSolve.LinearAlgebra.Matrices;
-using ISAAR.MSolve.Materials;
-using ISAAR.MSolve.Materials.Interfaces;
-
-namespace ISAAR.MSolve.IGA.Readers
+namespace MGroup.IGA.Readers
 {
-	public class IGAFileReader
+	using System;
+	using System.Collections.Generic;
+	using System.Globalization;
+
+	using MGroup.IGA.Elements;
+	using MGroup.IGA.Entities;
+	using MGroup.IGA.Postprocessing;
+	using MGroup.LinearAlgebra.Matrices;
+	using MGroup.Materials.ShellMaterials;
+
+	/// <summary>
+	/// Read .iga files exported from Rhino.
+	/// </summary>
+	public class IgaFileReader
 	{
-		enum Attributes
+		private readonly string _filename;
+
+		private readonly Model _model;
+
+		private int controlPointIDcounter = 0;
+
+		private int elementIDCounter = 0;
+
+		private int numberOfDimensions;
+
+		/// <summary>
+		/// Create an .iga file reader.
+		/// </summary>
+		/// <param name="model">An isogeometric <see cref="Model"/>.</param>
+		/// <param name="filename">The name of the file to be read.</param>
+		public IgaFileReader(Model model, string filename)
+		{
+			_model = model;
+			_filename = filename;
+		}
+
+		private enum Attributes
 		{
 			type, noden, elemn, node, belem, set
 		}
 
-		enum Types
+		private enum Types
 		{
 			plane, surface
 		}
 
-		public enum TSplineShellTypes
-		{
-			LinearMaterial, SectionMaterial, ThicknessMaterial
-		}
-
-		public Model Model { get; }
-		public string Filename { get; private set; }
-
-
-		public IGAFileReader(Model model, string filename)
-		{
-			Model = model;
-			Filename = filename;
-		}
-
-		private int numberOfElements;
-		private int controlPointIDcounter = 0;
-		private int elementIDCounter = 0;
-		private int numberOfDimensions;
-
-        public void CreateTSplineShellsModelFromFile(TSplineShellTypes shellType = TSplineShellTypes.LinearMaterial, ShellElasticMaterial2D shellMaterial = null, double thickness = 1)
+		/// <summary>
+		/// Create Model from reading an .iga file.
+		/// </summary>
+		/// <param name="shellType"><see cref="Enum"/> that specifies the type of the shells that will be generated.</param>
+		/// <param name="shellMaterial">The material of the shell.</param>
+		/// <param name="thickness">The tchickness of the shell.</param>
+		public void CreateTSplineShellsModelFromFile(TSplineShellType shellType = TSplineShellType.Linear, ShellElasticMaterial2D shellMaterial = null, double thickness = 1)
 		{
 			char[] delimeters = { ' ', '=', '\t' };
 			Attributes? name = null;
 
-			String[] text = System.IO.File.ReadAllLines(Filename);
+			String[] text = System.IO.File.ReadAllLines(_filename);
 
-			Model.PatchesDictionary.Add(0, new Patch());
+			_model.PatchesDictionary.Add(0, new Patch());
 			for (int i = 0; i < text.Length; i++)
 			{
-				String[] line = text[i].Split(delimeters, StringSplitOptions.RemoveEmptyEntries);
+				var line = text[i].Split(delimeters, StringSplitOptions.RemoveEmptyEntries);
 				if (line.Length == 0) continue;
 				try
 				{
@@ -60,7 +70,7 @@ namespace ISAAR.MSolve.IGA.Readers
 				}
 				catch (Exception exception)
 				{
-					throw new KeyNotFoundException("Variable name " + line[0] + " is not found.");
+					throw new KeyNotFoundException($"Variable name {line[0]} is not found. {exception.Message}");
 				}
 				switch (name)
 				{
@@ -72,35 +82,36 @@ namespace ISAAR.MSolve.IGA.Readers
 						}
 						catch (Exception exception)
 						{
-							throw new KeyNotFoundException("Variable name " + line[0] + " is not found.");
+							throw new KeyNotFoundException($"Variable name {line[0]} is not found. {exception.Message}");
 						}
-						if (type == Types.plane)
-							numberOfDimensions = 2;
-						else
-							numberOfDimensions = 3;
+						numberOfDimensions = type == Types.plane ? 2 : 3;
 						break;
+
 					case Attributes.noden:
 						break;
+
 					case Attributes.elemn:
-						numberOfElements = Int32.Parse(line[1]);
+						var numberOfElements = int.Parse(line[1]);
 						break;
+
 					case Attributes.node:
 						var controlPoint = new ControlPoint
 						{
 							ID = controlPointIDcounter,
-							X = Double.Parse(line[1], CultureInfo.InvariantCulture),
-							Y = Double.Parse(line[2], CultureInfo.InvariantCulture),
-							Z = Double.Parse(line[3], CultureInfo.InvariantCulture),
-							WeightFactor = Double.Parse(line[4], CultureInfo.InvariantCulture)
+							X = double.Parse(line[1], CultureInfo.InvariantCulture),
+							Y = double.Parse(line[2], CultureInfo.InvariantCulture),
+							Z = double.Parse(line[3], CultureInfo.InvariantCulture),
+							WeightFactor = double.Parse(line[4], CultureInfo.InvariantCulture)
 						};
-						Model.ControlPointsDictionary.Add(controlPointIDcounter, controlPoint);
-						((List<ControlPoint>)Model.PatchesDictionary[0].ControlPoints).Add(controlPoint);
+						_model.ControlPointsDictionary.Add(controlPointIDcounter, controlPoint);
+						((List<ControlPoint>)_model.PatchesDictionary[0].ControlPoints).Add(controlPoint);
 						controlPointIDcounter++;
 						break;
+
 					case Attributes.belem:
-						var numberOfElementNodes = Int32.Parse(line[1]);
-						var elementDegreeKsi = Int32.Parse(line[2]);
-						var elementDegreeHeta = Int32.Parse(line[3]);
+						var numberOfElementNodes = int.Parse(line[1]);
+						var elementDegreeKsi = int.Parse(line[2]);
+						var elementDegreeHeta = int.Parse(line[3]);
 						i++;
 						line = text[i].Split(delimeters);
 						int[] connectivity = new int[numberOfElementNodes];
@@ -120,44 +131,27 @@ namespace ISAAR.MSolve.IGA.Readers
 
 						if (numberOfDimensions == 2)
 						{
-							Element element = new TSplineElement2D()
-							{
-								ID = elementIDCounter,
-								Patch = Model.PatchesDictionary[0],
-								ElementType = new TSplineElement2D(),
-								DegreeKsi = elementDegreeKsi,
-								DegreeHeta = elementDegreeHeta,
-								ExtractionOperator = extractionOperator
-							};
-							for (int cp = 0; cp < connectivity.Length; cp++)
-							{
-								element.AddControlPoint(Model.ControlPointsDictionary[connectivity[cp]]);
-							}
-							Model.ElementsDictionary.Add(elementIDCounter++, element);
-							Model.PatchesDictionary[0].Elements.Add(element);
+							throw new NotImplementedException("TSpline2D not yet implemented");
 						}
 						else
 						{
 							switch (shellType)
 							{
-								case TSplineShellTypes.LinearMaterial:
+								case TSplineShellType.Linear:
 									CreateLinearShell(elementDegreeKsi, elementDegreeHeta, extractionOperator, connectivity);
 									break;
-								case TSplineShellTypes.SectionMaterial:
-									CreateSectionMaterialShell(elementDegreeKsi, elementDegreeHeta, extractionOperator, connectivity);
-									break;
-								case TSplineShellTypes.ThicknessMaterial:
+
+								case TSplineShellType.Thickness:
 									CreateThicknessShell(elementDegreeKsi, elementDegreeHeta, extractionOperator, connectivity, shellMaterial, thickness);
 									break;
 							}
 						}
 						break;
+
 					case Attributes.set:
 						break;
 				}
 			}
-
-			var a = 0;
 		}
 
 		private void CreateLinearShell(int elementDegreeKsi, int elementDegreeHeta, Matrix extractionOperator,
@@ -166,7 +160,7 @@ namespace ISAAR.MSolve.IGA.Readers
 			Element element = new TSplineKirchhoffLoveShellElement()
 			{
 				ID = elementIDCounter,
-				Patch = Model.PatchesDictionary[0],
+				Patch = _model.PatchesDictionary[0],
 				ElementType = new TSplineKirchhoffLoveShellElement(),
 				DegreeKsi = elementDegreeKsi,
 				DegreeHeta = elementDegreeHeta,
@@ -174,39 +168,16 @@ namespace ISAAR.MSolve.IGA.Readers
 			};
 			for (int cp = 0; cp < connectivity.Length; cp++)
 			{
-				element.AddControlPoint(Model.ControlPointsDictionary[connectivity[cp]]);
+				element.AddControlPoint(_model.ControlPointsDictionary[connectivity[cp]]);
 			}
 
-			Model.ElementsDictionary.Add(elementIDCounter++, element);
-			Model.PatchesDictionary[0].Elements.Add(element);
-		}
-
-		private void CreateSectionMaterialShell(int elementDegreeKsi, int elementDegreeHeta, Matrix extractionOperator,
-			int[] connectivity)
-		{
-			//TODO: Create constructor to fill section material at gauss points
-			Element element = new TSplineKirchhoffLoveShellSectionElement()
-			{
-				ID = elementIDCounter,
-				Patch = Model.PatchesDictionary[0],
-				ElementType = new TSplineKirchhoffLoveShellSectionElement(),
-				DegreeKsi = elementDegreeKsi,
-				DegreeHeta = elementDegreeHeta,
-				ExtractionOperator = extractionOperator
-			};
-			for (int cp = 0; cp < connectivity.Length; cp++)
-			{
-				element.AddControlPoint(Model.ControlPointsDictionary[connectivity[cp]]);
-			}
-
-			Model.ElementsDictionary.Add(elementIDCounter++, element);
-			Model.PatchesDictionary[0].Elements.Add(element);
+			_model.ElementsDictionary.Add(elementIDCounter++, element);
+			_model.PatchesDictionary[0].Elements.Add(element);
 		}
 
 		private void CreateThicknessShell(int elementDegreeKsi, int elementDegreeHeta, Matrix extractionOperator,
 			int[] connectivity, ShellElasticMaterial2D shellMaterial, double thickness)
 		{
-			//TODO: Create constructor to fill section material at gauss points
 			Element element = new TSplineKirchhoffLoveShellElementMaterial(elementIDCounter, null,
 					elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial)
 			{
@@ -214,13 +185,13 @@ namespace ISAAR.MSolve.IGA.Readers
 					elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial)
 			};
 
-			for (int cp = 0; cp < connectivity.Length; cp++)
+			foreach (var t in connectivity)
 			{
-				element.AddControlPoint(Model.ControlPointsDictionary[connectivity[cp]]);
+				element.AddControlPoint(_model.ControlPointsDictionary[t]);
 			}
 
-			Model.ElementsDictionary.Add(elementIDCounter++, element);
-			Model.PatchesDictionary[0].Elements.Add(element);
+			_model.ElementsDictionary.Add(elementIDCounter++, element);
+			_model.PatchesDictionary[0].Elements.Add(element);
 		}
 	}
 }

@@ -1,98 +1,141 @@
-﻿using System;
-using System.Collections.Generic;
-using ISAAR.MSolve.Discretization;
-using ISAAR.MSolve.Discretization.FreedomDegrees;
-using ISAAR.MSolve.Discretization.Interfaces;
-
-namespace ISAAR.MSolve.IGA.Entities
+namespace MGroup.IGA.Entities
 {
-    public class ControlPoint : INode
+	using System;
+	using System.Collections.Generic;
+	using System.Text;
+
+	using MGroup.MSolve.Discretization;
+	using MGroup.MSolve.Discretization.FreedomDegrees;
+	using MGroup.MSolve.Discretization.Interfaces;
+
+	/// <summary>
+	/// Defines a Control Point. Implements <see cref="IWeightedPoint"/>.
+	/// </summary>
+	public class ControlPoint : IWeightedPoint
 	{
-        protected readonly Dictionary<int, Element> elementsDictionary = new Dictionary<int, Element>();
-        protected readonly Dictionary<int, Patch> patchesDictionary =new Dictionary<int, Patch>();
-        private readonly List<Constraint> constraints = new List<Constraint>();
+		/// <summary>
+		/// List containing degree of freedom constraints.
+		/// </summary>
+		public List<Constraint> Constraints { get; } = new List<Constraint>();
 
-		public List<Constraint> Constrains
-        {
-            get { return constraints; }
-        }
+		/// <summary>
+		/// Dictionary containing the Elements adjacent to the <see cref="ControlPoint"/>.
+		/// </summary>
+		public Dictionary<int, Element> ElementsDictionary { get; } = new Dictionary<int, Element>();
 
-        public Dictionary<int, Element> ElementsDictionary
-        {
-            get { return elementsDictionary; }
-        }
+		/// <summary>
+		/// Dictionary containing the Elements adjacent to the <see cref="ControlPoint"/>.
+		/// </summary>
+		Dictionary<int, IElement> INode.ElementsDictionary => throw new NotImplementedException();
 
-        public Dictionary<int, Patch> PatchesDictionary
-        {
-            get { return patchesDictionary; }
-        }
+		/// <summary>
+		/// Parametric coordinate Heta of the <see cref="ControlPoint"/>.
+		/// </summary>
+		public double Heta { get; set; }
 
-        public int ID { get; set; }
-        public double X { get; set; }
-        public double Y { get; set; }
-        public double Z { get; set; }
-        public double WeightFactor { get; set; }
-        public double Ksi { get; set; }
-        public double Heta { get; set; }
-        public double Zeta { get; set; }
+		/// <summary>
+		/// ID of the <see cref="ControlPoint"/>.
+		/// </summary>
+		public int ID { get; set; }
 
-        public List<Constraint> Constraints => constraints;
+		/// <summary>
+		/// Parametric coordinate Ksi of the <see cref="ControlPoint"/>.
+		/// </summary>
+		public double Ksi { get; set; }
 
-        public Dictionary<int, ISubdomain> SubdomainsDictionary => throw new NotImplementedException();
+		/// <summary>
+		/// Dictionary that contains the patches the <see cref="ControlPoint"/> belongs to.
+		/// </summary>
+		public Dictionary<int, Patch> PatchesDictionary { get; } = new Dictionary<int, Patch>();
 
-        public void BuildPatchesDictionary()
-        {
-            foreach (var element in elementsDictionary.Values)
-            {
-                if (element is ICollocationElement collocationElement)
-                {
-                    //if (!patchesDictionary.ContainsKey(collocationElement.Patch.ID))
-                    //    patchesDictionary.Add(collocationElement.Patch.ID, collocationElement.Patch);
-                }
-                else
-                {
-                    if (!patchesDictionary.ContainsKey(element.Patch.ID))
-                        patchesDictionary.Add(element.Patch.ID, element.Patch);
-                }
-                
-            }
-                
-        }
+		/// <summary>
+		/// Dictionary that contains the patches the <see cref="ControlPoint"/> belongs to.
+		/// </summary>
+		public Dictionary<int, ISubdomain> SubdomainsDictionary => throw new NotImplementedException();
 
-        public int CompareTo(INode other) => this.ID - other.ID;
+		/// <summary>
+		/// Weight factor of the <see cref="ControlPoint"/>.
+		/// </summary>
+		public double WeightFactor { get; set; }
 
-        public override string ToString()
-        {
-            var header = String.Format("{0}: ({1}, {2}, {3})", ID, X, Y, Z);
-            string constrainsDescription = string.Empty;
-            foreach (var c in constraints)
-            {
-                string con = string.Empty;
-                if (c.DOF == StructuralDof.TranslationX) con = "X";
-                if (c.DOF == StructuralDof.TranslationY) con = "Y";
-                if (c.DOF == StructuralDof.TranslationZ) con = "Z";
-                else con = "?";
-                constrainsDescription += c.ToString() + ", ";
-            }
-            constrainsDescription = constrainsDescription.Length>1? constrainsDescription.Substring(0, constrainsDescription.Length - 2) : constrainsDescription;
+		/// <summary>
+		/// Cartesian coordinate X of the <see cref="ControlPoint"/>.
+		/// </summary>
+		public double X { get; set; }
 
-            return String.Format("{0} - Con({1})", header, constrainsDescription);
-        }
+		/// <summary>
+		/// Cartesian coordinate Y of the <see cref="ControlPoint"/>.
+		/// </summary>
+		public double Y { get; set; }
 
-		public ControlPoint Clone()
+		/// <summary>
+		/// Cartesian coordinate Z of the <see cref="ControlPoint"/>.
+		/// </summary>
+		public double Z { get; set; }
+
+		/// <summary>
+		/// Parametric coordinate Zeta of the <see cref="ControlPoint"/>.
+		/// </summary>
+		public double Zeta { get; set; }
+
+		/// <summary>
+		/// Find the patches that the <see cref="ControlPoint"/> belongs.
+		/// </summary>
+		public void BuildPatchesDictionary()
 		{
-			return new ControlPoint()
+			foreach (var element in ElementsDictionary.Values)
 			{
-				ID=this.ID,
-				X = X,
-				Y=Y,
-				Z=Z,
-				Ksi = Ksi,
-				Heta = Heta,
-				Zeta=Zeta,
-				WeightFactor = WeightFactor
-			};
+				if (!PatchesDictionary.ContainsKey(element.Patch.ID))
+					PatchesDictionary.Add(element.Patch.ID, element.Patch);
+			}
 		}
 
-    }
+		/// <summary>
+		/// Clones the <see cref="ControlPoint"/> object.
+		/// </summary>
+		/// <returns>A copy of the <see cref="ControlPoint"/></returns>
+		public ControlPoint Clone() => new ControlPoint()
+		{
+			ID = this.ID,
+			X = X,
+			Y = Y,
+			Z = Z,
+			Ksi = Ksi,
+			Heta = Heta,
+			Zeta = Zeta,
+			WeightFactor = WeightFactor,
+		};
+
+		/// <summary>
+		/// Compares <see cref="ControlPoint"/>s based on their IDs.
+		/// </summary>
+		/// <param name="other">A <see cref="ControlPoint"/> used for comparison with the current one.</param>
+		/// <returns>An <see cref="int"/> denoting the result of the comparison.</returns>
+		public int CompareTo(INode other) => this.ID - other.ID;
+
+		/// <summary>
+		/// Converts the <see cref="ControlPoint"/> to string.
+		/// </summary>
+		/// <returns> A <see cref="string"/> serialization of the <see cref="ControlPoint"/> object.</returns>
+		public override string ToString()
+		{
+			var header = $"{ID}: ({X}, {Y}, {Z})";
+			var constrains = new StringBuilder();
+			foreach (var c in Constraints)
+			{
+				var con = new StringBuilder();
+				if (c.DOF == StructuralDof.TranslationX) con.Append("X ,");
+				if (c.DOF == StructuralDof.TranslationY) con.Append("Y ,");
+				con.Append(c.DOF == StructuralDof.TranslationZ ? "Z ," : "?");
+				constrains.Append(con);
+			}
+
+			var constraintsDescription = constrains.ToString();
+			constraintsDescription = constraintsDescription.Length > 1
+				? constraintsDescription.Substring(0, constraintsDescription.Length - 2)
+				: constraintsDescription;
+
+			return $"{header} - Con({constraintsDescription})";
+		}
+	}
 }

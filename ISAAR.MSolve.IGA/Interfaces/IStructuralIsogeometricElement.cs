@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ISAAR.MSolve.IGA.Interfaces
+﻿namespace MGroup.IGA.Interfaces
 {
-    public interface IStructuralIsogeometricElement : IIsogeometricElement
-    {
-    }
+	/// <summary>
+	/// Interface specific to structural isogeometric elements.
+	/// </summary>
+	public interface IStructuralIsogeometricElement : IIsogeometricElement
+	{
+	}
 }

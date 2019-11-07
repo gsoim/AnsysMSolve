@@ -1,16 +1,27 @@
-﻿using System.IO;
-using ISAAR.MSolve.Discretization.FreedomDegrees;
-using ISAAR.MSolve.IGA.Entities;
-using ISAAR.MSolve.LinearAlgebra.Vectors;
-
-namespace ISAAR.MSolve.IGA.Postprocessing
+namespace MGroup.IGA.Postprocessing
 {
-    public class ParaviewNurbsShells
-	{
-		private Model _model;
-		private IVectorView _solution;
-		private string _filename;
+	using System.IO;
 
+	using MGroup.IGA.Entities;
+	using MGroup.LinearAlgebra.Matrices;
+	using MGroup.LinearAlgebra.Vectors;
+	using MGroup.MSolve.Discretization.FreedomDegrees;
+
+	/// <summary>
+	/// Paraview file  generator for NURBS Shells geometries.
+	/// </summary>
+	public class ParaviewNurbsShells
+	{
+		private readonly string _filename;
+		private readonly Model _model;
+		private readonly IVectorView _solution;
+
+		/// <summary>
+		/// Defines a Paraview FileWriter.
+		/// </summary>
+		/// <param name="model">An isogeometric <see cref="Model"/>.</param>
+		/// <param name="solution">An <see cref="IVectorView"/> containing the solution of the linear system.</param>
+		/// <param name="filename">The name of the paraview file to be generated.</param>
 		public ParaviewNurbsShells(Model model, IVectorView solution, string filename)
 		{
 			_model = model;
@@ -18,6 +29,9 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 			_filename = filename;
 		}
 
+		/// <summary>
+		/// Creates Paraview File of the NURBS Shells geometry.
+		/// </summary>
 		public void CreateParaview2DFile()
 		{
 			var uniqueKnotsKsi = _model.PatchesDictionary[0].KnotValueVectorKsi.RemoveDuplicatesFindMultiplicity();
@@ -54,10 +68,9 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 				uniqueKnotsHeta[0].Length - 1, incrementKsi, incrementHeta);
 			var knotDisplacements = new double[knots.GetLength(0), 3];
 
-
 			foreach (var element in _model.Elements)
 			{
-				var localDisplacements = new double[element.ControlPoints.Count, 3];
+				var localDisplacements = Matrix.CreateZero(element.ControlPointsDictionary.Count, 3);
 				var counterCP = 0;
 				foreach (var controlPoint in element.ControlPoints)
 				{
@@ -87,9 +100,8 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 			Write2DNurbsFile(knots, elementConnectivity, "Quad4", knotDisplacements);
 		}
 
-		public void Write2DNurbsFile(double[,] nodeCoordinates, int[,] elementConnectivity, string elementType, double[,] displacements)
+		private void Write2DNurbsFile(double[,] nodeCoordinates, int[,] elementConnectivity, string elementType, double[,] displacements)
 		{
-			var dimensions = 2;
 			var numberOfNodes = nodeCoordinates.GetLength(0);
 			var numberOfCells = elementConnectivity.GetLength(0);
 
@@ -102,8 +114,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 				paraviewCellCode = 9;
 			}
 
-			var dofPerVertex = 2;
-			using (StreamWriter outputFile = new StreamWriter($"..\\..\\..\\OutputFiles\\{_filename}Paraview.vtu"))
+			using (StreamWriter outputFile = new StreamWriter($"..\\..\\..\\MGroup.IGA.Tests\\OutputFiles\\{_filename}Paraview.vtu"))
 			{
 				outputFile.WriteLine("<VTKFile type=\"UnstructuredGrid\"  version=\"0.1\"   >");
 				outputFile.WriteLine("<UnstructuredGrid>");
@@ -159,27 +170,6 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 			}
 		}
 
-		private int[,] CreateElement2DConnectivity(int[] nodePattern, int numberOfElementsKsi, int numberOfElementsHeta,
-			int incrementKsi, int incrementHeta)
-		{
-			var increment = 0;
-			var elementConnectivity = new int[numberOfElementsKsi * numberOfElementsHeta, nodePattern.Length];
-			var elementCounter = 0;
-			for (int elementKsi = 0; elementKsi < numberOfElementsKsi; elementKsi++)
-			{
-				increment = elementKsi * incrementKsi;
-				for (int elementHeta = 0; elementHeta < numberOfElementsHeta; elementHeta++)
-				{
-					for (int i = 0; i < nodePattern.Length; i++)
-						elementConnectivity[elementCounter, i] = nodePattern[i] + increment;
-					increment += incrementHeta;
-					elementCounter++;
-				}
-			}
-
-			return elementConnectivity;
-		}
-
 		/// <summary>
 		/// Creates a control point coordinates matrix in projective coordinates
 		/// </summary>
@@ -199,5 +189,25 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 			return projectiveCPs;
 		}
 
+		private int[,] CreateElement2DConnectivity(int[] nodePattern, int numberOfElementsKsi, int numberOfElementsHeta,
+					int incrementKsi, int incrementHeta)
+		{
+			var increment = 0;
+			var elementConnectivity = new int[numberOfElementsKsi * numberOfElementsHeta, nodePattern.Length];
+			var elementCounter = 0;
+			for (int elementKsi = 0; elementKsi < numberOfElementsKsi; elementKsi++)
+			{
+				increment = elementKsi * incrementKsi;
+				for (int elementHeta = 0; elementHeta < numberOfElementsHeta; elementHeta++)
+				{
+					for (int i = 0; i < nodePattern.Length; i++)
+						elementConnectivity[elementCounter, i] = nodePattern[i] + increment;
+					increment += incrementHeta;
+					elementCounter++;
+				}
+			}
+
+			return elementConnectivity;
+		}
 	}
 }
