@@ -25,7 +25,7 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             Model model = new Model();
             var filename = "CantileverShellBenchmark16x1";
-            var filepath = Path.Combine(Directory.GetCurrentDirectory(), $"{filename}.txt");
+            var filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt");
             IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
             modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
 

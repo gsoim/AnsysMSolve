@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization;
@@ -119,7 +120,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			Model model = new Model();
 			ModelCreator modelCreator = new ModelCreator(model);
 			var filename = "Cantilever2D";
-			string filepath =$"..\\..\\..\\InputFiles\\{filename}.txt";
+            string filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
+
 			IsogeometricReader modelReader = new IsogeometricReader(modelCreator, filepath);
 			modelReader.CreateModelFromFile();
 
@@ -153,8 +155,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			parentAnalyzer.Initialize();
 			parentAnalyzer.Solve();
 
-			var paraviewOutput = new ParaviewNurbs2D(model,solver.LinearSystems[0].Solution, filename);
-			paraviewOutput.CreateParaview2DFile();
+			//var paraviewOutput = new ParaviewNurbs2D(model,solver.LinearSystems[0].Solution, filename);
+			//paraviewOutput.CreateParaview2DFile();
 
 
 			//Test for Load Vector
