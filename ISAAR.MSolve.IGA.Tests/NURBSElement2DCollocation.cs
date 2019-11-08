@@ -6,7 +6,6 @@ using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Geometry.Coordinates;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
-using ISAAR.MSolve.IGA.Problems.SupportiveClasses;
 using ISAAR.MSolve.IGA.Readers;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.Logging;
@@ -199,7 +198,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		[Fact]
 		private void TestCollocationNurbsDerivativeValuesKsi()
 		{
-			var nurbs = new NURBS2D(Element.Patch.DegreeKsi, Element.Patch.DegreeHeta,
+			var nurbs = new Nurbs2D(Element.Patch.DegreeKsi, Element.Patch.DegreeHeta,
 				Element.Patch.KnotValueVectorKsi, Element.Patch.KnotValueVectorHeta,
 				Element.CollocationPoint, Element.ControlPoints);
 
@@ -223,7 +222,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		[Fact]
 		private void TestCollocationNurbsDerivativeValuesHeta()
 		{
-			var nurbs = new NURBS2D(Element.Patch.DegreeKsi, Element.Patch.DegreeHeta,
+			var nurbs = new Nurbs2D(Element.Patch.DegreeKsi, Element.Patch.DegreeHeta,
 				Element.Patch.KnotValueVectorKsi, Element.Patch.KnotValueVectorHeta,
 				Element.CollocationPoint, Element.ControlPoints);
 

@@ -1,13 +1,12 @@
-namespace MGroup.IGA
+using System;
+using System.Collections.Generic;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+using ISAAR.MSolve.Materials.Interfaces;
+
+namespace ISAAR.MSolve.IGA
 {
-	using System;
-	using System.Collections.Generic;
-
-	using MGroup.IGA.Entities;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.Materials.Interfaces;
-
-	/// <summary>
+    /// <summary>
 	/// Supportive class for creating model with a file reader.
 	/// </summary>
 	public class ModelCreator

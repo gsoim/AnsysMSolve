@@ -1,17 +1,14 @@
-using MGroup.IGA.Elements;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
 
-namespace MGroup.IGA.SupportiveClasses
+namespace ISAAR.MSolve.IGA.SupportiveClasses
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-
-	using MGroup.IGA.Entities;
-	using MGroup.LinearAlgebra.Interpolation;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.LinearAlgebra.Vectors;
-
-	/// <summary>
+    /// <summary>
 	/// One-dimensional NURBS shape functions.
 	/// </summary>
 	public class Nurbs1D

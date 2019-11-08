@@ -1,9 +1,11 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Postprocessing;
 using ISAAR.MSolve.IGA.Readers;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -66,11 +68,11 @@ namespace ISAAR.MSolve.IGA.Tests
 			});
 		}
 
-		private NURBSKirchhoffLoveShellElement Element
+		private NurbsKirchhoffLoveShellElement Element
 		{
 			get
 			{
-				var element = new NURBSKirchhoffLoveShellElement();
+				var element = new NurbsKirchhoffLoveShellElement();
 				var patch = new Patch();
 				patch.Material = new ElasticMaterial2D(StressState2D.PlaneStrain)
 				{
@@ -387,32 +389,32 @@ namespace ISAAR.MSolve.IGA.Tests
 			Model model = new Model();
 			string filename = "..\\..\\..\\InputFiles\\CantileverShell.txt";
 			IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filename);
-			modelReader.CreateShellModelFromFile();
+			modelReader.CreateShellModelFromFile(GeometricalFormulation.Linear);
 
 			model.Loads.Add(new Load()
 			{
 				Amount = -1,
-				ControlPoint = model.ControlPoints[9],
+				Node = model.ControlPoints.ToList()[9],
 				DOF = StructuralDof.TranslationZ
 			});
 			model.Loads.Add(new Load()
 			{
 				Amount = -1,
-				ControlPoint = model.ControlPoints[10],
+				Node = model.ControlPoints.ToList()[10],
 				DOF = StructuralDof.TranslationZ
 			});
 			model.Loads.Add(new Load()
 			{
 				Amount = -1,
-				ControlPoint = model.ControlPoints[11],
+				Node = model.ControlPoints.ToList()[11],
 				DOF = StructuralDof.TranslationZ
 			});
 
 			for (int i = 0; i < 6; i++)
 			{
-				model.ControlPointsDictionary[i].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[i].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationY});
-				model.ControlPointsDictionary[i].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationZ});
+				model.ControlPointsDictionary[i].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[i].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationY});
+				model.ControlPointsDictionary[i].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationZ});
 			}
 
 			// Solvers
@@ -447,7 +449,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			var filename = "SquareShell";
 			string filepath = $"..\\..\\..\\InputFiles\\{filename}.txt";
 			IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-			modelReader.CreateShellModelFromFile();
+			modelReader.CreateShellModelFromFile(GeometricalFormulation.Linear);
 
 
 			Matrix<double> loadVector =
@@ -460,19 +462,19 @@ namespace ISAAR.MSolve.IGA.Tests
 				model.Loads.Add(new Load()
 				{
 					Amount = loadVector.At(0, i),
-					ControlPoint = model.ControlPoints[indexCP],
+					Node = model.ControlPoints.ToList()[indexCP],
 					DOF = StructuralDof.TranslationX
 				});
 				model.Loads.Add(new Load()
 				{
 					Amount = loadVector.At(0, i + 1),
-					ControlPoint = model.ControlPoints[indexCP],
+					Node = model.ControlPoints.ToList()[indexCP],
 					DOF = StructuralDof.TranslationY
 				});
 				model.Loads.Add(new Load()
 				{
 					Amount = loadVector.At(0, i + 2),
-					ControlPoint = model.ControlPoints[indexCP],
+					Node = model.ControlPoints.ToList()[indexCP],
 					DOF = StructuralDof.TranslationZ
 				});
 			}
@@ -481,9 +483,9 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				foreach (var controlPoint in edge.ControlPointsDictionary.Values)
 				{
-					model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
-					model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationY});
-					model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationZ});
+					model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+					model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationY});
+					model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationZ});
 				}
 			}
 
@@ -502,8 +504,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			parentAnalyzer.Initialize();
 			parentAnalyzer.Solve();
 
-			var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
-			paraview.CreateParaview2DFile();
+			//var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
+			//paraview.CreateParaview2DFile();
 
 			Matrix<double> solutionVectorExpected =
 				MatlabReader.Read<double>("..\\..\\..\\InputFiles\\SquareShell.mat", "SolutionVector");

@@ -40,8 +40,7 @@ namespace ISAAR.MSolve.FEM.Embedding
         {
             if (node.EmbeddedInElement.ElementType is Hexa8 == false
                 && node.EmbeddedInElement.ElementType is Hexa8Fixed == false
-                && node.EmbeddedInElement.ElementType is Hexa8NonLinear == false
-                && node.EmbeddedInElement.ElementType is Hexa8u8p == false)
+                && node.EmbeddedInElement.ElementType is Hexa8NonLinear == false)
                 throw new ArgumentException("Host element is not Hexa8.");
 
             double[] hostShapeFunctions = ((IEmbeddedHostElement)node.EmbeddedInElement.ElementType).GetShapeFunctionsForNode(node.EmbeddedInElement, node);

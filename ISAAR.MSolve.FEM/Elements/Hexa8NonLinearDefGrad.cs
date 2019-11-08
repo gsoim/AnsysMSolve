@@ -584,7 +584,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return k_element;
         }
         
-        public Tuple<double[], double[]> CalculateStresses(Element element, double[] localTotalDisplacements, double[] localdDisplacements)
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localTotalDisplacements, double[] localdDisplacements)
         {
             this.UpdateCoordinateData(localTotalDisplacements, out double[][] tx_i);
             this.CalculateStrains(localTotalDisplacements, element, tx_i);
@@ -615,10 +615,10 @@ namespace ISAAR.MSolve.FEM.Elements
             //TODO: why return only the strain- stress of the gausspoint that is last on the array, Where is it needed?
         }
 
-        public double[] CalculateForces(Element element, double[] localTotalDisplacements, double[] localdDisplacements) 
+        public double[] CalculateForces(IElement element, double[] localTotalDisplacements, double[] localdDisplacements) 
             => this.UpdateForces(element);
 
-        public double[] CalculateForcesForLogging(Element element, double[] localDisplacements) 
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements) 
             => CalculateForces(element, localDisplacements, new double[localDisplacements.Length]);
 
         public virtual IMatrix StiffnessMatrix(IElement element)
@@ -665,7 +665,7 @@ namespace ISAAR.MSolve.FEM.Elements
         public virtual IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element) => dofTypes;
 
         #region not implemented
-        public double[] CalculateAccelerationForces(Element element, IList<MassAccelerationLoad> loads)
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
         {
             throw new NotImplementedException();
         }

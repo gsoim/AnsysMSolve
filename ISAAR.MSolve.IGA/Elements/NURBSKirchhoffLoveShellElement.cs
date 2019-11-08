@@ -1,25 +1,24 @@
-using MGroup.MSolve.Discretization.Commons;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ISAAR.MSolve.Discretization;
+using ISAAR.MSolve.Discretization.Commons;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.Discretization.Interfaces;
+using ISAAR.MSolve.Discretization.Mesh;
+using ISAAR.MSolve.FEM.Entities;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.Entities.Loads;
+using ISAAR.MSolve.IGA.Interfaces;
+using ISAAR.MSolve.IGA.SupportiveClasses;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+using ISAAR.MSolve.Materials.Interfaces;
+using Element = ISAAR.MSolve.IGA.Entities.Element;
 
-namespace MGroup.IGA.Elements
+namespace ISAAR.MSolve.IGA.Elements
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-
-	using MGroup.IGA.Entities;
-	using MGroup.IGA.Entities.Loads;
-	using MGroup.IGA.Interfaces;
-	using MGroup.IGA.SupportiveClasses;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.Materials.Interfaces;
-	using MGroup.MSolve.Discretization;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-	using MGroup.MSolve.Discretization.Interfaces;
-	using MGroup.MSolve.Discretization.Loads;
-	using MGroup.MSolve.Discretization.Mesh;
-
-	/// <summary>
+    /// <summary>
 	/// An shell element that utilizes Non-Uniform Rational B-Splines for shape functions.
 	/// It is based on Kirchhoff-Love theory. Geometrically linear formulation.
 	/// For more information please refer to <see href="https://www.sciencedirect.com/science/article/pii/S0045782509002680"/>
@@ -52,10 +51,10 @@ namespace MGroup.IGA.Elements
 		public bool MaterialModified => throw new NotImplementedException();
 
 		/// <summary>
-		/// Calculates the forces applies to an <see cref="NurbsKirchhoffLoveShellElement"/> due to <see cref="MassAccelerationLoad"/>.
+		/// Calculates the forces applies to an <see cref="NurbsKirchhoffLoveShellElement"/> due to <see cref="FEM.Entities.MassAccelerationLoad"/>.
 		/// </summary>
 		/// <param name="element">An element of type <see cref="NurbsKirchhoffLoveShellElement"/>.</param>
-		/// <param name="loads">A list of <see cref="MassAccelerationLoad"/>. For more info see <seealso cref="MassAccelerationLoad"/>.</param>
+		/// <param name="loads">A list of <see cref="FEM.Entities.MassAccelerationLoad"/>. For more info see <seealso cref="FEM.Entities.MassAccelerationLoad"/>.</param>
 		/// <returns>A <see cref="double"/> array containing the forces generates due to acceleration for each degree of freedom.</returns>
 		public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads) => throw new NotImplementedException();
 

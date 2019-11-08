@@ -1,25 +1,23 @@
-using MGroup.IGA.Elements;
-using MGroup.IGA.Entities.Loads;
-using MGroup.IGA.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ISAAR.MSolve.Discretization;
+using ISAAR.MSolve.Discretization.Commons;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.Discretization.Interfaces;
+using ISAAR.MSolve.FEM.Entities;
+using ISAAR.MSolve.FEM.Interfaces;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Entities.Loads;
+using ISAAR.MSolve.IGA.Interfaces;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
 
-namespace MGroup.IGA.Entities
+namespace ISAAR.MSolve.IGA.Entities
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.MSolve.Discretization;
-	using MGroup.MSolve.Discretization.Commons;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-	using MGroup.MSolve.Discretization.Interfaces;
-	using MGroup.MSolve.Discretization.Loads;
-	using MGroup.MSolve.FEM.Interfaces;
-
-	/// <summary>
+    /// <summary>
 	/// Model that contains all data needed for Isogeometric analysis.
 	/// </summary>
-	public class Model : IModel
+	public class Model : IStructuralModel
 	{
 		private IGlobalFreeDofOrdering _globalDofOrdering;
 
@@ -47,7 +45,7 @@ namespace MGroup.IGA.Entities
 		/// <summary>
 		/// List with the Elements of the <see cref="Model"/>.
 		/// </summary>
-		IReadOnlyList<IElement> IModel.Elements => ElementsDictionary.Values.ToList();
+		IReadOnlyList<IElement> IStructuralModel.Elements => ElementsDictionary.Values.ToList();
 
 		/// <summary>
 		/// List with the Elements of the <see cref="Model"/>.
@@ -107,7 +105,7 @@ namespace MGroup.IGA.Entities
 		/// <summary>
 		/// Return an <see cref="IReadOnlyList{ControlPoint}"/> with the Control Points of the <see cref="Model"/> as <see cref="INode"/>.
 		/// </summary>
-		IReadOnlyList<INode> IModel.Nodes => ControlPointsDictionary.Values.ToList();
+		IReadOnlyList<INode> IStructuralModel.Nodes => ControlPointsDictionary.Values.ToList();
 
 		/// <summary>
 		/// Number of interfaces between patches.
@@ -132,7 +130,7 @@ namespace MGroup.IGA.Entities
 		/// <summary>
 		/// Dictionary with the patches of the model returned as <see cref="ISubdomain"/>.
 		/// </summary>
-		IReadOnlyList<ISubdomain> IModel.Subdomains => PatchesDictionary.Values.ToList();
+		IReadOnlyList<ISubdomain> IStructuralModel.Subdomains => PatchesDictionary.Values.ToList();
 
 		/// <summary>
 		/// List of time dependent loads added to the <see cref="Model"/>.

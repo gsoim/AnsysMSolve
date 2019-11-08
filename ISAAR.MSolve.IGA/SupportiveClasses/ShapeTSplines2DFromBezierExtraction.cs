@@ -1,15 +1,13 @@
-namespace MGroup.IGA.SupportiveClasses
+using System;
+using System.Collections.Generic;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+
+namespace ISAAR.MSolve.IGA.SupportiveClasses
 {
-	using System;
-	using System.Collections.Generic;
-
-	using MGroup.IGA.Elements;
-	using MGroup.IGA.Entities;
-	using MGroup.LinearAlgebra.Interpolation;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.LinearAlgebra.Vectors;
-
-	/// <summary>
+    /// <summary>
 	/// Two-dimensional T-spline shape functions from Bezier extraction.
 	/// </summary>
 	public class ShapeTSplines2DFromBezierExtraction
@@ -152,15 +150,15 @@ namespace MGroup.IGA.SupportiveClasses
 				}
 			}
 		}
-
-		/// <summary>
-		/// Two-dimensional T-spline shape functions from Bezier extraction for <see cref="TSplineKirchhoffLoveShellElement"/>.
-		/// </summary>
-		/// <param name="element">An <see cref="Element"/> of type <see cref="TSplineKirchhoffLoveShellElement"/>.</param>
-		/// <param name="controlPoints">A <see cref="List{T}"/> containing the control points of the element.</param>
-		/// <param name="parametricGaussPointKsi">An <see cref="IVector"/> containing Gauss points of axis Ksi.</param>
-		/// <param name="parametricGaussPointHeta">An <see cref="IVector"/> containing Gauss points of axis Heta.</param>
-		public ShapeTSplines2DFromBezierExtraction(TSplineKirchhoffLoveShellElement element, ControlPoint[] controlPoints, Vector parametricGaussPointKsi, Vector parametricGaussPointHeta)
+        
+        /// <summary>
+        /// Two-dimensional T-spline shape functions from Bezier extraction for <see cref="TSplineKirchhoffLoveShellElement"/>.
+        /// </summary>
+        /// <param name="element">An <see cref="Element"/> of type <see cref="TSplineKirchhoffLoveShellElement"/>.</param>
+        /// <param name="controlPoints">A <see cref="List{T}"/> containing the control points of the element.</param>
+        /// <param name="parametricGaussPointKsi">An <see cref="IVector"/> containing Gauss points of axis Ksi.</param>
+        /// <param name="parametricGaussPointHeta">An <see cref="IVector"/> containing Gauss points of axis Heta.</param>
+        public ShapeTSplines2DFromBezierExtraction(TSplineKirchhoffLoveShellElement element, ControlPoint[] controlPoints, Vector parametricGaussPointKsi, Vector parametricGaussPointHeta)
 		{
 			Vector knotValueVectorKsi = Vector.CreateZero((element.DegreeKsi + 1) * 2);
 			Vector knotValueVectorHeta = Vector.CreateZero((element.DegreeHeta + 1) * 2);

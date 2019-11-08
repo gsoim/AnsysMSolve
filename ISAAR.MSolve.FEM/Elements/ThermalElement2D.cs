@@ -164,22 +164,22 @@ namespace ISAAR.MSolve.FEM.Elements
             throw new NotImplementedException();
         }
 
-        public Tuple<double[], double[]> CalculateStresses(Element element, double[] localDisplacements, double[] localdDisplacements)
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             throw new NotImplementedException();
         }
 
-        public double[] CalculateForces(Element element, double[] localDisplacements, double[] localdDisplacements)
+        public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             throw new NotImplementedException();
         }
 
-        public double[] CalculateForcesForLogging(Element element, double[] localDisplacements)
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
         {
             throw new NotImplementedException();
         }
 
-        public double[] CalculateAccelerationForces(Element element, IList<MassAccelerationLoad> loads)
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
         {
             throw new NotImplementedException();
         }

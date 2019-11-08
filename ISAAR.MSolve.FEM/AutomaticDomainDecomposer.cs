@@ -89,7 +89,7 @@ namespace ISAAR.MSolve.FEM
                 usedElement[element.ID] = true;
                 foreach (var node in element.NodesDictionary.Values)
                 {
-                    foreach (var nodeElement in node.ElementsDictionary.Values)
+                    foreach (Element nodeElement in node.ElementsDictionary.Values)
                     {
                         if (usedElement[nodeElement.ID]) continue;
                         ElementAdjacency[element].Add(nodeElement);
@@ -138,7 +138,7 @@ namespace ISAAR.MSolve.FEM
 
                 // Start fill list with elements connected to node with minimum weight
                 var counterSubdomainElements = 0;
-                foreach (var element in Model.NodesDictionary[nodeID].ElementsDictionary.Values)
+                foreach (Element element in Model.NodesDictionary[nodeID].ElementsDictionary.Values)
                 {
                     var elementID = element.ID;
                     if (isInteriorBoundaryElement[elementID]) continue;

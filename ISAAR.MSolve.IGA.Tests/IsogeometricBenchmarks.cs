@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
@@ -38,7 +40,7 @@ namespace ISAAR.MSolve.IGA.Tests
 				model.Loads.Add(new Load()
 				{
 					Amount = -100,
-					ControlPoint = model.ControlPoints[controlPoint.ID],
+					Node = model.ControlPoints.ToList()[controlPoint.ID],
 					DOF = StructuralDof.TranslationY
 				});
 
@@ -46,8 +48,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 			}
 
 			var solverBuilder = new DenseMatrixSolver.Builder();
@@ -118,7 +120,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			Model model = new Model();
 			ModelCreator modelCreator = new ModelCreator(model);
 			var filename = "Cantilever2D";
-			string filepath =$"..\\..\\..\\InputFiles\\{filename}.txt";
+            string filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
+
 			IsogeometricReader modelReader = new IsogeometricReader(modelCreator, filepath);
 			modelReader.CreateModelFromFile();
 
@@ -134,8 +137,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 			}
 
 			var solverBuilder = new SkylineSolver.Builder();
@@ -152,8 +155,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			parentAnalyzer.Initialize();
 			parentAnalyzer.Solve();
 
-			var paraviewOutput = new ParaviewNurbs2D(model,solver.LinearSystems[0].Solution, filename);
-			paraviewOutput.CreateParaview2DFile();
+			//var paraviewOutput = new ParaviewNurbs2D(model,solver.LinearSystems[0].Solution, filename);
+			//paraviewOutput.CreateParaview2DFile();
 
 
 			//Test for Load Vector
@@ -228,10 +231,10 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
 			}
 
-			model.ControlPointsDictionary[0].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+			model.ControlPointsDictionary[0].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 
 			var solverBuilder = new DenseMatrixSolver.Builder();
 			solverBuilder.DofOrderer = new DofOrderer(
@@ -338,15 +341,15 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 			}
 
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[2].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 			}
 		
 
@@ -915,11 +918,11 @@ namespace ISAAR.MSolve.IGA.Tests
 			});
 		}
 
-		private NURBSKirchhoffLoveShellElement Element
+		private NurbsKirchhoffLoveShellElement Element
 		{
 			get
 			{
-				var element = new NURBSKirchhoffLoveShellElement();
+				var element = new NurbsKirchhoffLoveShellElement();
 				var patch = new Patch();
 				patch.Material = new ElasticMaterial2D(StressState2D.PlaneStrain)
 				{
@@ -968,17 +971,17 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].FacesDictionary[2].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
 			}
 
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].FacesDictionary[3].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
 			}
 
 			// Solvers
@@ -1039,15 +1042,15 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 			}
 
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[2].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 			}
 
 			// Solvers
@@ -1591,10 +1594,10 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 			}
 
-			model.ControlPointsDictionary[0].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationY});
+			model.ControlPointsDictionary[0].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationY});
 			
 			// Solvers
 			var solverBuilder = new SkylineSolver.Builder();
@@ -1647,13 +1650,13 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
 			}
 
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].EdgesDictionary[1].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
 			}
 
 			// Solvers
@@ -1701,7 +1704,7 @@ namespace ISAAR.MSolve.IGA.Tests
 				model.Loads.Add(new Load()
 				{
 					Amount = -100,
-					ControlPoint = model.ControlPoints[controlPoint.ID],
+					Node = model.ControlPoints.ToList()[controlPoint.ID],
 					DOF = StructuralDof.TranslationZ
 				});
 			}
@@ -1711,9 +1714,9 @@ namespace ISAAR.MSolve.IGA.Tests
 			foreach (ControlPoint controlPoint in model.PatchesDictionary[0].FacesDictionary[0].ControlPointsDictionary
 				.Values)
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() {DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() {DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
 			}
 
 			// Solvers
@@ -1750,7 +1753,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			
 			Model model = new Model();
 			string filename = "..\\..\\..\\InputFiles\\surface.iga";
-			IGAFileReader modelReader = new IGAFileReader(model, filename);
+			var modelReader = new IgaFileReader(model, filename);
 			modelReader.CreateTSplineShellsModelFromFile();
 
 			model.PatchesDictionary[0].Material = new ElasticMaterial2D(StressState2D.PlaneStress)
@@ -1762,17 +1765,17 @@ namespace ISAAR.MSolve.IGA.Tests
 
 			for (int i = 0; i < 100; i++)
 			{
-				model.ControlPointsDictionary[i].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-				model.ControlPointsDictionary[i].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-				model.ControlPointsDictionary[i].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+				model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+				model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
 			}
 
-			for (int i = 0; i < model.ControlPoints.Count - 100; i++)
+			for (int i = 0; i < model.ControlPoints.Count() - 100; i++)
 			{
 				model.Loads.Add(new Load()
 				{
 					Amount = -1000,
-					ControlPoint = model.ControlPointsDictionary[i],
+					Node = model.ControlPointsDictionary[i],
 					DOF = StructuralDof.TranslationY
 				});
 			}

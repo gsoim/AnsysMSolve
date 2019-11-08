@@ -4,7 +4,10 @@ namespace ISAAR.MSolve.Materials.Interfaces
 {
 	public interface IShellSectionMaterial:IFiniteElementMaterial
 	{
-		new IShellSectionMaterial Clone();
+        double[] NormalVectorV3 { get; set; }
+        double[] TangentVectorV1 { get; set; }
+        double[] TangentVectorV2 { get; set; }
+        new IShellSectionMaterial Clone();
 		double[] MembraneForces { get; }
 		double[] Moments { get; }
 		IMatrixView MembraneConstitutiveMatrix { get; }

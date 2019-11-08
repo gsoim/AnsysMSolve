@@ -1,7 +1,7 @@
 ﻿using System;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 
-namespace ISAAR.MSolve.IGA.Problems.SupportiveClasses
+namespace ISAAR.MSolve.IGA.SupportiveClasses
 {
     public class BSPLines1D
     {

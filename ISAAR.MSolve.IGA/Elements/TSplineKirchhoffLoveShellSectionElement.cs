@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.Discretization.Interfaces;
@@ -7,7 +8,6 @@ using ISAAR.MSolve.Discretization.Mesh;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Interfaces;
-using ISAAR.MSolve.IGA.Problems.SupportiveClasses;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -52,12 +52,12 @@ namespace ISAAR.MSolve.IGA.Elements
 
 		public bool MaterialModified => throw new NotImplementedException();
 
-		public double[] CalculateForces(Element element, double[] localDisplacements, double[] localdDisplacements)
+		public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
 		{
 			var shellElement = (TSplineKirchhoffLoveShellElement)element;
 			IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			var ElementNodalForces = new double[shellElement.ControlPointsDictionary.Count * 3];
-			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints);
+			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints.ToArray());
 			
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
@@ -99,12 +99,17 @@ namespace ISAAR.MSolve.IGA.Elements
 			return ElementNodalForces;
 		}
 
-		public double[] CalculateForcesForLogging(Element element, double[] localDisplacements)
+		public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
 		{
 			throw new NotImplementedException();
 		}
 
-		public Dictionary<int, double> CalculateLoadingCondition(Element element, Edge edge, NeumannBoundaryCondition neumann)
+        public void SaveMaterialState()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Dictionary<int, double> CalculateLoadingCondition(Element element, Edge edge, NeumannBoundaryCondition neumann)
 		{
 			throw new NotImplementedException();
 		}
@@ -124,13 +129,13 @@ namespace ISAAR.MSolve.IGA.Elements
 			throw new NotImplementedException();
 		}
 
-		public Tuple<double[], double[]> CalculateStresses(Element element, double[] localDisplacements, double[] localdDisplacements)
+		public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements, double[] localdDisplacements)
 		{
 			var shellElement = (TSplineKirchhoffLoveShellElement)element;
 			IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			//Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
-			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints);
+			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints.ToArray());
 
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
@@ -171,7 +176,12 @@ namespace ISAAR.MSolve.IGA.Elements
 			throw new NotImplementedException();
 		}
 
-		public IMatrix DampingMatrix(IElement element)
+        public void ClearMaterialStresses()
+        {
+            throw new NotImplementedException();
+        }
+
+        public IMatrix DampingMatrix(IElement element)
 		{
 			throw new NotImplementedException();
 		}
@@ -179,8 +189,8 @@ namespace ISAAR.MSolve.IGA.Elements
 		public IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element)
 		{
 			var nurbsElement = (TSplineKirchhoffLoveShellElement)element;
-			dofTypes = new IDofType[nurbsElement.ControlPoints.Count][];
-			for (int i = 0; i < nurbsElement.ControlPoints.Count; i++)
+			dofTypes = new IDofType[nurbsElement.ControlPoints.Count()][];
+			for (int i = 0; i < nurbsElement.ControlPoints.Count(); i++)
 			{
 				dofTypes[i] = controlPointDOFTypes;
 			}
@@ -203,7 +213,7 @@ namespace ISAAR.MSolve.IGA.Elements
             IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
-			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints);
+			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints.ToArray());
 
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
@@ -286,8 +296,8 @@ namespace ISAAR.MSolve.IGA.Elements
 			Vector surfaceBasisVector2, Vector surfaceBasisVectorDerivative1, Vector surfaceBasisVector1, double J1,
 			Vector surfaceBasisVectorDerivative2, Vector surfaceBasisVectorDerivative12, TSplineKirchhoffLoveShellElement element)
 		{
-			Matrix Bbending = Matrix.CreateZero(3, element.ControlPoints.Count * 3);
-			for (int column = 0; column < element.ControlPoints.Count * 3; column+=3)
+			Matrix Bbending = Matrix.CreateZero(3, element.ControlPoints.Count() * 3);
+			for (int column = 0; column < element.ControlPoints.Count() * 3; column+=3)
 			{
 				#region BI1
 
@@ -374,8 +384,8 @@ namespace ISAAR.MSolve.IGA.Elements
 		private Matrix CalculateMembraneDeformationMatrix(ShapeTSplines2DFromBezierExtraction tsplines, int j, Vector surfaceBasisVector1,
 			Vector surfaceBasisVector2, TSplineKirchhoffLoveShellElement element)
 		{
-			Matrix dRIa = Matrix.CreateZero(3, element.ControlPoints.Count * 3);
-			for (int i = 0; i < element.ControlPoints.Count; i++)
+			Matrix dRIa = Matrix.CreateZero(3, element.ControlPoints.Count() * 3);
+			for (int i = 0; i < element.ControlPoints.Count(); i++)
 			{
 				for (int m = 0; m < 3; m++)
 				{
@@ -384,8 +394,8 @@ namespace ISAAR.MSolve.IGA.Elements
 				}
 			}
 
-			Matrix Bmembrane = Matrix.CreateZero(3, element.ControlPoints.Count * 3);
-			for (int column = 0; column < element.ControlPoints.Count * 3; column+=3)
+			Matrix Bmembrane = Matrix.CreateZero(3, element.ControlPoints.Count() * 3);
+			for (int column = 0; column < element.ControlPoints.Count() * 3; column+=3)
 			{
 				Bmembrane[0, column] = tsplines.TSplineDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[0];
 				Bmembrane[0, column + 1] = tsplines.TSplineDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[1];
@@ -415,17 +425,17 @@ namespace ISAAR.MSolve.IGA.Elements
 		private static Matrix CalculateHessian(TSplineKirchhoffLoveShellElement shellElement, ShapeTSplines2DFromBezierExtraction tsplines, int j)
 		{
 			Matrix hessianMatrix = Matrix.CreateZero(3, 3);
-			for (int k = 0; k < shellElement.ControlPoints.Count; k++)
+			for (int k = 0; k < shellElement.ControlPoints.Count(); k++)
 			{
-				hessianMatrix[0, 0] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * shellElement.ControlPoints[k].X;
-				hessianMatrix[0, 1] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * shellElement.ControlPoints[k].Y;
-				hessianMatrix[0, 2] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * shellElement.ControlPoints[k].Z;
-				hessianMatrix[1, 0] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * shellElement.ControlPoints[k].X;
-				hessianMatrix[1, 1] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * shellElement.ControlPoints[k].Y;
-				hessianMatrix[1, 2] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * shellElement.ControlPoints[k].Z;
-				hessianMatrix[2, 0] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * shellElement.ControlPoints[k].X;
-				hessianMatrix[2, 1] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * shellElement.ControlPoints[k].Y;
-				hessianMatrix[2, 2] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * shellElement.ControlPoints[k].Z;
+				hessianMatrix[0, 0] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * shellElement.ControlPoints.ToArray()[k].X;
+				hessianMatrix[0, 1] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * shellElement.ControlPoints.ToArray()[k].Y;
+				hessianMatrix[0, 2] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * shellElement.ControlPoints.ToArray()[k].Z;
+				hessianMatrix[1, 0] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * shellElement.ControlPoints.ToArray()[k].X;
+				hessianMatrix[1, 1] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * shellElement.ControlPoints.ToArray()[k].Y;
+				hessianMatrix[1, 2] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * shellElement.ControlPoints.ToArray()[k].Z;
+				hessianMatrix[2, 0] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * shellElement.ControlPoints.ToArray()[k].X;
+				hessianMatrix[2, 1] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * shellElement.ControlPoints.ToArray()[k].Y;
+				hessianMatrix[2, 2] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * shellElement.ControlPoints.ToArray()[k].Z;
 			}
 
 			return hessianMatrix;
@@ -434,14 +444,14 @@ namespace ISAAR.MSolve.IGA.Elements
 		private static Matrix CalculateJacobian(TSplineKirchhoffLoveShellElement shellElement, ShapeTSplines2DFromBezierExtraction tsplines, int j)
 		{
 			Matrix jacobianMatrix = Matrix.CreateZero(2, 3);
-			for (int k = 0; k < shellElement.ControlPoints.Count; k++)
+			for (int k = 0; k < shellElement.ControlPoints.Count(); k++)
 			{
-				jacobianMatrix[0, 0] += tsplines.TSplineDerivativeValuesKsi[k, j] * shellElement.ControlPoints[k].X;
-				jacobianMatrix[0, 1] += tsplines.TSplineDerivativeValuesKsi[k, j] * shellElement.ControlPoints[k].Y;
-				jacobianMatrix[0, 2] += tsplines.TSplineDerivativeValuesKsi[k, j] * shellElement.ControlPoints[k].Z;
-				jacobianMatrix[1, 0] += tsplines.TSplineDerivativeValuesHeta[k, j] * shellElement.ControlPoints[k].X;
-				jacobianMatrix[1, 1] += tsplines.TSplineDerivativeValuesHeta[k, j] * shellElement.ControlPoints[k].Y;
-				jacobianMatrix[1, 2] += tsplines.TSplineDerivativeValuesHeta[k, j] * shellElement.ControlPoints[k].Z;
+				jacobianMatrix[0, 0] += tsplines.TSplineDerivativeValuesKsi[k, j] * shellElement.ControlPoints.ToArray()[k].X;
+				jacobianMatrix[0, 1] += tsplines.TSplineDerivativeValuesKsi[k, j] * shellElement.ControlPoints.ToArray()[k].Y;
+				jacobianMatrix[0, 2] += tsplines.TSplineDerivativeValuesKsi[k, j] * shellElement.ControlPoints.ToArray()[k].Z;
+				jacobianMatrix[1, 0] += tsplines.TSplineDerivativeValuesHeta[k, j] * shellElement.ControlPoints.ToArray()[k].X;
+				jacobianMatrix[1, 1] += tsplines.TSplineDerivativeValuesHeta[k, j] * shellElement.ControlPoints.ToArray()[k].Y;
+				jacobianMatrix[1, 2] += tsplines.TSplineDerivativeValuesHeta[k, j] * shellElement.ControlPoints.ToArray()[k].Z;
 			}
 
 			return jacobianMatrix;
@@ -459,9 +469,14 @@ namespace ISAAR.MSolve.IGA.Elements
                 });
 		}
 
-		public double[,] CalculateDisplacementsForPostProcessing(Element element, double[,] localDisplacements)
+		public double[,] CalculateDisplacementsForPostProcessing(Element element, Matrix localDisplacements)
 		{
 			throw new NotImplementedException();
 		}
-	}
+
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

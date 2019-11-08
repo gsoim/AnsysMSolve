@@ -1,8 +1,8 @@
-﻿namespace MGroup.IGA.Entities.Loads
-{
-	using MGroup.IGA.Interfaces;
+﻿using ISAAR.MSolve.IGA.Interfaces;
 
-	/// <summary>
+namespace ISAAR.MSolve.IGA.Entities.Loads
+{
+    /// <summary>
 	/// A base class for loading conditions.
 	/// </summary>
 	public class LoadingCondition : IBoundaryCondition

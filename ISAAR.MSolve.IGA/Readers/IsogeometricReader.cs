@@ -1,13 +1,12 @@
-namespace MGroup.IGA.Readers
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.Materials;
+
+namespace ISAAR.MSolve.IGA.Readers
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Globalization;
-
-	using MGroup.IGA.Entities;
-	using MGroup.Materials;
-
-	/// <summary>
+    /// <summary>
 	/// Reader for custom isogeometric model files.
 	/// </summary>
 	public class IsogeometricReader

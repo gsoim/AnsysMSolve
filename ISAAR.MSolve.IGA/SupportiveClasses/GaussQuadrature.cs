@@ -1,10 +1,9 @@
-namespace MGroup.IGA.SupportiveClasses
+using System.Collections.Generic;
+using ISAAR.MSolve.IGA.Entities;
+
+namespace ISAAR.MSolve.IGA.SupportiveClasses
 {
-	using System.Collections.Generic;
-
-	using MGroup.IGA.Entities;
-
-	/// <summary>
+    /// <summary>
 	/// Gauss Quadrature rules.
 	/// </summary>
 	public class GaussQuadrature

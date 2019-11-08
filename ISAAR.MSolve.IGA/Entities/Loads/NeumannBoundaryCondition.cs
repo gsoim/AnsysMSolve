@@ -1,8 +1,8 @@
-namespace MGroup.IGA.Entities.Loads
-{
-	using System.Collections.Generic;
+using System.Collections.Generic;
 
-	/// <summary>
+namespace ISAAR.MSolve.IGA.Entities.Loads
+{
+    /// <summary>
 	/// Delegate that calculates the load distribution that can vary depending on the position.
 	/// </summary>
 	/// <param name="x">Cartesian coordinate x of the load.</param>

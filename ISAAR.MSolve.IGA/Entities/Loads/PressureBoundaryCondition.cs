@@ -1,4 +1,4 @@
-namespace MGroup.IGA.Entities.Loads
+namespace ISAAR.MSolve.IGA.Entities.Loads
 {
 	/// <summary>
 	/// Pressure loading boundary condition. Works as a load normal to the boundary entity applied on.

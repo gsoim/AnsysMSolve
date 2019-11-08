@@ -1,14 +1,13 @@
-namespace MGroup.IGA.Readers
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+using ISAAR.MSolve.Materials;
+
+namespace ISAAR.MSolve.IGA.Readers
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Globalization;
-
-	using MGroup.IGA.Entities;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.Materials;
-
-	public enum GeometricalFormulation
+    public enum GeometricalFormulation
 	{
 		Linear,
 		NonLinear,

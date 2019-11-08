@@ -1,4 +1,5 @@
-﻿using ISAAR.MSolve.Discretization.FreedomDegrees;
+﻿using ISAAR.MSolve.Discretization;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
 
 namespace ISAAR.MSolve.IGA.Entities.Loads
 {

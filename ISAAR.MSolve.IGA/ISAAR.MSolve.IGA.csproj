@@ -5,6 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Elements\NURBSElement2DCollocation.cs" />
+    <Compile Remove="Elements\NURBSElement3DCollocation.cs" />
+    <Compile Remove="Elements\NurbsKLShellNonLinear.cs" />
+    <Compile Remove="Elements\TSplineElement2D.cs" />
+    <Compile Remove="Entities\CollocationModel.cs" />
+    <Compile Remove="Entities\CollocationPatch.cs" />
+    <Compile Remove="Entities\CollocationPoint.cs" />
+    <Compile Remove="Entities\CollocationPoint3D.cs" />
     <Compile Remove="Entities\ControlPoint_v2.cs" />
   </ItemGroup>
 
