@@ -146,7 +146,7 @@ namespace ISAAR.MSolve.Problems
             {
                 foreach (IElement element in subdomain.Elements)
                 {
-                    ((IFiniteElement)element.ElementType).ClearMaterialState();
+                    (element.ElementType).ClearMaterialState();
                 }
             }
 

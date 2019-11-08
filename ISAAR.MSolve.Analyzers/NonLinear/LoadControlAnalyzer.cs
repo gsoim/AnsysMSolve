@@ -56,6 +56,8 @@ namespace ISAAR.MSolve.Analyzers.NonLinear
                             TotalLoadsDisplacementsPerIncrementLog log = subdomainLogPair.Value;
                             log.LogTotalDataForIncrement(increment, iteration, errorNorm,
                                 uPlusdu[subdomainID], internalRhsVectors[subdomainID]);
+                            provider.Reset();
+                            BuildMatrices();
                         }
                         break;
                     }
@@ -85,8 +87,8 @@ namespace ISAAR.MSolve.Analyzers.NonLinear
                 base(model, solver, provider, numIncrements)
             {
                 MaxIterationsPerIncrement = 1000;
-                NumIterationsForMatrixRebuild = 1;
-                ResidualTolerance = 1E-3;
+                NumIterationsForMatrixRebuild = 1000;
+                ResidualTolerance = 1E-8;
             }
 
             public LoadControlAnalyzer Build()

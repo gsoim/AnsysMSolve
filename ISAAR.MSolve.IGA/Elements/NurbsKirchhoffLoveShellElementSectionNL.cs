@@ -262,7 +262,7 @@ namespace ISAAR.MSolve.IGA.Elements
 						 surfaceBasisVectorDerivative12[1] * unitVector3[1] +
 						 surfaceBasisVectorDerivative12[2] * unitVector3[2];
 
-				var bendingStrain = new double[] { -(b11 - B11), -(b22 - B22), -(2 * b12 - 2 * B12) };
+				var bendingStrain = new double[] { (b11 - B11), (b22 - B22), (2 * b12 - 2 * B12) };
 
 				materialsAtMidsurfaceGP[_midsurfaceGaussPoints[j]].UpdateMaterial(membraneStrain, bendingStrain);
 			}
@@ -386,6 +386,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			var gaussPoints = _midsurfaceGaussPoints.ToArray();
 
 			var controlPoints = shellElement.ControlPoints.ToArray();
+
 			var nurbs = new Nurbs2D(shellElement, controlPoints);
 
 			if (!isInitialized)
@@ -658,7 +659,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			{
 				#region BI1
 
-				var BI1 = s3.CrossProduct(s3);
+				var BI1 = s3.CrossProduct(s1);
 				BI1.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
 				var auxVector = s2.CrossProduct(s3);
 				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
@@ -684,7 +685,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 				#region BI2
 
-				IVector BI2 = s3.CrossProduct(s3);
+				IVector BI2 = s3.CrossProduct(s1);
 				BI2.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
 				auxVector = s2.CrossProduct(s3);
 				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
@@ -707,7 +708,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 				#region BI3
 
-				var BI3 = s3.CrossProduct(s3);
+				var BI3 = s3.CrossProduct(s1);
 				BI3.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
 				auxVector = s2.CrossProduct(s3);
 				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);

@@ -27,7 +27,7 @@ namespace ISAAR.MSolve.IGA.Tests
             var filename = "CantileverShellBenchmark16x1";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt");
             IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
+            modelReader.CreateShellModelFromFile(GeometricalFormulation.SectionNonLinear);
 
             Value verticalDistributedLoad = delegate (double x, double y, double z)
             {
