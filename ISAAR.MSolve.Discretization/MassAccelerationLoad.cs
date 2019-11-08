@@ -1,6 +1,6 @@
 ﻿using ISAAR.MSolve.Discretization.FreedomDegrees;
 
-namespace ISAAR.MSolve.FEM.Entities
+namespace ISAAR.MSolve.Discretization
 {
     public class MassAccelerationLoad
     {

@@ -352,6 +352,41 @@ namespace ISAAR.MSolve.XFEM.Elements
         }
 
         public IMatrix DampingMatrix(IElement element) => throw new NotImplementedException();
+        public bool MaterialModified { get; }
+        public void ResetMaterialModified()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements, double[] localdDisplacements)
+        {
+            throw new NotImplementedException();
+        }
+
+        public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
+        {
+            throw new NotImplementedException();
+        }
+
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SaveMaterialState()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ClearMaterialState()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ClearMaterialStresses()
+        {
+            throw new NotImplementedException();
+        }
 
         public IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element) => OrderDofsNodeMajor();
 
@@ -662,6 +697,11 @@ namespace ISAAR.MSolve.XFEM.Elements
                 }
             }
             return (standardElementDisplacements, enrichedElementDisplacements);
+        }
+
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
+        {
+            throw new NotImplementedException();
         }
     }
 }

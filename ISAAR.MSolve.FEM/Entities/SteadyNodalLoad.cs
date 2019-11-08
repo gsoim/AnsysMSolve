@@ -1,4 +1,5 @@
-﻿using ISAAR.MSolve.Discretization.FreedomDegrees;
+﻿using ISAAR.MSolve.Discretization;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
 
 //TODO: This is probably covered by Load.cs
 namespace ISAAR.MSolve.FEM.Entities

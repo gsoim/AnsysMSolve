@@ -1,18 +1,15 @@
-using MGroup.IGA.Elements;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ISAAR.MSolve.Geometry.Coordinates;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
 
-namespace MGroup.IGA.SupportiveClasses
+namespace ISAAR.MSolve.IGA.SupportiveClasses
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-
-	using MGroup.IGA.Entities;
-	using MGroup.LinearAlgebra.Interpolation;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.MSolve.Geometry.Coordinates;
-
-	public class Nurbs3D
+    public class Nurbs3D
 	{
 		/// <summary>
 		/// Define 3D NURBS shape function for a collocation point.

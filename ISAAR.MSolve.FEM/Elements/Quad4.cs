@@ -355,7 +355,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return consistentMass;
         }
 
-        public Tuple<double[], double[]> CalculateStresses(Element element, double[] localDisplacements, double[] localdDisplacements)
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             double[,] faXY = GetCoordinates(element);
             double[,] faDS = new double[iInt3, 24];
@@ -382,12 +382,12 @@ namespace ISAAR.MSolve.FEM.Elements
             return new Tuple<double[], double[]>(strains, materialsAtGaussPoints[materialsAtGaussPoints.Length - 1].Stresses);
         }
 
-        public double[] CalculateForcesForLogging(Element element, double[] localDisplacements)
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
         {
             return CalculateForces(element, localDisplacements, new double[localDisplacements.Length]);
         }
 
-        public double[] CalculateForces(Element element, double[] localTotalDisplacements, double[] localdDisplacements)
+        public double[] CalculateForces(IElement element, double[] localTotalDisplacements, double[] localdDisplacements)
         {
             //Vector<double> d = new Vector<double>(localdDisplacements.Length);
             //for (int i = 0; i < localdDisplacements.Length; i++) 
@@ -414,7 +414,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return faForces;
         }
 
-        public double[] CalculateAccelerationForces(Element element, IList<MassAccelerationLoad> loads)
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
         {
             var accelerations = new double[8];
             IMatrix massMatrix = MassMatrix(element);

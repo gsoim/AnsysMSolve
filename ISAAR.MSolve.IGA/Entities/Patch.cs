@@ -1,21 +1,18 @@
-using MGroup.Materials.ShellMaterials;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ISAAR.MSolve.Discretization.Commons;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.Discretization.Interfaces;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Readers;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+using ISAAR.MSolve.Materials;
+using ISAAR.MSolve.Materials.Interfaces;
 
-namespace MGroup.IGA.Entities
+namespace ISAAR.MSolve.IGA.Entities
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Data;
-	using System.Linq;
-
-	using MGroup.IGA.Elements;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.Materials.Interfaces;
-	using MGroup.MSolve.Discretization.Commons;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-	using MGroup.MSolve.Discretization.Interfaces;
-	using Readers;
-
-	/// <summary>
+    /// <summary>
 	/// Patch entity of Isogeometric analysis that is similar to FEM Subdomain.
 	/// </summary>
 	public class Patch : ISubdomain
@@ -710,11 +707,11 @@ namespace MGroup.IGA.Entities
 					}
 
 					int elementID = i * numberOfElementsHeta + j;
-					Element element = new NurbsElement2D()
+					Element element = new NURBSElement2D()
 					{
 						ID = elementID,
 						Patch = this,
-						ElementType = new NurbsElement2D()
+						ElementType = new NURBSElement2D()
 					};
 					element.AddKnots(knotsOfElement);
 					element.AddControlPoints(elementControlPoints.ToList());

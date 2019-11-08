@@ -1,4 +1,4 @@
-namespace MGroup.IGA.Entities
+namespace ISAAR.MSolve.IGA.Entities
 {
 	/// <summary>
 	/// Defines a Knot.

@@ -8,7 +8,12 @@
 
   <PropertyGroup>
    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-  </PropertyGroup> 
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="NURBSElement2DCollocation.cs" />
+    <Compile Remove="NurbsElementCollocation3D.cs" />
+  </ItemGroup> 
   
   <ItemGroup>
     <None Remove="InputFiles\Qube4096.txt" />

@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
-using ISAAR.MSolve.IGA.Problems.Structural.Elements;
-using ISAAR.MSolve.IGA.Problems.SupportiveClasses;
+using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Materials;
@@ -10,7 +10,7 @@ using Xunit;
 
 namespace ISAAR.MSolve.IGA.Tests
 {
-    public class Nurbs2D
+    public class Nurbs2DTests
 	{
 		private List<ControlPoint> ElementControlPoints()
 		{
@@ -184,11 +184,11 @@ namespace ISAAR.MSolve.IGA.Tests
 			});
 		}
 
-		private NURBSKirchhoffLoveShellElement ShellElement
+		private NurbsKirchhoffLoveShellElement ShellElement
 		{
 			get
 			{
-				var element = new NURBSKirchhoffLoveShellElement();
+				var element = new NurbsKirchhoffLoveShellElement();
 				var patch = new Patch();
 				patch.Material = new ElasticMaterial2D(StressState2D.PlaneStrain)
 				{
@@ -266,12 +266,12 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DPartitionOfUnity()
 		{
 			var element = Element;
-			var nurbs2D = new NURBS2D(element,element.ControlPoints);
+			var nurbs2D = new Nurbs2D(element,element.ControlPoints.ToArray());
 			
 			for (var p = 0; p < 16; p++)
 			{
 				var sum = 0.0;
-				for (var f = 0; f < nurbs2D.NurbsValues.NumRows; f++)
+				for (var f = 0; f < nurbs2D.NurbsValues.GetLength(0); f++)
 					sum += nurbs2D.NurbsValues[f, p];
 				Assert.True(Utilities.AreValuesEqual(1.0, sum, Tolerance));
 			}
@@ -281,7 +281,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DValues()
 		{
 			var element = Element;
-			var nurbs2D = new NURBS2D(element, element.ControlPoints);
+			var nurbs2D = new Nurbs2D(element, element.ControlPoints.ToArray());
 
 			for (var i = 0; i < 16; i++)
 			{
@@ -299,7 +299,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DDerivativeValuesKsi()
 		{
 			var element = Element;
-			var nurbs2D = new NURBS2D(element, element.ControlPoints);
+			var nurbs2D = new Nurbs2D(element, element.ControlPoints.ToArray());
 
 			for (var i = 0; i < 16; i++)
 			{
@@ -316,7 +316,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DDerivativeValuesHeta()
 		{
 			var element = Element;
-			var nurbs2D = new NURBS2D(element, element.ControlPoints);
+			var nurbs2D = new Nurbs2D(element, element.ControlPoints.ToArray());
 
 			for (var i = 0; i < 16; i++)
 			{
@@ -333,7 +333,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DSecondDerivativeValuesKsi()
 		{
 			var element = ShellElement;
-			var nurbs2D = new NURBS2D(element, element.ControlPoints);
+			var nurbs2D = new Nurbs2D(element, element.ControlPoints.ToArray());
 
 			for (var i = 0; i < 12; i++)
 			{
@@ -350,7 +350,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DSecondDerivativeValuesHeta()
 		{
 			var element = ShellElement;
-			var nurbs2D = new NURBS2D(element, element.ControlPoints);
+			var nurbs2D = new Nurbs2D(element, element.ControlPoints.ToArray());
 
 			for (var i = 0; i < 12; i++)
 			{
@@ -367,7 +367,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DSecondDerivativeValuesKsiHeta()
 		{
 			var element = ShellElement;
-			var nurbs2D = new NURBS2D(element, element.ControlPoints);
+			var nurbs2D = new Nurbs2D(element, element.ControlPoints.ToArray());
 
 			for (var i = 0; i < 12; i++)
 			{

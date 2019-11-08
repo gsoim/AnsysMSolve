@@ -42,7 +42,7 @@ namespace ISAAR.MSolve.XFEM.Entities
             return elementNodalDisplacements;
         }
 
-        public double[] CalculateElementDisplacements(IXFiniteElement element, IVectorView globalDisplacementVector)
+        public double[] CalculateElementDisplacements(IElement element, IVectorView globalDisplacementVector)
         {
             double[] elementNodalDisplacements = 
                 FreeDofOrdering.ExtractVectorElementFromSubdomain(element, globalDisplacementVector);

@@ -1,13 +1,12 @@
-namespace MGroup.IGA.Interfaces
+using System.Collections.Generic;
+using ISAAR.MSolve.Discretization.Interfaces;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.Entities.Loads;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+
+namespace ISAAR.MSolve.IGA.Interfaces
 {
-	using System.Collections.Generic;
-
-	using MGroup.IGA.Entities;
-	using MGroup.IGA.Entities.Loads;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.MSolve.Discretization.Interfaces;
-
-	/// <summary>
+    /// <summary>
 	/// Isogeometric element interface. Implements <see cref="IElementType"/>.
 	/// </summary>
 	public interface IIsogeometricElement : IElementType

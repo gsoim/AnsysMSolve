@@ -1,23 +1,22 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
+using ISAAR.MSolve.Discretization;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.Discretization.Interfaces;
+using ISAAR.MSolve.Discretization.Mesh;
+using ISAAR.MSolve.FEM.Entities;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.Entities.Loads;
+using ISAAR.MSolve.IGA.Interfaces;
+using ISAAR.MSolve.IGA.SupportiveClasses;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+using Element = ISAAR.MSolve.IGA.Entities.Element;
 
-namespace MGroup.IGA.Elements
+namespace ISAAR.MSolve.IGA.Elements
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-
-	using MGroup.IGA.Entities;
-	using MGroup.IGA.Entities.Loads;
-	using MGroup.IGA.Interfaces;
-	using MGroup.IGA.SupportiveClasses;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.MSolve.Discretization;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-	using MGroup.MSolve.Discretization.Interfaces;
-	using MGroup.MSolve.Discretization.Loads;
-	using MGroup.MSolve.Discretization.Mesh;
-
-	/// <summary>
+    /// <summary>
 	/// An one-dimensional continuum element that utilizes Non-Uniform Rational B-Splines for shape functions.
 	/// Authors: Dimitris Tsapetis.
 	/// </summary>
@@ -55,10 +54,10 @@ namespace MGroup.IGA.Elements
 		public bool MaterialModified => false;
 
 		/// <summary>
-		/// Calculates the forces applies to an <see cref="NurbsElement1D"/> due to <see cref="MassAccelerationLoad"/>.
+		/// Calculates the forces applies to an <see cref="NurbsElement1D"/> due to <see cref="FEM.Entities.MassAccelerationLoad"/>.
 		/// </summary>
 		/// <param name="element">An element of type <see cref="NurbsElement1D"/>.</param>
-		/// <param name="loads">A list of <see cref="MassAccelerationLoad"/>. For more info see <seealso cref="MassAccelerationLoad"/></param>
+		/// <param name="loads">A list of <see cref="FEM.Entities.MassAccelerationLoad"/>. For more info see <seealso cref="FEM.Entities.MassAccelerationLoad"/></param>
 		/// <returns>A <see cref="double"/> array containing the forces generates due to acceleration for each degree of freedom.</returns>
 		public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads) => Array.Empty<double>();
 

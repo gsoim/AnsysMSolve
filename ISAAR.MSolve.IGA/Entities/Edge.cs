@@ -1,15 +1,14 @@
-namespace MGroup.IGA.Entities
+using System;
+using System.Collections.Generic;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Entities.Loads;
+using ISAAR.MSolve.IGA.Interfaces;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+
+namespace ISAAR.MSolve.IGA.Entities
 {
-	using System;
-	using System.Collections.Generic;
-
-	using MGroup.IGA.Elements;
-	using MGroup.IGA.Entities.Loads;
-	using MGroup.IGA.Interfaces;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-
-	public class Edge : Boundary
+    public class Edge : Boundary
 	{
 		/// <summary>
 		/// List of BoundaryCondition applied to the edge.

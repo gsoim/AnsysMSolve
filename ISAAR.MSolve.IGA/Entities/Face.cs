@@ -1,15 +1,14 @@
-namespace MGroup.IGA.Entities
+using System;
+using System.Collections.Generic;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Entities.Loads;
+using ISAAR.MSolve.IGA.Interfaces;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+
+namespace ISAAR.MSolve.IGA.Entities
 {
-	using System;
-	using System.Collections.Generic;
-
-	using MGroup.IGA.Elements;
-	using MGroup.IGA.Entities.Loads;
-	using MGroup.IGA.Interfaces;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-
-	/// <summary>
+    /// <summary>
 	/// Surface boundary entity.
 	/// </summary>
 	public class Face : Boundary
@@ -193,10 +192,10 @@ namespace MGroup.IGA.Entities
 						}
 					}
 					int elementID = i * numberOfElementsHeta + j;
-					Element element = new NurbsElement2D()
+					Element element = new NURBSElement2D()
 					{
 						ID = elementID,
-						ElementType = new NurbsElement2D(),
+						ElementType = new NURBSElement2D(),
 						Patch = Patch,
 						Model = Patch.Elements[0].Model
 					};

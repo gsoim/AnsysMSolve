@@ -1,14 +1,13 @@
-namespace MGroup.IGA.Postprocessing
+using System.IO;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+
+namespace ISAAR.MSolve.IGA.Postprocessing
 {
-	using System.IO;
-
-	using MGroup.IGA.Elements;
-	using MGroup.IGA.Entities;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-
-	/// <summary>
+    /// <summary>
 	/// Enumeration containing different types of T-Spline shell elements.
 	/// </summary>
 	public enum TSplineShellType

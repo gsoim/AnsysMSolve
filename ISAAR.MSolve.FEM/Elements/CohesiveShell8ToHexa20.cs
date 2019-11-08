@@ -417,7 +417,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return T;
         }
 
-        private double[] MultiplyForcesForEmbedding(double[] fxk1_coh, Element element)
+        private double[] MultiplyForcesForEmbedding(double[] fxk1_coh, IElement element)
         {
             double[,] T = CalculateTMatrix(element);
             double[] fxk2_coh = new double[64];
@@ -577,7 +577,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return k_element_coh2;
         }
 
-        private double[] UpdateForces(Element element, Matrix[] RtN3, double[] integrationCoeffs)
+        private double[] UpdateForces(IElement element, Matrix[] RtN3, double[] integrationCoeffs)
         {
             double [] fxk2_coh = new double[64];
             double [] fxk1_coh = new double[48]; // TODO: must be 24 in cohesive 8 node
@@ -643,7 +643,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return k_element_coh2;
         }
 
-        public Tuple<double[], double[]> CalculateStresses(Element element, double[] localTotalDisplacementsSuperElement, double[] localdDisplacementsSuperElement)
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localTotalDisplacementsSuperElement, double[] localdDisplacementsSuperElement)
         {
             double[][] Delta = new double[nGaussPoints][];
             double[] localTotalDisplacements = dofEnumerator.GetTransformedDisplacementsVector(localTotalDisplacementsSuperElement); // embedding
@@ -657,7 +657,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return new Tuple<double[], double[]>(Delta[materialsAtGaussPoints.Length - 1], materialsAtGaussPoints[materialsAtGaussPoints.Length - 1].Tractions);             
         }
 
-        public double[] CalculateForces(Element element, double[] localTotalDisplacementsSuperElement, double[] localdDisplacementsSuperelement)
+        public double[] CalculateForces(IElement element, double[] localTotalDisplacementsSuperElement, double[] localdDisplacementsSuperelement)
         {
             double[] fxk2_coh = new double[64];
             Tuple<Matrix[], double[]> RtN3AndIntegrationCoeffs;
@@ -671,7 +671,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return dofEnumerator.GetTransformedForcesVector(fxk2_coh);// embedding
         }
 
-        public double[] CalculateForcesForLogging(Element element, double[] localDisplacements) 
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements) 
             => CalculateForces(element, localDisplacements, new double[localDisplacements.Length]);
 
         public virtual IMatrix StiffnessMatrix(IElement element) 
@@ -728,7 +728,7 @@ namespace ISAAR.MSolve.FEM.Elements
 
         public virtual IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element) => dofTypes;
 
-        public double[] CalculateAccelerationForces(Element element, IList<MassAccelerationLoad> loads)
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
         {
             return new double[64];
         }

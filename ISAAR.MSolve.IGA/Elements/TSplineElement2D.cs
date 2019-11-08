@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.Discretization.Interfaces;
@@ -7,7 +8,6 @@ using ISAAR.MSolve.Discretization.Mesh;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Interfaces;
-using ISAAR.MSolve.IGA.Problems.SupportiveClasses;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
@@ -100,8 +100,8 @@ namespace ISAAR.MSolve.IGA.Elements
 		public IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element)
 		{
 			var nurbsElement = (TSplineElement2D)element;
-			dofTypes = new IDofType[nurbsElement.ControlPoints.Count][];
-			for (int i = 0; i < nurbsElement.ControlPoints.Count; i++)
+			dofTypes = new IDofType[nurbsElement.ControlPoints.Count()][];
+			for (int i = 0; i < nurbsElement.ControlPoints.Count(); i++)
 			{
 				dofTypes[i] = controlPointDOFTypes;
 			}
@@ -124,7 +124,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(tsplineElement);
 			var stiffnessMatrixElement = Matrix.CreateZero(tsplineElement.ControlPointsDictionary.Count * 2, tsplineElement.ControlPointsDictionary.Count * 2);
 
-			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(tsplineElement, tsplineElement.ControlPoints);
+			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(tsplineElement, tsplineElement.ControlPoints.ToArray());
 
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
@@ -141,9 +141,9 @@ namespace ISAAR.MSolve.IGA.Elements
 				Matrix stiffnessMatrixGaussPoint = B.ThisTransposeTimesOtherTimesThis(ElasticityMatrix);
 				stiffnessMatrixGaussPoint = stiffnessMatrixGaussPoint * (jacdet * gaussPoints[j].WeightFactor * tsplineElement.Patch.Thickness);
 
-				for (int m = 0; m < tsplineElement.ControlPoints.Count * 2; m++)
+				for (int m = 0; m < tsplineElement.ControlPoints.Count() * 2; m++)
 				{
-					for (int n = 0; n < tsplineElement.ControlPoints.Count * 2; n++)
+					for (int n = 0; n < tsplineElement.ControlPoints.Count() * 2; n++)
 					{
 						stiffnessMatrixElement[m, n] += stiffnessMatrixGaussPoint[m, n];
 					}
@@ -155,8 +155,8 @@ namespace ISAAR.MSolve.IGA.Elements
 		private static Matrix CalculateDeformationMatrix2(TSplineElement2D tsplineElement,
 			ShapeTSplines2DFromBezierExtraction tsplines, int j)
 		{
-			var B2 = Matrix.CreateZero(4, 2 * tsplineElement.ControlPoints.Count);
-			for (int column = 0; column < 2 * tsplineElement.ControlPoints.Count; column += 2)
+			var B2 = Matrix.CreateZero(4, 2 * tsplineElement.ControlPoints.Count());
+			for (int column = 0; column < 2 * tsplineElement.ControlPoints.Count(); column += 2)
 			{
 				B2[0, column] += tsplines.TSplineDerivativeValuesKsi[column / 2, j];
 				B2[1, column] += tsplines.TSplineDerivativeValuesHeta[column / 2, j];
@@ -194,12 +194,12 @@ namespace ISAAR.MSolve.IGA.Elements
 		{
 			var jacobianMatrix = Matrix.CreateZero(2, 2);
 
-			for (int k = 0; k < tsplineElement.ControlPoints.Count; k++)
+			for (int k = 0; k < tsplineElement.ControlPoints.Count(); k++)
 			{
-				jacobianMatrix[0, 0] += tsplines.TSplineDerivativeValuesKsi[k, j] * tsplineElement.ControlPoints[k].X;
-				jacobianMatrix[0, 1] += tsplines.TSplineDerivativeValuesKsi[k, j] * tsplineElement.ControlPoints[k].Y;
-				jacobianMatrix[1, 0] += tsplines.TSplineDerivativeValuesHeta[k, j] * tsplineElement.ControlPoints[k].X;
-				jacobianMatrix[1, 1] += tsplines.TSplineDerivativeValuesHeta[k, j] * tsplineElement.ControlPoints[k].Y;
+				jacobianMatrix[0, 0] += tsplines.TSplineDerivativeValuesKsi[k, j] * tsplineElement.ControlPoints.ToList()[k].X;
+				jacobianMatrix[0, 1] += tsplines.TSplineDerivativeValuesKsi[k, j] * tsplineElement.ControlPoints.ToList()[k].Y;
+				jacobianMatrix[1, 0] += tsplines.TSplineDerivativeValuesHeta[k, j] * tsplineElement.ControlPoints.ToList()[k].X;
+				jacobianMatrix[1, 1] += tsplines.TSplineDerivativeValuesHeta[k, j] * tsplineElement.ControlPoints.ToList()[k].Y;
 			}
 
 			return jacobianMatrix;
@@ -217,19 +217,19 @@ namespace ISAAR.MSolve.IGA.Elements
                 });
 		}
 
-		public double[,] CalculateDisplacementsForPostProcessing(Element element, double[,] localDisplacements)
+		public double[,] CalculateDisplacementsForPostProcessing(Element element, Matrix localDisplacements)
 		{
 			var tsplineElement = (TSplineElement2D)element;
 			var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { -1, 1 });
 			var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { -1, 1 });
 
-			var tsplines = new ShapeTSplines2DFromBezierExtraction(tsplineElement, tsplineElement.ControlPoints, knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
+			var tsplines = new ShapeTSplines2DFromBezierExtraction(tsplineElement, tsplineElement.ControlPoints.ToArray(), knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
 
 			var knotDisplacements = new double[4, 3];
 			var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
 			for (int j = 0; j < knotDisplacements.GetLength(0); j++)
 			{
-				for (int i = 0; i < element.ControlPoints.Count; i++)
+				for (int i = 0; i < element.ControlPoints.Count(); i++)
 				{
 					knotDisplacements[paraviewKnotRenumbering[j], 0] += tsplines.TSplineValues[i, j] * localDisplacements[i, 0];
 					knotDisplacements[paraviewKnotRenumbering[j], 1] += tsplines.TSplineValues[i, j] * localDisplacements[i, 1];
@@ -253,17 +253,17 @@ namespace ISAAR.MSolve.IGA.Elements
 			var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { -1, 1 });
 			var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { -1, 1 });
 
-			var tsplines = new ShapeTSplines2DFromBezierExtraction(element, element.ControlPoints, knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
+			var tsplines = new ShapeTSplines2DFromBezierExtraction(element, element.ControlPoints.ToArray(), knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
 
 			var knotDisplacements = new double[4, 3];
 			var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
 			for (int j = 0; j < localCoordinates.GetLength(0); j++)
 			{
-				for (int i = 0; i < element.ControlPoints.Count; i++)
+				for (int i = 0; i < element.ControlPoints.Count(); i++)
 				{
-					knotDisplacements[paraviewKnotRenumbering[j], 0] += tsplines.TSplineValues[i, j] * element.ControlPoints[i].X;
-					knotDisplacements[paraviewKnotRenumbering[j], 1] += tsplines.TSplineValues[i, j] * element.ControlPoints[i].Y;
-					knotDisplacements[paraviewKnotRenumbering[j], 2] += tsplines.TSplineValues[i, j] * element.ControlPoints[i].Z;
+					knotDisplacements[paraviewKnotRenumbering[j], 0] += tsplines.TSplineValues[i, j] * element.ControlPoints.ToList()[i].X;
+					knotDisplacements[paraviewKnotRenumbering[j], 1] += tsplines.TSplineValues[i, j] * element.ControlPoints.ToList()[i].Y;
+					knotDisplacements[paraviewKnotRenumbering[j], 2] += tsplines.TSplineValues[i, j] * element.ControlPoints.ToList()[i].Z;
 				}
 			}
 

@@ -257,24 +257,24 @@ namespace ISAAR.MSolve.FEM.Elements
 
         public void ResetMaterialModified() => this.material.ResetModified();
 
-        public Tuple<double[], double[]> CalculateStresses(Element element, double[] localDisplacements, double[] localdDisplacements)
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             UpdateState(localdDisplacements);
             return new Tuple<double[], double[]>(new double[FREEDOM_DEGREE_COUNT], new double[FREEDOM_DEGREE_COUNT]);
         }
 
-        public double[] CalculateForces(Element element, double[] localDisplacements, double[] localdDisplacements)
+        public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             var internalForces = this.CalculateForcesInGlobalSystem();
             return internalForces;
         }
 
-        public double[] CalculateForcesForLogging(Element element, double[] localDisplacements)
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
         {
             throw new NotImplementedException();
         }
 
-        public double[] CalculateAccelerationForces(Element element, IList<MassAccelerationLoad> loads)
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
         {
             var accelerations = new double[6];
             IMatrix massMatrix = MassMatrix(element);

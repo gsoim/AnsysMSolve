@@ -31,6 +31,8 @@ namespace ISAAR.MSolve.Discretization.Interfaces
 
         double[] CalculateElementIncrementalConstraintDisplacements(IElement element, double constraintScalingFactor); //TODO: this should be done by a dedicated class instead of the subdomain
 
+        double[] CalculateElementDisplacements(IElement element, IVectorView globalDisplacementVector);
+
         void ClearMaterialStresses();
 
         IVector GetRhsFromSolution(IVectorView solution, IVectorView dSolution); //TODO: this should be done by a dedicated class instead of the subdomain

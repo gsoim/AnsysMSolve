@@ -1,13 +1,12 @@
-namespace MGroup.IGA.Postprocessing
+using System.IO;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+
+namespace ISAAR.MSolve.IGA.Postprocessing
 {
-	using System.IO;
-
-	using MGroup.IGA.Entities;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-
-	/// <summary>
+    /// <summary>
 	/// Paraview file  generator for NURBS Shells geometries.
 	/// </summary>
 	public class ParaviewNurbsShells

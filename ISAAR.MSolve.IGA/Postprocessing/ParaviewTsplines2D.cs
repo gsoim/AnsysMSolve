@@ -1,7 +1,9 @@
 ﻿using System.IO;
+using System.Linq;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.Solvers.LinearSystems;
 
 namespace ISAAR.MSolve.IGA.Postprocessing
@@ -41,7 +43,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 			var pointDisplacements = new double[nodes.GetLength(0), 2];
 			foreach (var element in _model.Elements)
 			{
-				var localDisplacements = new double[element.ControlPoints.Count, 2];
+				var localDisplacements = new double[element.ControlPoints.Count(), 2];
 				var counterCP = 0;
 				foreach (var controlPoint in element.ControlPoints)
 				{
@@ -54,7 +56,7 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 					localDisplacements[counterCP, 0] = (dofX == -1) ? 0.0 : _linearSystem.Solution[dofX];
 					localDisplacements[counterCP++, 1] = (dofY == -1) ? 0.0 : _linearSystem.Solution[dofY];
 				}
-				var elementKnotDisplacements = element.ElementType.CalculateDisplacementsForPostProcessing(element, localDisplacements);
+				var elementKnotDisplacements = element.ElementType.CalculateDisplacementsForPostProcessing(element, Matrix.CreateFromArray(localDisplacements));
 				for (int i = 0; i < elementConnectivity.GetLength(1); i++)
 				{
 					var knotConnectivity = elementConnectivity[element.ID, i];

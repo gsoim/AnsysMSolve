@@ -125,7 +125,7 @@ namespace ISAAR.MSolve.FEM.Problems.Structural.Elements
 
         public IMatrix DampingMatrix(IElement element) => throw new NotImplementedException();
 
-        public Tuple<double[], double[]> CalculateStresses(Element element, double[] local_Displacements, 
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] local_Displacements, 
             double[] local_d_Displacements)
         {
             // WARNING: 1) No strains are computed 2) localdDisplacements are not used.
@@ -135,18 +135,18 @@ namespace ISAAR.MSolve.FEM.Problems.Structural.Elements
             return new Tuple<double[], double[]>(strains, stresses);
         }
 
-        public double[] CalculateForcesForLogging(Element element, double[] localDisplacements)
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
         {
             return CalculateForces(element, localDisplacements, new double[localDisplacements.Length]);
         }
 
-        public double[] CalculateForces(Element element, double[] localDisplacements, double[] localdDisplacements)
+        public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             IMatrix stiffness = StiffnessMatrix(element);
             return stiffness.Multiply(localdDisplacements);
         }
 
-        public double[] CalculateAccelerationForces(Element element, IList<MassAccelerationLoad> loads)
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
         {
             var accelerations = new double[4];
             IMatrix massMatrix = MassMatrix(element);

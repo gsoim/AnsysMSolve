@@ -1,29 +1,28 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
+using ISAAR.MSolve.Discretization;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.Discretization.Interfaces;
+using ISAAR.MSolve.Discretization.Mesh;
+using ISAAR.MSolve.FEM.Entities;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.Entities.Loads;
+using ISAAR.MSolve.IGA.Interfaces;
+using ISAAR.MSolve.IGA.SupportiveClasses;
+using ISAAR.MSolve.LinearAlgebra.Matrices;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+using ISAAR.MSolve.Materials.Interfaces;
+using Element = ISAAR.MSolve.IGA.Entities.Element;
 
-namespace MGroup.IGA.Elements
+namespace ISAAR.MSolve.IGA.Elements
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-
-	using MGroup.IGA.Entities;
-	using MGroup.IGA.Entities.Loads;
-	using MGroup.IGA.Interfaces;
-	using MGroup.IGA.SupportiveClasses;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.Materials.Interfaces;
-	using MGroup.MSolve.Discretization;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-	using MGroup.MSolve.Discretization.Interfaces;
-	using MGroup.MSolve.Discretization.Loads;
-	using MGroup.MSolve.Discretization.Mesh;
-
-	/// <summary>
+    /// <summary>
 	/// A two-dimensional continuum element that utilizes NURBS for shape functions.
 	/// Authors: Dimitris Tsapetis.
 	/// </summary>
-	public class NurbsElement2D : Element, IStructuralIsogeometricElement
+	public class NURBSElement2D : Element, IStructuralIsogeometricElement
 	{
 		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY };
 		private IDofType[][] _dofTypes;
@@ -54,14 +53,14 @@ namespace MGroup.IGA.Elements
 		/// <summary>
 		/// Calculates displacements of knots for post-processing with Paraview.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
 		/// <param name="localDisplacements">A <see cref="Matrix"/> containing the displacements for the degrees of freedom of the element.</param>
 		/// <returns>A <see cref="double"/> array calculating the displacement of the element Knots'.
 		/// The rows of the matrix denote the knot numbering while the columns the displacements for each degree of freedom.</returns>
 		public double[,] CalculateDisplacementsForPostProcessing(Element element, Matrix localDisplacements)
 		{
 			Contract.Requires(element != null, "The element cannot be null");
-			var nurbsElement = (NurbsElement2D)element;
+			var nurbsElement = (NURBSElement2D)element;
 			var elementControlPoints = nurbsElement.ControlPoints.ToArray();
 			var elemenetKnots = nurbsElement.Knots.ToArray();
 			var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { elemenetKnots[0].Ksi, elemenetKnots[2].Ksi });
@@ -84,7 +83,7 @@ namespace MGroup.IGA.Elements
 		/// <summary>
 		/// This method calculates the internal forces of the element.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
 		/// <param name="localDisplacements">A <see cref="double"/> array containing the displacements for the degrees of freedom of the element.</param>
 		/// <param name="localdDisplacements">A <see cref="double"/> array containing the displacements change for the degrees of freedom of the element.</param>
 		/// <returns>A <see cref="double"/> array containing the forces all degrees of freedom</returns>
@@ -93,13 +92,13 @@ namespace MGroup.IGA.Elements
 		/// <summary>
 		/// This method is used for retrieving the internal forces of the element for logging purposes.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/></param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/></param>
 		/// <param name="localDisplacements">A <see cref="double"/> array containing the displacements for the degrees of freedom of the element.</param>
 		/// <returns>A <see cref="double"/> array containing the forces all degrees of freedom</returns>
 		public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements) => throw new NotImplementedException();
 
 		/// <summary>
-		/// This method cannot be used, combined with <see cref="NurbsElement2D"/> as it refers to one-dimensional loads.
+		/// This method cannot be used, combined with <see cref="NURBSElement2D"/> as it refers to one-dimensional loads.
 		/// </summary>
 		/// <param name="element">An element of type <see cref="NurbsElement1D"/>.</param>
 		/// <param name="edge">An one dimensional boundary entity. For more info see <see cref="Edge"/>.</param>
@@ -110,7 +109,7 @@ namespace MGroup.IGA.Elements
 		/// <summary>
 		/// This method calculates the Neumann boundary condition when applied to a two-dimensional NURBS element.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/></param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/></param>
 		/// <param name="face">An two dimensional boundary entity. For more info see <see cref="Face"/>.</param>
 		/// <param name="neumann"><inheritdoc cref="NeumannBoundaryCondition"/>.</param>
 		/// <returns>A <see cref="Dictionary{TKey,TValue}"/> where integer values denote the degree of freedom that has a value double load value due to the enforcement of the <see cref="NeumannBoundaryCondition"/>.</returns>
@@ -154,7 +153,7 @@ namespace MGroup.IGA.Elements
 		/// <summary>
 		/// This method calculates the stresses of the element.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
 		/// <param name="localDisplacements">A <see cref="double"/> array containing the displacements for the degrees of freedom of the element.</param>
 		/// <param name="localdDisplacements">A <see cref="double"/> array containing the displacements change for the degrees of freedom of the element.</param>
 		/// <returns>A <see cref="Tuple{T1,T2}"/> of the stresses and strains of the element.</returns>
@@ -168,19 +167,19 @@ namespace MGroup.IGA.Elements
 		/// <summary>
 		/// Calculates the damping matrix of the element.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
-		/// <returns>An <see cref="IMatrix"/> containing the damping matrix of an <see cref="NurbsElement2D"/>.</returns>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
+		/// <returns>An <see cref="IMatrix"/> containing the damping matrix of an <see cref="NURBSElement2D"/>.</returns>
 		public IMatrix DampingMatrix(IElement element) => throw new NotImplementedException();
 
 		/// <summary>
 		/// Retrieves the dofs of the element.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
 		/// <returns>A <see cref="IReadOnlyList{T}"/> that contains a <see cref="IReadOnlyList{T}"/> of <see cref="IDofType"/> with degrees of freedom for each elemental <see cref="ControlPoint"/>.</returns>
 		public IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element)
 		{
 			Contract.Requires(element != null, "The element cannot be null");
-			var nurbsElement = (NurbsElement2D)element;
+			var nurbsElement = (NURBSElement2D)element;
 			_dofTypes = new IDofType[nurbsElement.ControlPointsDictionary.Count][];
 			for (var i = 0; i < nurbsElement.ControlPointsDictionary.Count; i++)
 			{
@@ -193,19 +192,19 @@ namespace MGroup.IGA.Elements
 		/// <summary>
 		/// Calculates the mass matrix of the element.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
-		/// <returns>An <see cref="IMatrix"/> containing the mass matrix of an <see cref="NurbsElement2D"/>.</returns>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
+		/// <returns>An <see cref="IMatrix"/> containing the mass matrix of an <see cref="NURBSElement2D"/>.</returns>
 		public IMatrix MassMatrix(IElement element) => throw new NotImplementedException();
 
 		/// <summary>
 		/// Calculates the stiffness matrix of the element.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
-		/// <returns>An <see cref="IMatrix"/> containing the stiffness matrix of an <see cref="NurbsElement2D"/>.</returns>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
+		/// <returns>An <see cref="IMatrix"/> containing the stiffness matrix of an <see cref="NURBSElement2D"/>.</returns>
 		public IMatrix StiffnessMatrix(IElement element)
 		{
 			Contract.Requires(element != null, "The element cannot be null");
-			var nurbsElement = (NurbsElement2D)element;
+			var nurbsElement = (NURBSElement2D)element;
 			var gaussPoints = CreateElementGaussPoints(nurbsElement);
 			var stiffnessMatrixElement = Matrix.CreateZero(
 				nurbsElement.ControlPointsDictionary.Count * 2,
@@ -345,17 +344,17 @@ namespace MGroup.IGA.Elements
 		#endregion IStructuralIsogeometricElement
 
 		/// <summary>
-		/// Calculates the forces applies to an <see cref="NurbsElement2D"/> due to <see cref="MassAccelerationLoad"/>.
+		/// Calculates the forces applies to an <see cref="NURBSElement2D"/> due to <see cref="FEM.Entities.MassAccelerationLoad"/>.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
-		/// <param name="loads">A list of <see cref="MassAccelerationLoad"/>. For more info see <seealso cref="MassAccelerationLoad"/>.</param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
+		/// <param name="loads">A list of <see cref="FEM.Entities.MassAccelerationLoad"/>. For more info see <seealso cref="FEM.Entities.MassAccelerationLoad"/>.</param>
 		/// <returns>A <see cref="double"/> array containing the forces generates due to acceleration for each degree of freedom.</returns>
 		public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads) => throw new NotImplementedException();
 
 		/// <summary>
 		/// This method calculates the Pressure boundary condition when applied to a two-dimensional NURBS element.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
 		/// <param name="face">An two dimensional boundary entity. For more info see <see cref="Face"/>.</param>
 		/// <param name="pressure"><inheritdoc cref="NeumannBoundaryCondition"/>.</param>
 		/// <returns>A <see cref="Dictionary{TKey,TValue}"/> where integer values denote the degree of freedom that has a value double load value due to the enforcement of the <see cref="PressureBoundaryCondition"/>.</returns>
@@ -430,9 +429,9 @@ namespace MGroup.IGA.Elements
 		}
 
 		/// <summary>
-		/// This method cannot be used, combined with <see cref="NurbsElement2D"/> as it refers to one-dimensional loads.
+		/// This method cannot be used, combined with <see cref="NURBSElement2D"/> as it refers to one-dimensional loads.
 		/// </summary>
-		/// <param name="element">An element of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An element of type <see cref="NURBSElement2D"/>.</param>
 		/// <param name="edge">An one dimensional boundary entity. For more info see <see cref="Edge"/>.</param>
 		/// <param name="pressure"><inheritdoc cref="PressureBoundaryCondition"/></param>
 		/// <returns>A <see cref="Dictionary{TKey,TValue}"/> where integer values denote the degree of freedom that has a value double load value due to the enforcement of the <see cref="PressureBoundaryCondition"/>.</returns>

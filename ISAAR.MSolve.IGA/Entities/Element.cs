@@ -1,11 +1,10 @@
-namespace MGroup.IGA.Entities
+using System.Collections.Generic;
+using ISAAR.MSolve.Discretization.Interfaces;
+using ISAAR.MSolve.IGA.Interfaces;
+
+namespace ISAAR.MSolve.IGA.Entities
 {
-	using System.Collections.Generic;
-
-	using MGroup.IGA.Interfaces;
-	using MGroup.MSolve.Discretization.Interfaces;
-
-	/// <summary>
+    /// <summary>
 	/// Generic element class that contains the basic functionality of an Isogeometric Element.
 	/// </summary>
 	public class Element : IElement

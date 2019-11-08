@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
+using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
-using ISAAR.MSolve.IGA.Problems.Structural.Elements;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Materials;
@@ -8,7 +8,7 @@ using Xunit;
 
 namespace ISAAR.MSolve.IGA.Tests
 {
-    public class NurbsElement3D
+    public class NurbsElement3DTests
 	{
 		private List<ControlPoint> ElementControlPoints()
 		{
@@ -130,11 +130,11 @@ namespace ISAAR.MSolve.IGA.Tests
 			});
 		}
 
-		private NURBSElement3D Element
+		private NurbsElement3D Element
 		{
 			get
 			{
-				var element = new NURBSElement3D();
+				var element = new NurbsElement3D();
 				var patch = new Patch();
 				patch.Material= new ElasticMaterial3D()
 				{

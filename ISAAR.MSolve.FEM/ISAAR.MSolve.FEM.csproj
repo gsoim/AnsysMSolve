@@ -11,6 +11,7 @@
     <None Remove="Integration\**" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="Elements\Hexa8u8p.cs" />
     <Compile Remove="Elements\Quad4NL.cs" />
   </ItemGroup>
   <ItemGroup>

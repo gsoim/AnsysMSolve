@@ -1,17 +1,16 @@
-namespace MGroup.IGA.Entities
+using System;
+using System.Collections.Generic;
+using System.Text;
+using ISAAR.MSolve.Discretization;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.Discretization.Interfaces;
+
+namespace ISAAR.MSolve.IGA.Entities
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Text;
-
-	using MGroup.MSolve.Discretization;
-	using MGroup.MSolve.Discretization.FreedomDegrees;
-	using MGroup.MSolve.Discretization.Interfaces;
-
-	/// <summary>
+    /// <summary>
 	/// Defines a Control Point. Implements <see cref="IWeightedPoint"/>.
 	/// </summary>
-	public class ControlPoint : IWeightedPoint
+	public class ControlPoint:INode
 	{
 		/// <summary>
 		/// List containing degree of freedom constraints.
@@ -22,16 +21,11 @@ namespace MGroup.IGA.Entities
 		/// Dictionary containing the Elements adjacent to the <see cref="ControlPoint"/>.
 		/// </summary>
 		public Dictionary<int, Element> ElementsDictionary { get; } = new Dictionary<int, Element>();
-
-		/// <summary>
-		/// Dictionary containing the Elements adjacent to the <see cref="ControlPoint"/>.
-		/// </summary>
-		Dictionary<int, IElement> INode.ElementsDictionary => throw new NotImplementedException();
-
-		/// <summary>
-		/// Parametric coordinate Heta of the <see cref="ControlPoint"/>.
-		/// </summary>
-		public double Heta { get; set; }
+        Dictionary<int, IElement> INode.ElementsDictionary => throw new NotImplementedException();
+        /// <summary>
+        /// Parametric coordinate Heta of the <see cref="ControlPoint"/>.
+        /// </summary>
+        public double Heta { get; set; }
 
 		/// <summary>
 		/// ID of the <see cref="ControlPoint"/>.

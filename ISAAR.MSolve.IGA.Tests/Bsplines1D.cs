@@ -1,8 +1,8 @@
-﻿using ISAAR.MSolve.IGA.Problems.SupportiveClasses;
-using ISAAR.MSolve.LinearAlgebra.Vectors;
+﻿using ISAAR.MSolve.LinearAlgebra.Vectors;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ISAAR.MSolve.IGA.SupportiveClasses;
 using Xunit;
 
 namespace ISAAR.MSolve.IGA.Tests

@@ -1,4 +1,5 @@
-﻿using ISAAR.MSolve.Discretization.FreedomDegrees;
+﻿using ISAAR.MSolve.Discretization;
+using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.FEM.Elements;
 using ISAAR.MSolve.FEM.Entities;
 using MGroup.Stochastic.Interfaces;

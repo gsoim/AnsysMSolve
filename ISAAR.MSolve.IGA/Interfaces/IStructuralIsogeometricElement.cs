@@ -1,4 +1,4 @@
-﻿namespace MGroup.IGA.Interfaces
+﻿namespace ISAAR.MSolve.IGA.Interfaces
 {
 	/// <summary>
 	/// Interface specific to structural isogeometric elements.

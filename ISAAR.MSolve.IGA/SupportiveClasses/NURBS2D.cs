@@ -1,18 +1,14 @@
-using MGroup.IGA.Elements;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ISAAR.MSolve.Geometry.Coordinates;
+using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
 
-namespace MGroup.IGA.SupportiveClasses
+namespace ISAAR.MSolve.IGA.SupportiveClasses
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-
-	using MGroup.IGA.Entities;
-	using MGroup.LinearAlgebra.Interpolation;
-	using MGroup.LinearAlgebra.Matrices;
-	using MGroup.LinearAlgebra.Vectors;
-	using MGroup.MSolve.Geometry.Coordinates;
-
-	/// <summary>
+    /// <summary>
 	/// Two-dimensional NURBS shape functions.
 	/// </summary>
 	public class Nurbs2D
@@ -276,7 +272,7 @@ namespace MGroup.IGA.SupportiveClasses
 		/// <summary>
 		/// Defines a 2D NURBS shape function for an element given the control points.
 		/// </summary>
-		/// <param name="element">An <see cref="Element"/> of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An <see cref="Element"/> of type <see cref="NURBSElement2D"/>.</param>
 		/// <param name="controlPoints">A <see cref="List{T}"/> containing the control points of the element.</param>
 		public Nurbs2D(Element element, ControlPoint[] controlPoints)
 		{
@@ -409,7 +405,7 @@ namespace MGroup.IGA.SupportiveClasses
 		/// <summary>
 		/// Defines a 2D NURBS shape function for an element given the per axis gauss point coordinates.
 		/// </summary>
-		/// <param name="element">An <see cref="Element"/> of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An <see cref="Element"/> of type <see cref="NURBSElement2D"/>.</param>
 		/// <param name="controlPoints">A <see cref="List{T}"/> containing the control points of the element.</param>
 		/// <param name="parametricGaussPointKsi">An <see cref="IVector"/> containing Gauss points of axis Ksi.</param>
 		/// <param name="parametricGaussPointHeta">An <see cref="IVector"/> containing Gauss points of axis Heta.</param>
@@ -531,7 +527,7 @@ namespace MGroup.IGA.SupportiveClasses
 		/// <summary>
 		/// Defines n 2D NURBS shape function for a face element.
 		/// </summary>
-		/// <param name="element">An <see cref="Element"/> of type <see cref="NurbsElement2D"/>.</param>
+		/// <param name="element">An <see cref="Element"/> of type <see cref="NURBSElement2D"/>.</param>
 		/// <param name="controlPoints">A <see cref="List{T}"/> containing the control points of the element.</param>
 		/// <param name="face">The two-dimensional boundary entities where the <paramref name="element"/> shape functions will be evaluated.</param>
 		public Nurbs2D(Element element, ControlPoint[] controlPoints, Face face)

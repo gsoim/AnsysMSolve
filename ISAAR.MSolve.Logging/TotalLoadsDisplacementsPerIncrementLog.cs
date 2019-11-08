@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.Discretization.Interfaces;
 using ISAAR.MSolve.FEM.Entities;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Logging.Utilities;
@@ -21,11 +22,11 @@ namespace ISAAR.MSolve.Logging
     /// </summary>
     public class TotalLoadsDisplacementsPerIncrementLog
     {
-        private readonly Subdomain subdomain;
+        private readonly ISubdomain subdomain;
         //private readonly Dictionary<INode, HashSet<DOFType>> monitorDofs = new Dictionary<INode, HashSet<DOFType>>();
         private readonly bool isMonitorDofFree;
         private readonly ConstrainedDofForcesCalculator forceCalculator;
-        private readonly Node monitorNode;
+        private readonly INode monitorNode;
         private readonly IDofType monitorDof;
         private readonly string outputFile;
 
@@ -38,8 +39,8 @@ namespace ISAAR.MSolve.Logging
         private double currentTotalDisplacement = 0.0;
         //TODO: It should not be stored at all. Instead we should be able to access the total prescribed displacement from the analyzer
         
-        public TotalLoadsDisplacementsPerIncrementLog(Subdomain subdomain, int maxIncrementsExpected,
-            Node monitorNode, IDofType monitorDof, string outputFile)
+        public TotalLoadsDisplacementsPerIncrementLog(ISubdomain subdomain, int maxIncrementsExpected,
+            INode monitorNode, IDofType monitorDof, string outputFile)
         {
             this.subdomain = subdomain;
             this.monitorNode = monitorNode;

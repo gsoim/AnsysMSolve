@@ -147,7 +147,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return DofEnumerator.GetTransformedMatrix(stiffness);
         }
 
-        public double[] CalculateAccelerationForces(Element element, IList<MassAccelerationLoad> loads)
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
         {
             int numberOfDofs = 3 * Nodes.Count;
             var accelerations = new double[numberOfDofs];
@@ -169,17 +169,17 @@ namespace ISAAR.MSolve.FEM.Elements
             return massMatrix.Multiply(accelerations);
         }
 
-        public double[] CalculateForces(Element element, double[] localTotalDisplacements, double[] localDisplacements)
+        public double[] CalculateForces(IElement element, double[] localTotalDisplacements, double[] localDisplacements)
         {
             throw new NotImplementedException();
         }
 
-        public double[] CalculateForcesForLogging(Element element, double[] localDisplacements)
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
         {
             return CalculateForces(element, localDisplacements, new double[localDisplacements.Length]);
         }
 
-        public Tuple<double[], double[]> CalculateStresses(Element element, double[] localDisplacements,
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements,
             double[] localdDisplacements)
         {
             throw new NotImplementedException();

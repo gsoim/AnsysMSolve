@@ -639,20 +639,20 @@ namespace ISAAR.MSolve.FEM.Elements
             return k;
         }
 
-        public Tuple<double[], double[]> CalculateStresses(Element element, double[] localDisplacements, double[] localdDisplacements)
+        public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             return new Tuple<double[], double[]>(new double[6], new double[6]);
             //throw new NotImplementedException();
         }
 
-        public double[] CalculateForcesForLogging(Element element, double[] localDisplacements)
+        public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
         {
             CalculateRotTranformation(element);
             IMatrix stiffnessMatrix = StiffnessMatrixPure(element);
             return stiffnessMatrix.Multiply(rotTransformation.Multiply(localDisplacements));
         }
 
-        public double[] CalculateForces(Element element, double[] localDisplacements, double[] localdDisplacements)
+        public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             IMatrix stiffnessMatrix = StiffnessMatrix(element);
             //var disps = new double[localDisplacements.Length];
@@ -665,7 +665,7 @@ namespace ISAAR.MSolve.FEM.Elements
             return stiffnessMatrix.Multiply(localDisplacements /*disps*/);
         }
 
-        public double[] CalculateAccelerationForces(Element element, IList<MassAccelerationLoad> loads)
+        public double[] CalculateAccelerationForces(IElement element, IList<MassAccelerationLoad> loads)
         {
             var accelerations = new double[noOfDOFs];
             IMatrix massMatrix = MassMatrix(element);

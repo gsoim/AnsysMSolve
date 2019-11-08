@@ -3,6 +3,7 @@ using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Postprocessing;
 using ISAAR.MSolve.IGA.Readers;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
@@ -24,7 +25,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			Model model = new Model();
 			var filename = "CantileverShell";
 			string filepath = $"..\\..\\..\\InputFiles\\{filename}.iga";
-			IGAFileReader modelReader = new IGAFileReader(model, filepath);
+			var modelReader = new IgaFileReader(model, filepath);
 			modelReader.CreateTSplineShellsModelFromFile();
 
 			model.PatchesDictionary[0].Material = new ElasticMaterial2D(StressState2D.PlaneStress)
@@ -36,9 +37,9 @@ namespace ISAAR.MSolve.IGA.Tests
 
 			foreach (var controlPoint in model.ControlPointsDictionary.Values.Where(cp=>cp.X<3))
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint(){ DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint(){ DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
 			}
 
 			foreach (var controlPoint in model.ControlPointsDictionary.Values.Where(cp => cp.X >49.8))
@@ -46,7 +47,7 @@ namespace ISAAR.MSolve.IGA.Tests
 				model.Loads.Add(new Load()
 				{
 					Amount = -0.5,
-					ControlPoint = model.ControlPointsDictionary[controlPoint.ID],
+					Node = model.ControlPointsDictionary[controlPoint.ID],
 					DOF = StructuralDof.TranslationZ
 				});
 			}
@@ -96,20 +97,20 @@ namespace ISAAR.MSolve.IGA.Tests
 		{
 			Model model = new Model();
 			string filename = "..\\..\\..\\InputFiles\\CantileverShell.iga";
-			IGAFileReader modelReader = new IGAFileReader(model, filename);
+			var modelReader = new IgaFileReader(model, filename);
 			
 			var thickness = 1.0;
 
-			modelReader.CreateTSplineShellsModelFromFile(IGAFileReader.TSplineShellTypes.ThicknessMaterial, new ShellElasticMaterial2D
+			modelReader.CreateTSplineShellsModelFromFile(TSplineShellType.Thickness, new ShellElasticMaterial2D
 			{
 				PoissonRatio = 0.0,
 				YoungModulus = 100,
 			}, thickness);
 			foreach (var controlPoint in model.ControlPointsDictionary.Values.Where(cp => cp.X < 3))
 			{
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint(){DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-				model.ControlPointsDictionary[controlPoint.ID].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint(){DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
 			}
 
 			foreach (var controlPoint in model.ControlPointsDictionary.Values.Where(cp => cp.X > 49.8))
@@ -117,7 +118,7 @@ namespace ISAAR.MSolve.IGA.Tests
 				model.Loads.Add(new Load()
 				{
 					Amount = -0.5,
-					ControlPoint = model.ControlPointsDictionary[controlPoint.ID],
+					Node = model.ControlPointsDictionary[controlPoint.ID],
 					DOF = StructuralDof.TranslationZ
 				});
 			}
@@ -162,7 +163,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			Model model = new Model();
 			var filename = "attempt2";
 			string filepath = $"..\\..\\..\\InputFiles\\{filename}.iga";
-			IGAFileReader modelReader = new IGAFileReader(model, filepath);
+			var modelReader = new IgaFileReader(model, filepath);
 
 			//var thickness = 1.0;
 
@@ -182,19 +183,19 @@ namespace ISAAR.MSolve.IGA.Tests
 
 			for (int i = 0; i < 100; i++)
 			{
-				var id = model.ControlPoints[i].ID;
-				model.ControlPointsDictionary[id].Constrains.Add(new Constraint(){DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[id].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-				model.ControlPointsDictionary[id].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+				var id = model.ControlPoints.ToList()[i].ID;
+				model.ControlPointsDictionary[id].Constraints.Add(new Constraint(){DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[id].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[id].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
 			}
 
-			for (int i = model.ControlPoints.Count-100; i < model.ControlPoints.Count; i++)
+			for (int i = model.ControlPoints.Count()-100; i < model.ControlPoints.Count(); i++)
 			{
-				var id = model.ControlPoints[i].ID;
+				var id = model.ControlPoints.ToList()[i].ID;
 				model.Loads.Add(new Load()
 				{
 					Amount = 100,
-					ControlPoint = model.ControlPointsDictionary[id],
+					Node = model.ControlPointsDictionary[id],
 					DOF = StructuralDof.TranslationZ
 				});
 			}
@@ -223,11 +224,11 @@ namespace ISAAR.MSolve.IGA.Tests
 			Model model = new Model();
 			var filename = "attempt2";
 			string filepath = $"..\\..\\..\\InputFiles\\{filename}.iga";
-			IGAFileReader modelReader = new IGAFileReader(model, filepath);
+			var modelReader = new IgaFileReader(model, filepath);
 
 			var thickness = 1.0;
 			
-			modelReader.CreateTSplineShellsModelFromFile(IGAFileReader.TSplineShellTypes.ThicknessMaterial,new ShellElasticMaterial2D()
+			modelReader.CreateTSplineShellsModelFromFile(TSplineShellType.Thickness ,new ShellElasticMaterial2D()
 			{
 				PoissonRatio = 0.3,
 				YoungModulus = 10000
@@ -236,19 +237,19 @@ namespace ISAAR.MSolve.IGA.Tests
 
 			for (int i = 0; i < 100; i++)
 			{
-				var id = model.ControlPoints[i].ID;
-				model.ControlPointsDictionary[id].Constrains.Add(new Constraint(){DOF = StructuralDof.TranslationX});
-				model.ControlPointsDictionary[id].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-				model.ControlPointsDictionary[id].Constrains.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+				var id = model.ControlPoints.ToList()[i].ID;
+				model.ControlPointsDictionary[id].Constraints.Add(new Constraint(){DOF = StructuralDof.TranslationX});
+				model.ControlPointsDictionary[id].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+				model.ControlPointsDictionary[id].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
 			}
 
-			for (int i = model.ControlPoints.Count - 100; i < model.ControlPoints.Count; i++)
+			for (int i = model.ControlPoints.Count() - 100; i < model.ControlPoints.Count(); i++)
 			{
-				var id = model.ControlPoints[i].ID;
+				var id = model.ControlPoints.ToList()[i].ID;
 				model.Loads.Add(new Load()
 				{
 					Amount = 100,
-					ControlPoint = model.ControlPointsDictionary[id],
+					Node = model.ControlPointsDictionary[id],
 					DOF = StructuralDof.TranslationZ
 				});
 			}

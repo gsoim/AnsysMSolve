@@ -10,7 +10,7 @@ using ISAAR.MSolve.Geometry.Coordinates;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Interfaces;
-using ISAAR.MSolve.IGA.Problems.SupportiveClasses;
+using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Materials;
@@ -115,7 +115,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 			var elementCollocation = (NURBSElement2DCollocation) element;
 
-            var nurbs = new NURBS2D(elementCollocation.Patch.DegreeKsi, elementCollocation.Patch.DegreeHeta,
+            var nurbs = new Nurbs2D(elementCollocation.Patch.DegreeKsi, elementCollocation.Patch.DegreeHeta,
                 elementCollocation.Patch.KnotValueVectorKsi, elementCollocation.Patch.KnotValueVectorHeta,
                 elementCollocation.CollocationPoint, elementCollocation.ControlPoints);
 
