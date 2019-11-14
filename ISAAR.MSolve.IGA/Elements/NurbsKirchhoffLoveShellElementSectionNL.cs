@@ -629,20 +629,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			return surfaceBasisVector1;
 		}
 
-		private double[,] CalculateA3r(double dKsi, double dHeta,
-			double[] surfaceBasisVector2, double[] surfaceBasisVector1)
-		{
-			var a3r = new double[3, 3];
-			a3r[0, 1] = -dKsi * surfaceBasisVector2[2] + surfaceBasisVector1[2] * dHeta;
-			a3r[0, 2] = dKsi * surfaceBasisVector2[1] + -surfaceBasisVector1[1] * dHeta;
-
-			a3r[1, 0] = dKsi * surfaceBasisVector2[2] - surfaceBasisVector1[2] * dHeta;
-			a3r[1, 2] = -dKsi * surfaceBasisVector2[0] + surfaceBasisVector1[0] * dHeta;
-
-			a3r[2, 0] = -dKsi * surfaceBasisVector2[1] + surfaceBasisVector1[1] * dHeta;
-			a3r[2, 1] = dKsi * surfaceBasisVector2[0] + -surfaceBasisVector1[0] * dHeta;
-			return a3r;
-		}
+		
 
 		private double[,] CalculateBendingDeformationMatrix(ControlPoint[] controlPoints, double[] surfaceBasisVector3,
 			Nurbs2D nurbs, int j, double[] surfaceBasisVector2, double[] surfaceBasisVectorDerivative1, double[] surfaceBasisVector1,
@@ -823,102 +810,108 @@ namespace ISAAR.MSolve.IGA.Elements
 				var a12r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsiHeta[i, j]);
 				for (int k = 0; k < controlPoints.Length; k++)
 				{
-					var a11s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsi[k, j]);
+                    var a1s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[k, j]);
+                    var a2s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[k, j]);
+                    
+                    var a11s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsi[k, j]);
 					var a22s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueHeta[k, j]);
 					var a12s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsiHeta[k, j]);
 
-					var a3r = CalculateA3r(nurbs, i, j, surfaceBasisVector2, surfaceBasisVector1);
-					var a3s = CalculateA3r(nurbs, k, j, surfaceBasisVector2, surfaceBasisVector1);
+                    var a3r = CalculateA3r(nurbs, i, j, surfaceBasisVector2, surfaceBasisVector1, a1r, a2r, surfaceBasisVector3, J1);
+                    var a3s = CalculateA3r(nurbs, k, j, surfaceBasisVector2, surfaceBasisVector1, a1s, a2s, surfaceBasisVector3, J1);
 
-					var a1s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[k, j]);
-					var a2s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[k, j]);
 
-					#region B
+                    #region B
 
-					var term1_532 = new Vector[3, 3];
-					for (int m = 0; m < 3; m++)
-					{
-						for (int n = 0; n < 3; n++)
-						{
-							var temp = a1r.GetRow(m).CrossProduct(a2s.GetRow(n));
-							temp.ScaleIntoThis(J1);
-							term1_532[m, n] = temp;
-						}
-					}
+                    var term1_532 = new Vector[3, 3];
+                    for (int m = 0; m < 3; m++)
+                    {
+                        for (int n = 0; n < 3; n++)
+                        {
+                            var temp = a1r.GetColumn(m).CrossProduct(a2s.GetColumn(n)) + a1s.GetColumn(n).CrossProduct(a2r.GetColumn(m));
+                            temp.ScaleIntoThis(J1);
+                            term1_532[m, n] = temp;
+                        }
+                    }
 
-					var term2_532 = new Vector[3, 3];
-					for (int m = 0; m < 3; m++)
-					{
-						var a3r_dashed = a1r.GetRow(m).CrossProduct(surfaceBasisVector2) +
-										 surfaceBasisVector1.CrossProduct(a2r.GetRow(m));
-						for (int n = 0; n < 3; n++)
-						{
-							//TODO: a3s_dashed, a3r_dashed calculated out of the loop for all cp
-							var a3s_dashed = a1s.GetRow(n).CrossProduct(surfaceBasisVector2) +
-											 surfaceBasisVector1.CrossProduct(a2s.GetRow(n));
-							var term_525 = surfaceBasisVector3 * a3s_dashed;
-							term2_532[m, n] = a3r_dashed.Scale(-term_525 / J1 / J1);
-						}
-					}
+                    var term2_532 = new Vector[3, 3];
+                    for (int m = 0; m < 3; m++)
+                    {
+                        var a3r_dashed = a1r.GetRow(m).CrossProduct(surfaceBasisVector2) +
+                                         surfaceBasisVector1.CrossProduct(a2r.GetRow(m));
+                        for (int n = 0; n < 3; n++)
+                        {
+                            //TODO: a3s_dashed, a3r_dashed calculated out of the loop for all cp
+                            var a3s_dashed = a1s.GetRow(n).CrossProduct(surfaceBasisVector2) +
+                                             surfaceBasisVector1.CrossProduct(a2s.GetRow(n));
+                            var term_525 = surfaceBasisVector3 * a3s_dashed;
+                            term2_532[m, n] = a3r_dashed.Scale(-term_525 / J1 / J1);
+                        }
+                    }
 
-					var term3_532 = new Vector[3, 3];
-					for (int m = 0; m < 3; m++)
-					{
-						var a3r_dashed = a1r.GetRow(m).CrossProduct(surfaceBasisVector2) +
-										 surfaceBasisVector1.CrossProduct(a2r.GetRow(m));
-						for (int n = 0; n < 3; n++)
-						{
-							var a3s_dashed = a1s.GetRow(n).CrossProduct(surfaceBasisVector2) +
-											 surfaceBasisVector1.CrossProduct(a2s.GetRow(n));
-							var term_525 = surfaceBasisVector3 * a3r_dashed;
-							term3_532[m, n] = a3s_dashed.Scale(-term_525 / J1 / J1);
-						}
-					}
+                    var term3_532 = new Vector[3, 3];
+                    for (int m = 0; m < 3; m++)
+                    {
+                        var a3r_dashed = a1r.GetRow(m).CrossProduct(surfaceBasisVector2) +
+                                         surfaceBasisVector1.CrossProduct(a2r.GetRow(m));
+                        for (int n = 0; n < 3; n++)
+                        {
+                            var a3s_dashed = a1s.GetRow(n).CrossProduct(surfaceBasisVector2) +
+                                             surfaceBasisVector1.CrossProduct(a2s.GetRow(n));
+                            var term_525 = surfaceBasisVector3 * a3r_dashed;
+                            term3_532[m, n] = a3s_dashed.Scale(-term_525 / J1 / J1);
+                        }
+                    }
 
-					var term4_532 = new Vector[3, 3];
-					for (int m = 0; m < 3; m++)
-					{
-						var a3r_dashed = a1r.GetRow(m).CrossProduct(surfaceBasisVector2) +
-										 surfaceBasisVector1.CrossProduct(a2r.GetRow(m));
-						for (int n = 0; n < 3; n++)
-						{
-							var a3s_dashed = a1s.GetRow(n).CrossProduct(surfaceBasisVector2) +
-											 surfaceBasisVector1.CrossProduct(a2s.GetRow(n));
-							// term 5_31
-							var a3_rs = term1_532[m, n] * surfaceBasisVector3 * J1 + a3r_dashed * a3s_dashed / J1 -
-										(a3r_dashed * surfaceBasisVector3) * (a3s_dashed * surfaceBasisVector3) / J1;
-							term4_532[m, n] = surfaceBasisVector3.Scale(-a3_rs / J1);
-						}
-					}
+                    var term4_532 = new Vector[3, 3];
+                    for (int m = 0; m < 3; m++)
+                    {
+                        var a3r_dashed = a1r.GetRow(m).CrossProduct(surfaceBasisVector2) +
+                                         surfaceBasisVector1.CrossProduct(a2r.GetRow(m));
+                        for (int n = 0; n < 3; n++)
+                        {
+                            var a3s_dashed = a1s.GetRow(n).CrossProduct(surfaceBasisVector2) +
+                                             surfaceBasisVector1.CrossProduct(a2s.GetRow(n));
+                            // term 5_31
+                            var a3_rs = (term1_532[m, n] * J1) *
+                                        (surfaceBasisVector3 * J1)
+                                        + a3r_dashed * a3s_dashed -
+                                        (a3r_dashed * surfaceBasisVector3) * (a3s_dashed * surfaceBasisVector3);
+                            a3_rs *= 1 / J1;
+                            term4_532[m, n] = surfaceBasisVector3.Scale(-a3_rs / J1);
+                        }
+                    }
 
-					var term5_532 = new Vector[3, 3];
-					for (int m = 0; m < 3; m++)
-					{
-						var a3r_dashed = a1r.GetRow(m).CrossProduct(surfaceBasisVector2) +
-										 surfaceBasisVector1.CrossProduct(a2r.GetRow(m));
-						var term_525_r = surfaceBasisVector3 * a3r_dashed;
-						for (int n = 0; n < 3; n++)
-						{
-							var a3s_dashed = a1s.GetRow(n).CrossProduct(surfaceBasisVector2) +
-											 surfaceBasisVector1.CrossProduct(a2s.GetRow(n));
-							var term_525_s = surfaceBasisVector3 * a3s_dashed;
-							term5_532[m, n] = surfaceBasisVector3.Scale(2 / J1 / J1 * term_525_r * term_525_s);
-						}
-					}
+                    var term5_532 = new Vector[3, 3];
+                    for (int m = 0; m < 3; m++)
+                    {
+                        var a3r_dashed = a1r.GetRow(m).CrossProduct(surfaceBasisVector2) +
+                                         surfaceBasisVector1.CrossProduct(a2r.GetRow(m));
+                        var term_525_r = surfaceBasisVector3 * a3r_dashed;
+                        for (int n = 0; n < 3; n++)
+                        {
+                            var a3s_dashed = a1s.GetRow(n).CrossProduct(surfaceBasisVector2) +
+                                             surfaceBasisVector1.CrossProduct(a2s.GetRow(n));
+                            var term_525_s = surfaceBasisVector3 * a3s_dashed;
 
-					var a3rs = new Vector[3, 3];
-					for (int m = 0; m < 3; m++)
-					{
-						for (int n = 0; n < 3; n++)
-						{
-							a3rs[m, n] = term1_532[m, n] + term2_532[m, n] + term3_532[m, n] + term4_532[m, n] +
-										 term5_532[m, n];
-						}
-					}
+                            term5_532[m, n] = surfaceBasisVector3.Scale(2 / J1 / J1 * term_525_r * term_525_s);
+                        }
+                    }
 
-					#endregion B
+                    var a3rs = new Vector[3, 3];
+                    for (int m = 0; m < 3; m++)
+                    {
+                        for (int n = 0; n < 3; n++)
+                        {
+                            a3rs[m, n] = term1_532[m, n] + term2_532[m, n] + term3_532[m, n] + term4_532[m, n] +
+                                         term5_532[m, n];
+                        }
+                    }
 
-					var termA = bendingMoments[0] * (a11r * a3s + a11s * a3r) +
+                    #endregion B
+
+
+                    var termA = bendingMoments[0] * (a11r * a3s + a11s * a3r) +
 								bendingMoments[1] * (a22r * a3s + a22s * a3r) +
 								bendingMoments[2] * (a12r * a3s + a12s * a3r) * 2;
 
@@ -950,39 +943,44 @@ namespace ISAAR.MSolve.IGA.Elements
 		}
 
 
-		private Matrix3by3 CalculateA3r(Nurbs2D nurbs, int i, int j,
-			Vector surfaceBasisVector2, Vector surfaceBasisVector1)
-		{
-			var aux1 = Vector.CreateFromArray(new double[] { nurbs.NurbsDerivativeValuesKsi[i, j], 0, 0 })
-				.CrossProduct(surfaceBasisVector2);
-			var aux2 = Vector.CreateFromArray(new double[] { 0, nurbs.NurbsDerivativeValuesKsi[i, j], 0 })
-				.CrossProduct(surfaceBasisVector2);
-			var aux3 = Vector.CreateFromArray(new double[] { 0, 0, nurbs.NurbsDerivativeValuesKsi[i, j] })
-				.CrossProduct(surfaceBasisVector2);
+        private Matrix3by3 CalculateA3r(Nurbs2D nurbs, int i, int j,
+            Vector surfaceBasisVector2, Vector surfaceBasisVector1, Matrix3by3 a1r, Matrix3by3 a2r, Vector surfaceBasisVector3, double J1)
+        {
+            Matrix3by3 da3_tilde_dr = Matrix3by3.CreateZero(); //r1, r2 kai r3 sthles
 
-			var aux4 = surfaceBasisVector1.CrossProduct(Vector.CreateFromArray(new double[]
-				{nurbs.NurbsDerivativeValuesHeta[i, j], 0, 0}));
-			var aux5 = surfaceBasisVector1.CrossProduct(Vector.CreateFromArray(new double[]
-				{0, nurbs.NurbsDerivativeValuesHeta[i, j], 0}));
-			var aux6 = surfaceBasisVector1.CrossProduct(Vector.CreateFromArray(new double[]
-				{0, 0, nurbs.NurbsDerivativeValuesHeta[i, j]}));
+            for (int i1 = 0; i1 < 3; i1++)
+            {
+                var col = (a1r.GetColumn(i1).CrossProduct(surfaceBasisVector2) + surfaceBasisVector1.CrossProduct(a2r.GetColumn(i1)));
+                for (int i2 = 0; i2 < 3; i2++)
+                {
+                    da3_tilde_dr[i2, i1] = col[i2];
+                }
 
-			var a3r = Matrix3by3.CreateZero();
-			a3r[0, 0] = aux1[0] + aux4[0];
-			a3r[0, 0] = aux1[1] + aux4[1];
-			a3r[0, 0] = aux1[2] + aux4[2];
+            }
 
-			a3r[0, 0] = aux2[0] + aux5[0];
-			a3r[0, 0] = aux2[1] + aux5[1];
-			a3r[0, 0] = aux2[2] + aux5[2];
+            double[] dnorma3_dr = new double[3]; //r1, r2 kai r3 sthles
+            for (int i1 = 0; i1 < 3; i1++)
+            {
+                dnorma3_dr[i1] = surfaceBasisVector3.DotProduct(da3_tilde_dr.GetColumn(i1));
+            }
 
-			a3r[0, 0] = aux3[0] + aux6[0];
-			a3r[0, 0] = aux3[1] + aux6[1];
-			a3r[0, 0] = aux3[2] + aux6[2];
-			return a3r;
-		}
+            Matrix3by3 da3_unit_dr = Matrix3by3.CreateZero();
+            for (int i1 = 0; i1 < 3; i1++)
+            {
+                var col = (1 / J1) * (da3_tilde_dr.GetColumn(i1) - surfaceBasisVector3.Scale(dnorma3_dr[i1]));
+                for (int i2 = 0; i2 < 3; i2++)
+                {
+                    da3_unit_dr[i2, i1] = col[i2];
+                }
+            }
 
-		private Matrix CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs, int j)
+            return da3_unit_dr;
+        }
+
+
+
+
+        private Matrix CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs, int j)
 		{
 			var kmembraneNl =
 				Matrix.CreateZero(controlPoints.Length * 3, controlPoints.Length * 3);
