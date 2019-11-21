@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization;
@@ -514,5 +515,88 @@ namespace ISAAR.MSolve.IGA.Tests
 				Assert.True(Utilities.AreValuesEqual(solutionVectorExpected.At(0, i), solver.LinearSystems[0].Solution[i],
 					1e-9));
 		}
-	}
+
+
+        [Fact]
+        public void IsogeometricSquareShell10x10Deformed()
+        {
+            Model model = new Model();
+            var filename = "SquareShell10x10Deformed";
+            string filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt");
+            IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
+            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
+
+            foreach (var controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary.Values)
+            {
+                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+            }
+
+            Value verticalDistributedLoad = delegate (double x, double y, double z)
+            {
+                return new double[] { 0, 0, 1 };
+            };
+            model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
+
+
+            // Solvers
+            var solverBuilder = new SkylineSolver.Builder();
+            ISolver solver = solverBuilder.BuildSolver(model);
+
+            // Structural problem provider
+            var provider = new ProblemStructural(model, solver);
+
+            // Linear static analysis
+            var childAnalyzer = new LinearAnalyzer(model, solver, provider);
+            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
+
+            // Run the analysis
+            parentAnalyzer.Initialize();
+            parentAnalyzer.Solve();
+
+            var a = solver.LinearSystems[0].Solution;
+        }
+
+        [Fact]
+        public void IsogeometricSquareShell10x10Straight()
+        {
+            Model model = new Model();
+            var filename = "SquareShell10x10Straight";
+            string filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
+            IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
+            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
+
+            foreach (var controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary.Values)
+            {
+                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+            }
+
+            Value verticalDistributedLoad = delegate (double x, double y, double z)
+            {
+                return new double[] { 0, 0, 1 };
+            };
+            model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
+
+
+            // Solvers
+            var solverBuilder = new SkylineSolver.Builder();
+            ISolver solver = solverBuilder.BuildSolver(model);
+
+            // Structural problem provider
+            var provider = new ProblemStructural(model, solver);
+
+            // Linear static analysis
+            var childAnalyzer = new LinearAnalyzer(model, solver, provider);
+            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
+
+            // Run the analysis
+            parentAnalyzer.Initialize();
+            parentAnalyzer.Solve();
+
+            var a = solver.LinearSystems[0].Solution;
+        }
+    }
 }

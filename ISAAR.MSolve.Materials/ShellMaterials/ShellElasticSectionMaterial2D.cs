@@ -7,6 +7,7 @@ namespace ISAAR.MSolve.Materials
 {
     public class ShellElasticSectionMaterial2D : IShellSectionMaterial
     {
+
         private IMatrixView _couplingConstitutiveMatrix;
         private IMatrixView _bendingConstitutiveMatrix;
         private IMatrixView _membraneConstitutiveMatrix;

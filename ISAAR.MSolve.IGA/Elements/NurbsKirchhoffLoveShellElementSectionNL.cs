@@ -25,11 +25,11 @@ namespace ISAAR.MSolve.IGA.Elements
 		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
 		private IDofType[][] dofTypes;
 		
-		private Dictionary<GaussLegendrePoint3D, IShellSectionMaterial>
+		internal Dictionary<GaussLegendrePoint3D, IShellSectionMaterial>
 			materialsAtMidsurfaceGP = new Dictionary<GaussLegendrePoint3D, IShellSectionMaterial>();
 
 		private bool isInitialized;
-		private double[] _solution;
+		internal double[] _solution;
 
 		public NurbsKirchhoffLoveShellElementSectionNL(IShellSectionMaterial shellMaterial, IList<Knot> elementKnots, IList<ControlPoint> elementControlPoints, Patch patch, double thickness)
 		{
@@ -510,31 +510,32 @@ namespace ISAAR.MSolve.IGA.Elements
 					}
 				}
 
-				//var (MembraneForces, BendingMoments) = IntegratedStressesOverThickness(gaussPoints[j]);
+                var MembraneForces = shellElement.materialsAtMidsurfaceGP[gaussPoints[j]].MembraneForces;
+                var BendingMoments = shellElement.materialsAtMidsurfaceGP[gaussPoints[j]].Moments;
 
-				//var KmembraneNL = CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j);
+                var KmembraneNL = CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j);
 
-				//var KbendingNL = CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
-				//	Vector.CreateFromArray(surfaceBasisVector1), Vector.CreateFromArray(surfaceBasisVector2),
-				//	Vector.CreateFromArray(surfaceBasisVector3),
-				//	Vector.CreateFromArray(surfaceBasisVectorDerivative1),
-				//	Vector.CreateFromArray(surfaceBasisVectorDerivative2),
-				//	Vector.CreateFromArray(surfaceBasisVectorDerivative12), J1, j);
+                var KbendingNL = CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
+                    Vector.CreateFromArray(surfaceBasisVector1), Vector.CreateFromArray(surfaceBasisVector2),
+                    Vector.CreateFromArray(surfaceBasisVector3),
+                    Vector.CreateFromArray(surfaceBasisVectorDerivative1),
+                    Vector.CreateFromArray(surfaceBasisVectorDerivative2),
+                    Vector.CreateFromArray(surfaceBasisVectorDerivative12), J1, j);
 
-				//for (var i = 0; i < stiffnessMatrix.GetLength(0); i++)
-				//{
-				//	for (var k = 0; k < stiffnessMatrix.GetLength(1); k++)
-				//	{
-				//		stiffnessMatrix[i, k] += KmembraneNL[i, k] * wFactor;
-				//		stiffnessMatrix[i, k] += KbendingNL[i, k] * wFactor;
-				//	}
-				//}
-			}
+                for (var i = 0; i < stiffnessMatrix.GetLength(0); i++)
+                {
+                    for (var k = 0; k < stiffnessMatrix.GetLength(1); k++)
+                    {
+                        stiffnessMatrix[i, k] += KmembraneNL[i, k] * wFactor;
+                        stiffnessMatrix[i, k] += KbendingNL[i, k] * wFactor;
+                    }
+                }
+            }
 
 			return Matrix.CreateFromArray(stiffnessMatrix);
 		}
 
-		private ControlPoint[] CurrentControlPoint(ControlPoint[] controlPoints)
+		internal ControlPoint[] CurrentControlPoint(ControlPoint[] controlPoints)
 		{
 			var cp = new ControlPoint[controlPoints.Length];
 
@@ -576,7 +577,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			return cp;
 		}
 
-		private static double[,] CalculateHessian(ControlPoint[] controlPoints, Nurbs2D nurbs, int j)
+		internal double[,] CalculateHessian(ControlPoint[] controlPoints, Nurbs2D nurbs, int j)
 		{
 			var hessianMatrix = new double[3, 3];
 			for (var k = 0; k < controlPoints.Length; k++)
@@ -604,7 +605,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			return hessianMatrix;
 		}
 
-		private static double[,] CalculateJacobian(ControlPoint[] controlPoints, Nurbs2D nurbs, int j)
+		internal double[,] CalculateJacobian(ControlPoint[] controlPoints, Nurbs2D nurbs, int j)
 		{
 			var jacobianMatrix = new double[2, 3];
 			for (var k = 0; k < controlPoints.Length; k++)
@@ -620,7 +621,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			return jacobianMatrix;
 		}
 
-		private static double[] CalculateSurfaceBasisVector1(double[,] Matrix, int row)
+		internal double[] CalculateSurfaceBasisVector1(double[,] Matrix, int row)
 		{
 			var surfaceBasisVector1 = new double[3];
 			surfaceBasisVector1[0] = Matrix[row, 0];
@@ -631,7 +632,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 		
 
-		private double[,] CalculateBendingDeformationMatrix(ControlPoint[] controlPoints, double[] surfaceBasisVector3,
+		internal double[,] CalculateBendingDeformationMatrix(ControlPoint[] controlPoints, double[] surfaceBasisVector3,
 			Nurbs2D nurbs, int j, double[] surfaceBasisVector2, double[] surfaceBasisVectorDerivative1, double[] surfaceBasisVector1,
 			double J1, double[] surfaceBasisVectorDerivative2, double[] surfaceBasisVectorDerivative12)
 		{
@@ -752,7 +753,7 @@ namespace ISAAR.MSolve.IGA.Elements
 		private double[] InitialJ1;
 		private IList<GaussLegendrePoint3D> _midsurfaceGaussPoints;
 
-		private void CalculateInitialConfigurationData(ControlPoint[] controlPoints,
+		internal void CalculateInitialConfigurationData(ControlPoint[] controlPoints,
 			Nurbs2D nurbs, IList<GaussLegendrePoint3D> gaussPoints)
 		{
 			var numberOfGP = gaussPoints.Count;
@@ -792,7 +793,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			}
 		}
 
-		private IMatrix CalculateKbendingNL(ControlPoint[] controlPoints,
+		internal IMatrix CalculateKbendingNL(ControlPoint[] controlPoints,
 		   double[] bendingMoments, Nurbs2D nurbs, Vector surfaceBasisVector1,
 		   Vector surfaceBasisVector2, Vector surfaceBasisVector3, Vector surfaceBasisVectorDerivative1, Vector surfaceBasisVectorDerivative2,
 		   Vector surfaceBasisVectorDerivative12, double J1, int j)
@@ -985,7 +986,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 
 
-        private Matrix CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs, int j)
+        internal Matrix CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs, int j)
 		{
 			var kmembraneNl =
 				Matrix.CreateZero(controlPoints.Length * 3, controlPoints.Length * 3);
@@ -1025,7 +1026,7 @@ namespace ISAAR.MSolve.IGA.Elements
 		}
 
 		
-		private double[,] CalculateMembraneDeformationMatrix(ControlPoint[] controlPoints, Nurbs2D nurbs, int j,
+		internal double[,] CalculateMembraneDeformationMatrix(ControlPoint[] controlPoints, Nurbs2D nurbs, int j,
 			double[] surfaceBasisVector1,
 			double[] surfaceBasisVector2)
 		{

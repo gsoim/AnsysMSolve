@@ -19,12 +19,11 @@ using ISAAR.MSolve.Problems;
 using ISAAR.MSolve.Solvers;
 using ISAAR.MSolve.Solvers.Direct;
 using MathNet.Numerics.Data.Matlab;
-using MathNet.Numerics.LinearAlgebra;
 using Xunit;
 
 namespace ISAAR.MSolve.IGA.Tests
 {
-    public class NurbsNonLinearShells
+    public class NurbsNonLinearSectionShells
     {
         private const double Tolerance = 1e-9;
 
@@ -75,16 +74,17 @@ namespace ISAAR.MSolve.IGA.Tests
             });
         }
 
-        private ShellElasticMaterial2D Material => new ShellElasticMaterial2D()
+        private ShellElasticSectionMaterial2D Material => new ShellElasticSectionMaterial2D()
         {
             YoungModulus = 1200000,
             PoissonRatio = 0.0,
             TangentVectorV1 = new double[] { 1.000000000000000000000000000000000000, 0.000000000000000053342746886286800000, 0.000000000000000000000000000000000000 },
             TangentVectorV2 = new double[] { 3.90312782094781000000000000000000E-18, 9.99999999999999000000000000000000E-01, 0.00000000000000000000000000000000E+00, },
-            NormalVectorV3 = new double[] { 0, 0, 1 }
+            NormalVectorV3 = new double[] { 0, 0, 1 },
+            Thickness = 0.1
         };
-        
-        private NurbsKirchhoffLoveShellElementNL Element
+
+        private NurbsKirchhoffLoveShellElementSectionNL Element
         {
             get
             {
@@ -95,8 +95,8 @@ namespace ISAAR.MSolve.IGA.Tests
                 patch.KnotValueVectorKsi = KnotValueVectorKsi();
                 patch.KnotValueVectorHeta = KnotValueVectorHeta();
                 var element =
-                    new NurbsKirchhoffLoveShellElementNL(Material, ElementKnots(), ElementControlPoints(), patch, 0.1);
-                element._solution= localSolution;
+                    new NurbsKirchhoffLoveShellElementSectionNL(Material, ElementKnots(), ElementControlPoints(), patch, 0.1);
+                element._solution = localSolution;
                 return element;
             }
         }
@@ -133,50 +133,7 @@ namespace ISAAR.MSolve.IGA.Tests
             0.00000000000000683985998006887000000000000000000000,
         };
 
-            #endregion
-
-        [Fact]
-        public void IsogeometricCantileverShell()
-        {
-            Model model = new Model();
-            var filename = "CantileverShellBenchmark16x1";
-            var filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt");
-            IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
-
-            Value verticalDistributedLoad = delegate (double x, double y, double z)
-            {
-                return new double[] { 0, 0, 4 };
-            };
-            model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
-
-            for (int i = 0; i < 6; i++)
-            {
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
-            }
-
-            // Solvers
-            var solverBuilder = new DenseMatrixSolver.Builder();
-            ISolver solver = solverBuilder.BuildSolver(model);
-
-            // Structural problem provider
-            var provider = new ProblemStructural(model, solver);
-
-            // Linear static analysis
-            var newtonRaphsonBuilder = new LoadControlAnalyzer.Builder(model, solver, provider, 1000);
-            var childAnalyzer = newtonRaphsonBuilder.Build();
-            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
-
-            var logger = new TotalLoadsDisplacementsPerIncrementLog(model.PatchesDictionary[0], 1000,
-                model.ControlPointsDictionary.Values.Last(), StructuralDof.TranslationZ, "CantileverBenchmarkLog16x1.txt");
-            childAnalyzer.IncrementalLogs.Add(0, logger);
-
-            // Run the analysis
-            parentAnalyzer.Initialize();
-            parentAnalyzer.Solve();
-        }
+        #endregion
 
         [Fact]
         public void JacobianTest()
@@ -188,7 +145,7 @@ namespace ISAAR.MSolve.IGA.Tests
             var jacobianMatrix = shellElement.CalculateJacobian(elementControlPoints, nurbs, 0);
 
             var expectedJacobian = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "jacobian");
-            
+
             for (var i = 0; i < jacobianMatrix.GetLength(0); i++)
             {
                 for (var j = 0; j < jacobianMatrix.GetLength(1); j++)
@@ -257,7 +214,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 }
             }
         }
-        
+
         [Fact]
         public void BendingDeformationMatrixTest()
         {
@@ -301,8 +258,8 @@ namespace ISAAR.MSolve.IGA.Tests
                 }
             }
         }
-        
-        
+
+
         [Fact]
         public void StiffnessMatrixMembraneNLTest()
         {
@@ -356,7 +313,7 @@ namespace ISAAR.MSolve.IGA.Tests
 
 
             var KbendingNL = shellElement.CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
-                Vector.CreateFromArray(surfaceBasisVector1), 
+                Vector.CreateFromArray(surfaceBasisVector1),
                 Vector.CreateFromArray(surfaceBasisVector2),
                 Vector.CreateFromArray(surfaceBasisVector3),
                 Vector.CreateFromArray(surfaceBasisVectorDerivative1),
@@ -375,25 +332,25 @@ namespace ISAAR.MSolve.IGA.Tests
                 }
             }
         }
-        
+
         [Fact]
         public void ConstitutiveMatrixThicknessIntegration()
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            var gaussPoints = shellElement.materialsAtThicknessGP.Keys.ToArray();
+            var gaussPoints = shellElement.materialsAtMidsurfaceGP.Keys.ToArray();
 
             var nurbs = new Nurbs2D(shellElement, controlPoints);
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
-            var (MembraneConstitutiveMatrix, BendingConstitutiveMatrix, CouplingConstitutiveMatrix) =
-                shellElement.IntegratedConstitutiveOverThickness(gaussPoints[0]);
+            var MembraneConstitutiveMatrix= shellElement.materialsAtMidsurfaceGP[gaussPoints[0]].MembraneConstitutiveMatrix;
+            var BendingConstitutiveMatrix = shellElement.materialsAtMidsurfaceGP[gaussPoints[0]].BendingConstitutiveMatrix;
 
             var expectedConstitutiveMembrane = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "MembraneConstitutiveMatrix");
             var expectedConstitutiveBending = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "BendingConstitutiveMatrix");
 
-            for (int i = 0; i < MembraneConstitutiveMatrix.GetLength(0); i++)
+            for (int i = 0; i < MembraneConstitutiveMatrix.NumRows; i++)
             {
-                for (int j = 0; j < MembraneConstitutiveMatrix.GetLength(1); j++)
+                for (int j = 0; j < MembraneConstitutiveMatrix.NumColumns; j++)
                 {
                     Assert.True(Utilities.AreValuesEqual(expectedConstitutiveMembrane[i, j], MembraneConstitutiveMatrix[i, j], Tolerance));
                     Assert.True(Utilities.AreValuesEqual(expectedConstitutiveBending[i, j], BendingConstitutiveMatrix[i, j], Tolerance));
@@ -406,12 +363,13 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            var gaussPoints = shellElement.materialsAtThicknessGP.Keys.ToArray();
+            var gaussPoints = shellElement.materialsAtMidsurfaceGP.Keys.ToArray();
             var nurbs = new Nurbs2D(shellElement, controlPoints);
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
 
             shellElement.CalculateStresses(shellElement, localSolution, new double[27]);
-            var (MembraneForces, BendingMoments) = shellElement.IntegratedStressesOverThickness(gaussPoints[0]);
+            var MembraneForces = shellElement.materialsAtMidsurfaceGP[gaussPoints[0]].MembraneForces;
+            var BendingMoments = shellElement.materialsAtMidsurfaceGP[gaussPoints[0]].Moments;
 
             var expectedMembraneForces = new double[3]
             {
@@ -440,21 +398,21 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            
+
             var nurbs = new Nurbs2D(shellElement, controlPoints);
-            var gaussPoints = shellElement.materialsAtThicknessGP.Keys.ToArray();
+            var gaussPoints = shellElement.materialsAtMidsurfaceGP.Keys.ToArray();
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
             shellElement.CalculateStresses(shellElement, localSolution, new double[27]);
-            var Ktotal=shellElement.StiffnessMatrix(shellElement);
+            var Ktotal = shellElement.StiffnessMatrix(shellElement);
 
             var expectedKtotal = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "Ktotal");
-            
+
             for (var i = 0; i < Ktotal.NumRows; i++)
             {
                 for (var j = 0; j < Ktotal.NumColumns; j++)
                 {
                     Assert.True(Utilities.AreValuesEqual(expectedKtotal[i, j], Ktotal[i, j],
-                        Tolerance));
+                        1e-9));
                 }
             }
         }
@@ -466,10 +424,10 @@ namespace ISAAR.MSolve.IGA.Tests
             var shellElement = Element;
 
             var nurbs = new Nurbs2D(shellElement, controlPoints);
-            var gaussPoints = shellElement.materialsAtThicknessGP.Keys.ToArray();
+            var gaussPoints = shellElement.materialsAtMidsurfaceGP.Keys.ToArray();
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
             shellElement.CalculateStresses(shellElement, localSolution, new double[27]);
-            var f = shellElement.CalculateForces(shellElement,localSolution, new double[27]);
+            var f = shellElement.CalculateForces(shellElement, localSolution, new double[27]);
 
             var expectedForces = new double[27]
             {
