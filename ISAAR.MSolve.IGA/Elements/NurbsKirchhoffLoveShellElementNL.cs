@@ -597,11 +597,10 @@ namespace ISAAR.MSolve.IGA.Elements
 
                 var KmembraneNL = CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j);
                 var KbendingNL = CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
-                    Vector.CreateFromArray(surfaceBasisVector1), Vector.CreateFromArray(surfaceBasisVector2),
-                    Vector.CreateFromArray(surfaceBasisVector3),
-                    Vector.CreateFromArray(surfaceBasisVectorDerivative1),
-                    Vector.CreateFromArray(surfaceBasisVectorDerivative2),
-                    Vector.CreateFromArray(surfaceBasisVectorDerivative12), J1, j);
+                    surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3,
+                    surfaceBasisVectorDerivative1,
+                    surfaceBasisVectorDerivative2,
+                    surfaceBasisVectorDerivative12, J1, j);
                 
                 for (var i = 0; i < stiffnessMatrix.GetLength(0); i++)
                 {
@@ -868,40 +867,44 @@ namespace ISAAR.MSolve.IGA.Elements
 		}
 
 		internal Matrix CalculateKbendingNL(ControlPoint[] controlPoints,
-		   double[] bendingMoments, Nurbs2D nurbs, Vector surfaceBasisVector1,
-		   Vector surfaceBasisVector2, Vector surfaceBasisVector3, Vector surfaceBasisVectorDerivative1, Vector surfaceBasisVectorDerivative2,
-		   Vector surfaceBasisVectorDerivative12, double J1, int j)
+		   double[] bendingMoments, Nurbs2D nurbs, double[] surfaceBasisVector1,
+		   double[] surfaceBasisVector2, double[] surfaceBasisVector3,
+           double[] surfaceBasisVectorDerivative1, double[] surfaceBasisVectorDerivative2,
+		   double[] surfaceBasisVectorDerivative12, double J1, int j)
 		{
 			var KbendingNL =
 				Matrix.CreateZero(controlPoints.Length * 3, controlPoints.Length * 3);
             
             for (int i = 0; i < controlPoints.Length; i++)
-			{
-				var a1r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[i, j]);
-				var a2r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[i, j]);
+            {
+                var dksi_r = nurbs.NurbsDerivativeValuesKsi[i, j];
+                var dheta_r = nurbs.NurbsDerivativeValuesHeta[i, j];
 
-				var a11r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsi[i, j]);
-				var a22r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueHeta[i, j]);
-				var a12r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsiHeta[i, j]);
-				for (int k = 0; k < controlPoints.Length; k++)
+                var d2Ksi_dr2 = nurbs.NurbsSecondDerivativeValueKsi[i, j];
+                var d2Heta_dr2 = nurbs.NurbsSecondDerivativeValueHeta[i, j];
+                var d2KsiHeta_dr2 = nurbs.NurbsSecondDerivativeValueKsiHeta[i, j];
+                var a11r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsi[i, j]);
+                var a22r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueHeta[i, j]);
+                var a12r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsiHeta[i, j]);
+
+                for (int k = 0; k < controlPoints.Length; k++)
 				{
-                    
+                    var d2Ksi_ds2 = nurbs.NurbsSecondDerivativeValueKsi[k, j];
+                    var d2Heta_ds2 = nurbs.NurbsSecondDerivativeValueHeta[k, j];
+                    var d2KsiHeta_ds2 = nurbs.NurbsSecondDerivativeValueKsiHeta[k, j];
                     var a11s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsi[k, j]);
-					var a22s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueHeta[k, j]);
-					var a12s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsiHeta[k, j]);
+                    var a22s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueHeta[k, j]);
+                    var a12s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsiHeta[k, j]);
 
-                    var a1s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[k, j]);
-                    var a2s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[k, j]);
 
-                    var a3r = CalculateA3r(surfaceBasisVector1,surfaceBasisVector2, surfaceBasisVector3, a1r, a2r, J1);
-					var a3s = CalculateA3r(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, a1s, a2s, J1);
+                    var dksi_s = nurbs.NurbsDerivativeValuesKsi[k, j];
+                    var dheta_s = nurbs.NurbsDerivativeValuesHeta[k, j];
 
-					
-					#region B
+                    var a3r = CalculateA3r(surfaceBasisVector1,surfaceBasisVector2, surfaceBasisVector3, dksi_r, dheta_r, J1);
+					var a3s = CalculateA3r(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, dksi_s, dheta_s, J1);
 
-					var a3rs = Calculate_a3rs(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, J1, a1r, a2s, a1s, a2r);
+                    var a3rs = Calculate_a3rs(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, J1, dksi_r, dheta_r, dksi_s, dheta_s);
 
-                    #endregion B
 
                     var ktemp = Matrix3by3.CreateZero();
                     for (int l = 0; l < 3; l++)
@@ -913,21 +916,26 @@ namespace ISAAR.MSolve.IGA.Elements
                                 (a22r.GetColumn(l) * a3s.GetColumn(m) + a22s.GetColumn(m) * a3r.GetColumn(l)),
                                 (a12r.GetColumn(l) * a3s.GetColumn(m) + a12s.GetColumn(m) * a3r.GetColumn(l)) * 2};
 
-                            Bab_rs[0] += surfaceBasisVectorDerivative1 * a3rs[l, m];
-                            Bab_rs[1] += surfaceBasisVectorDerivative2 * a3rs[l, m];
-                            Bab_rs[2] += surfaceBasisVectorDerivative12 * a3rs[l, m];
+                            Bab_rs[0] += surfaceBasisVectorDerivative1[0] * a3rs[l, m][0]+
+                                         surfaceBasisVectorDerivative1[1] * a3rs[l, m][1]+
+                                         surfaceBasisVectorDerivative1[2] * a3rs[l, m][2];
+                            Bab_rs[1] += surfaceBasisVectorDerivative2[0] * a3rs[l, m][0]+
+                                         surfaceBasisVectorDerivative2[1] * a3rs[l, m][1]+
+                                         surfaceBasisVectorDerivative2[2] * a3rs[l, m][2];
+                            Bab_rs[2] += surfaceBasisVectorDerivative12[0] * a3rs[l, m][0]+
+                                         surfaceBasisVectorDerivative12[1] * a3rs[l, m][1]+
+                                         surfaceBasisVectorDerivative12[2] * a3rs[l, m][2];
 
 
-                            ktemp[l,m] += Vector.CreateFromArray(bendingMoments) * Vector.CreateFromArray(Bab_rs);
+                            ktemp[l, m] += Vector.CreateFromArray(bendingMoments) * Vector.CreateFromArray(Bab_rs);
                         }
                     }
-                    
 
-					for (int l = 0; l < 3; l++)
+                    for (int l = 0; l < 3; l++)
 					{
 						for (int m = 0; m < 3; m++)
-						{
-							KbendingNL[i * 3 + l, k * 3 + m] -= ktemp[l, m];
+                        {
+                            KbendingNL[i * 3 + l, k * 3 + m] -= ktemp[l, m];
                         }
 					}
 				}
@@ -936,95 +944,324 @@ namespace ISAAR.MSolve.IGA.Elements
 			return KbendingNL;
 		}
 
-        private static Vector[,] Calculate_a3rs(Vector surfaceBasisVector1, Vector surfaceBasisVector2,
-            Vector surfaceBasisVector3, double J1, Matrix3by3 a1r, Matrix3by3 a2s, Matrix3by3 a1s, Matrix3by3 a2r)
+        private static double[,][] Calculate_a3rs(double[] surfaceBasisVector1, double[] surfaceBasisVector2,
+            double[] surfaceBasisVector3, double J1, double dksi_r, double dheta_r, double dksi_s, double dheta_s)
         {
-            var term1_532 = new Vector[3, 3];
+            var s10 = surfaceBasisVector1[0];
+            var s11 = surfaceBasisVector1[1];
+            var s12 = surfaceBasisVector1[2];
+
+            var s20 = surfaceBasisVector2[0];
+            var s21 = surfaceBasisVector2[1];
+            var s22 = surfaceBasisVector2[2];
+
+            var s30 = surfaceBasisVector3[0];
+            var s31 = surfaceBasisVector3[1];
+            var s32 = surfaceBasisVector3[2];
+
+
+            var term1_532 = new double[3, 3][];
+            term1_532[0, 0] = new double[3];
+            term1_532[0, 1] = new double[3]{0,0, (dheta_s * dksi_r - dheta_r * dksi_s)* J1 };
+            term1_532[0, 2] = new double[3] {0, (dheta_r * dksi_s - dheta_s * dksi_r)* J1, 0};
+
+            term1_532[1, 0] = new double[3] {0, 0, (dheta_r * dksi_s - dheta_s * dksi_r)* J1 };
+            term1_532[1, 1] = new double[3];
+            term1_532[1, 2] = new double[3] {(dheta_s * dksi_r - dheta_r * dksi_s)* J1, 0, 0};
+
+            term1_532[2, 0] = new double[3] {0, (dheta_s * dksi_r - dheta_r * dksi_s)*J1, 0};
+            term1_532[2, 1] = new double[3] {(dheta_r * dksi_s - dheta_s * dksi_r)*J1, 0, 0};
+            term1_532[2, 2] = new double[3];
+
+            var a3r_dashed = new double[3][];
+            a3r_dashed[0] = new double[3]
+            {
+                0, 
+                dheta_r * surfaceBasisVector1[2] - dksi_r * surfaceBasisVector2[2],
+                dksi_r * surfaceBasisVector2[1] - dheta_r * surfaceBasisVector1[1]
+            };
+            a3r_dashed[1]=new double[3]
+            {
+                dksi_r*surfaceBasisVector2[2] - dheta_r*surfaceBasisVector1[2], 
+                0,
+                dheta_r*surfaceBasisVector1[0] - dksi_r*surfaceBasisVector2[0]
+            };
+            a3r_dashed[2]= new double[3]
+            {
+                dheta_r*surfaceBasisVector1[1] - dksi_r*surfaceBasisVector2[1], 
+                dksi_r*surfaceBasisVector2[0] - dheta_r*surfaceBasisVector1[0], 0
+            };
+
+            var a3s_dashed = new double[3][];
+            a3s_dashed[0] = new double[3]
+            {
+                0,
+                dheta_s * surfaceBasisVector1[2] - dksi_s * surfaceBasisVector2[2],
+                dksi_s * surfaceBasisVector2[1] - dheta_s * surfaceBasisVector1[1]
+            };
+            a3s_dashed[1] = new double[3]
+            {
+                dksi_s*surfaceBasisVector2[2] - dheta_s*surfaceBasisVector1[2],
+                0,
+                dheta_s*surfaceBasisVector1[0] - dksi_s*surfaceBasisVector2[0]
+            };
+            a3s_dashed[2] = new double[3]
+            {
+                dheta_s*surfaceBasisVector1[1] - dksi_s*surfaceBasisVector2[1],
+                dksi_s*surfaceBasisVector2[0] - dheta_s*surfaceBasisVector1[0], 
+                0
+            };
+
+
+
+            var term2_532 = new double[3, 3][];
+            term2_532[0, 0] = new double[3]
+            {
+                0,
+                ((s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22)) * (dheta_r * s12 - dksi_r * s22)) / J1 /J1,
+                -((s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22)) * (dheta_r * s11 - dksi_r * s21)) / J1 /J1
+            };
+            term2_532[0, 1] = new double[3]
+            {
+                0,
+                -((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) *
+                  (dheta_r * s12 - dksi_r * s22)) / J1 / J1,
+                ((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) *
+                 (dheta_r * s11 - dksi_r * s21)) / J1 / J1
+            };
+            term2_532[0, 2] = new double[3]
+            {
+                0,
+                ((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
+                 (dheta_r * s12 - dksi_r * s22)) / J1 / J1,
+                -((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
+                  (dheta_r * s11 - dksi_r * s21)) / J1 / J1
+            };
+            
+            term2_532[1, 0] = new double[3]
+            {
+                -((s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22))*(dheta_r*s12 - dksi_r*s22))/J1/J1, 
+                0, 
+                ((s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22))*(dheta_r*s10 - dksi_r*s20))/J1/J1
+            };
+            term2_532[1, 1] = new double[3]
+            {
+                ((s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22))*(dheta_r*s12 - dksi_r*s22))/J1/J1,
+                0, 
+                -((s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22))*(dheta_r*s10 - dksi_r*s20))/J1/J1
+            };
+            term2_532[1, 2] = new double[3]
+            {
+                -((s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21))*(dheta_r*s12 - dksi_r*s22))/J1/J1,
+                0, 
+                ((s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21))*(dheta_r*s10 - dksi_r*s20))/J1/J1
+            };
+
+            term2_532[2, 0] = new double[3]
+            {
+                ((s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22))*(dheta_r*s11 - dksi_r*s21))/J1/J1,
+                -((s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22))*(dheta_r*s10 - dksi_r*s20))/J1/J1, 
+                0
+            };
+            term2_532[2, 1] = new double[3]
+            {
+                -((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) * (dheta_r * s11 - dksi_r * s21)) / J1 / J1,
+                ((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) * (dheta_r * s10 - dksi_r * s20)) / J1 / J1,
+                0
+            };
+            term2_532[2, 2] = new double[3]
+            {
+                ((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) * (dheta_r * s11 - dksi_r * s21)) / J1 / J1,
+                -((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) * (dheta_r * s10 - dksi_r * s20)) / J1 / J1,
+                0
+            };
+
+
+            var term3_532 = new double[3, 3][];
+            term3_532[0, 0] = new double[3]
+            {
+                0,
+                ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s12 - dksi_s*s22))/J1/J1,
+                -((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s11 - dksi_s*s21))/J1/J1
+            };
+            term3_532[0, 1] = new double[3]
+            {
+                -((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s12 - dksi_s*s22))/J1/J1,
+                0,
+                ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s10 - dksi_s*s20))/J1/J1
+            };
+            term3_532[0, 2] = new double[3]
+            {
+                ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s11 - dksi_s*s21))/J1/J1, 
+                -((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s10 - dksi_s*s20))/J1/J1,
+                0
+            };
+
+            term3_532[1, 0] = new double[3]
+            {
+                0, 
+                -((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s12 - dksi_s*s22))/J1/J1, 
+                ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s11 - dksi_s*s21))/J1/J1
+            };
+            term3_532[1, 1] = new double[3]
+            {
+                ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s12 - dksi_s*s22))/J1/J1, 
+                0, 
+                -((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s10 - dksi_s*s20))/J1/J1
+            };
+            term3_532[1, 2] = new double[3]
+            {
+                -((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s11 - dksi_s*s21))/J1/J1, 
+                ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(dheta_s*s10 - dksi_s*s20))/J1/J1, 
+                0
+            };
+
+            term3_532[2, 0] = new double[3]
+            {
+                0, 
+                ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(dheta_s*s12 - dksi_s*s22))/J1/J1, 
+                -((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(dheta_s*s11 - dksi_s*s21))/J1/J1
+            };
+            term3_532[2, 1] = new double[3]
+            {
+                -((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(dheta_s*s12 - dksi_s*s22))/J1/J1, 
+                0, 
+                ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(dheta_s*s10 - dksi_s*s20))/J1/J1
+            };
+            term3_532[2, 2] = new double[3]
+            {
+                ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(dheta_s*s11 - dksi_s*s21))/J1/J1,
+                -((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(dheta_s*s10 - dksi_s*s20))/J1/J1,
+                0
+            };
+
+
+            var term4_532 = new double[3, 3][];
+            term4_532[0, 0] = new double[3]
+            {
+                -(s30*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s11 - dksi_s*s21) + (dheta_r*s12 - dksi_r*s22)*(dheta_s*s12 - dksi_s*s22))/J1 - ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1, 
+                -(s31*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s11 - dksi_s*s21) + (dheta_r*s12 - dksi_r*s22)*(dheta_s*s12 - dksi_s*s22))/J1 - ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1,
+                -(s32*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s11 - dksi_s*s21) + (dheta_r*s12 - dksi_r*s22)*(dheta_s*s12 - dksi_s*s22))/J1 - ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1
+            };
+            term4_532[0, 1] = new double[3]
+            {
+                (s30*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s10 - dksi_s*s20) + J1*s32*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1,
+                (s31*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s10 - dksi_s*s20) + J1*s32*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1, 
+                (s32*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s10 - dksi_s*s20) + J1*s32*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1
+            };
+            term4_532[0, 2] = new double[3]
+            {
+                (s30*(((dheta_r*s12 - dksi_r*s22)*(dheta_s*s10 - dksi_s*s20) - J1*s31*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 + ((s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21))*(s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22)))/J1))/J1, 
+                (s31*(((dheta_r*s12 - dksi_r*s22)*(dheta_s*s10 - dksi_s*s20) - J1*s31*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 + ((s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21))*(s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22)))/J1))/J1,
+                (s32*(((dheta_r*s12 - dksi_r*s22)*(dheta_s*s10 - dksi_s*s20) - J1*s31*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 + ((s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21))*(s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22)))/J1))/J1
+            };
+            
+            term4_532[1, 0] = new double[3]
+            {
+                (s30*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s11 - dksi_s*s21) - J1*s32*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1,
+                (s31*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s11 - dksi_s*s21) - J1*s32*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1,
+                (s32*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s11 - dksi_s*s21) - J1*s32*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1
+            };
+            term4_532[1, 1] = new double[3]
+            {
+                -(s30*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s10 - dksi_s*s20) + (dheta_r*s12 - dksi_r*s22)*(dheta_s*s12 - dksi_s*s22))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1,
+                -(s31*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s10 - dksi_s*s20) + (dheta_r*s12 - dksi_r*s22)*(dheta_s*s12 - dksi_s*s22))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1,
+                -(s32*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s10 - dksi_s*s20) + (dheta_r*s12 - dksi_r*s22)*(dheta_s*s12 - dksi_s*s22))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1
+            };
+            term4_532[1, 2] = new double[3]
+            {
+                (s30*(((dheta_r*s12 - dksi_r*s22)*(dheta_s*s11 - dksi_s*s21) + J1*s30*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1))/J1,
+                (s31*(((dheta_r*s12 - dksi_r*s22)*(dheta_s*s11 - dksi_s*s21) + J1*s30*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1))/J1,
+                (s32*(((dheta_r*s12 - dksi_r*s22)*(dheta_s*s11 - dksi_s*s21) + J1*s30*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1))/J1
+            };
+            
+            term4_532[2, 0] = new double[3]
+            {
+                (s30*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s12 - dksi_s*s22) + J1*s31*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 + ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1,
+                (s31*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s12 - dksi_s*s22) + J1*s31*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 + ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1, 
+                (s32*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s12 - dksi_s*s22) + J1*s31*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 + ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1))/J1
+            };
+            term4_532[2, 1] = new double[3]
+            {
+                (s30*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s12 - dksi_s*s22) - J1*s30*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1,
+                (s31*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s12 - dksi_s*s22) - J1*s30*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1, 
+                (s32*(((dheta_r*s11 - dksi_r*s21)*(dheta_s*s12 - dksi_s*s22) - J1*s30*J1*(dheta_r*dksi_s - dheta_s*dksi_r))/J1 - ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1))/J1
+            };
+            term4_532[2, 2] = new double[3]
+            {
+                -(s30*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s10 - dksi_s*s20) + (dheta_r*s11 - dksi_r*s21)*(dheta_s*s11 - dksi_s*s21))/J1 - ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1))/J1,
+                -(s31*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s10 - dksi_s*s20) + (dheta_r*s11 - dksi_r*s21)*(dheta_s*s11 - dksi_s*s21))/J1 - ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1))/J1,
+                -(s32*(((dheta_r*s10 - dksi_r*s20)*(dheta_s*s10 - dksi_s*s20) + (dheta_r*s11 - dksi_r*s21)*(dheta_s*s11 - dksi_s*s21))/J1 - ((s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1))/J1
+            };
+
+
+            var term5_532 = new double[3, 3][];
+            term5_532[0, 0] = new double[3]
+            {
+                (2 * s30 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) * (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
+                (2 * s31 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) * (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
+                (2 * s32 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) * (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1
+            };
+            term5_532[0, 1] = new double[3]
+            {
+                -(2 * s30 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) * (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
+                -(2 * s31 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) * (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
+                -(2 * s32 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) * (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1
+            };
+            term5_532[0, 2] = new double[3]
+            {
+                (2*s30*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21))*(s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22)))/J1/J1,
+                (2*s31*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21))*(s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22)))/J1/J1, 
+                (2*s32*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21))*(s32*(dheta_r*s11 - dksi_r*s21) - s31*(dheta_r*s12 - dksi_r*s22)))/J1/J1
+            };
+
+            term5_532[1, 0] = new double[3]
+            {
+                -(2*s30*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1/J1,
+                -(2*s31*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1/J1, 
+                -(2*s32*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1/J1
+            };
+            term5_532[1, 1] = new double[3]
+            {
+                (2*s30*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1/J1, 
+                (2*s31*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1/J1, 
+                (2*s32*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1/J1
+            };
+            term5_532[1, 2] = new double[3]
+            {
+                -(2*s30*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1/J1,
+                -(2*s31*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1/J1, 
+                -(2*s32*(s32*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s12 - dksi_r*s22))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1/J1
+            };
+
+            term5_532[2, 0] = new double[3]
+            {
+                (2*s30*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1/J1,
+                (2*s31*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1/J1,
+                (2*s32*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s11 - dksi_s*s21) - s31*(dheta_s*s12 - dksi_s*s22)))/J1/J1
+            };
+            term5_532[2, 1] = new double[3]
+            {
+                -(2*s30*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1/J1, 
+                -(2*s31*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1/J1,
+                -(2*s32*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s32*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s12 - dksi_s*s22)))/J1/J1
+            };
+            term5_532[2, 2] = new double[3]
+            {
+                (2*s30*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1/J1,
+                (2*s31*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1/J1, 
+                (2*s32*(s31*(dheta_r*s10 - dksi_r*s20) - s30*(dheta_r*s11 - dksi_r*s21))*(s31*(dheta_s*s10 - dksi_s*s20) - s30*(dheta_s*s11 - dksi_s*s21)))/J1/J1
+            };
+
+            var a3rs = new double[3, 3][];
             for (int m = 0; m < 3; m++)
             {
                 for (int n = 0; n < 3; n++)
                 {
-                    var temp = a1r.GetColumn(m).CrossProduct(a2s.GetColumn(n)) +
-                               a1s.GetColumn(n).CrossProduct(a2r.GetColumn(m));
-                    temp.ScaleIntoThis(J1);
-                    term1_532[m, n] = temp;
-                }
-            }
-
-            var term2_532 = new Vector[3, 3];
-            for (int m = 0; m < 3; m++)
-            {
-                // 5.24 Kiendl Thesis
-                var a3r_dashed = a1r.GetColumn(m).CrossProduct(surfaceBasisVector2) +
-                                 surfaceBasisVector1.CrossProduct(a2r.GetColumn(m));
-                for (int n = 0; n < 3; n++)
-                {
-                    //TODO: a3s_dashed, a3r_dashed calculated out of the loop for all cp
-                    var a3s_dashed = a1s.GetColumn(n).CrossProduct(surfaceBasisVector2) +
-                                     surfaceBasisVector1.CrossProduct(a2s.GetColumn(n));
-                    // 5.25 Kiendl Thesis
-                    var term_525 = surfaceBasisVector3 * a3s_dashed;
-                    term2_532[m, n] = a3r_dashed.Scale(-term_525 / J1 / J1);
-                }
-            }
-
-            var term3_532 = new Vector[3, 3];
-            for (int m = 0; m < 3; m++)
-            {
-                var a3r_dashed = a1r.GetColumn(m).CrossProduct(surfaceBasisVector2) +
-                                 surfaceBasisVector1.CrossProduct(a2r.GetColumn(m));
-                for (int n = 0; n < 3; n++)
-                {
-                    var a3s_dashed = a1s.GetColumn(n).CrossProduct(surfaceBasisVector2) +
-                                     surfaceBasisVector1.CrossProduct(a2s.GetColumn(n));
-                    var term_525 = surfaceBasisVector3 * a3r_dashed;
-                    term3_532[m, n] = a3s_dashed.Scale(-term_525 / J1 / J1);
-                }
-            }
-
-            var term4_532 = new Vector[3, 3];
-            for (int m = 0; m < 3; m++)
-            {
-                var a3r_dashed = a1r.GetColumn(m).CrossProduct(surfaceBasisVector2) +
-                                 surfaceBasisVector1.CrossProduct(a2r.GetColumn(m));
-                for (int n = 0; n < 3; n++)
-                {
-                    var a3s_dashed = a1s.GetColumn(n).CrossProduct(surfaceBasisVector2) +
-                                     surfaceBasisVector1.CrossProduct(a2s.GetColumn(n));
-                    // term 5_31
-                    var a3_rs = ((term1_532[m, n] * J1) *
-                                 (surfaceBasisVector3 * J1)
-                                 + a3r_dashed * a3s_dashed) / J1 -
-                                ((a3r_dashed * surfaceBasisVector3 * J1) *
-                                 (a3s_dashed * surfaceBasisVector3 * J1)) / J1 / J1 / J1;
-
-                    term4_532[m, n] = surfaceBasisVector3.Scale(-a3_rs / J1);
-                }
-            }
-
-            var term5_532 = new Vector[3, 3];
-            for (int m = 0; m < 3; m++)
-            {
-                var a3r_dashed = a1r.GetColumn(m).CrossProduct(surfaceBasisVector2) +
-                                 surfaceBasisVector1.CrossProduct(a2r.GetColumn(m));
-                var term_525_r = surfaceBasisVector3 * a3r_dashed;
-                for (int n = 0; n < 3; n++)
-                {
-                    var a3s_dashed = a1s.GetColumn(n).CrossProduct(surfaceBasisVector2) +
-                                     surfaceBasisVector1.CrossProduct(a2s.GetColumn(n));
-                    var term_525_s = surfaceBasisVector3 * a3s_dashed;
-
-                    term5_532[m, n] = surfaceBasisVector3.Scale(2 / J1 / J1 * term_525_r * term_525_s);
-                }
-            }
-
-            var a3rs = new Vector[3, 3];
-            for (int m = 0; m < 3; m++)
-            {
-                for (int n = 0; n < 3; n++)
-                {
-                    a3rs[m, n] = term1_532[m, n] + term2_532[m, n] + term3_532[m, n] + term4_532[m, n] +
-                                 term5_532[m, n];
+                    a3rs[m, n] = new double[3];
+                    a3rs[m, n][0] = term1_532[m, n][0] + term2_532[m, n][0] + term3_532[m, n][0] + term4_532[m, n][0] + term5_532[m, n][0];
+                    a3rs[m, n][1] = term1_532[m, n][1] + term2_532[m, n][1] + term3_532[m, n][1] + term4_532[m, n][1] + term5_532[m, n][1];
+                    a3rs[m, n][2] = term1_532[m, n][2] + term2_532[m, n][2] + term3_532[m, n][2] + term4_532[m, n][2] + term5_532[m, n][2];
                 }
             }
 
@@ -1032,40 +1269,49 @@ namespace ISAAR.MSolve.IGA.Elements
         }
 
 
-        private Matrix3by3 CalculateA3r(Vector surfaceBasisVector1,
-            Vector surfaceBasisVector2, Vector surfaceBasisVector3,
-            Matrix3by3 a1r, Matrix3by3 a2r, double J1)
+        private Matrix CalculateA3r(double[] surfaceBasisVector1,
+            double[] surfaceBasisVector2, double[] surfaceBasisVector3,
+            double dksi_r, double dheta_r, double J1)
 		{
-            Matrix3by3 da3_tilde_dr = Matrix3by3.CreateZero(); //r1, r2 kai r3 sthles
+            var da3_tilde_dr = new double[3,3];
 
-            for (int i1 = 0; i1 < 3; i1++)
-            {
-                var col = (a1r.GetColumn(i1).CrossProduct(surfaceBasisVector2) + 
-                           surfaceBasisVector1.CrossProduct(a2r.GetColumn(i1)));
-                for (int i2 = 0; i2 < 3; i2++)
-                {
-                    da3_tilde_dr[i2, i1] = col[i2];
-                }
-                
-            }
+            da3_tilde_dr[1, 0] = dheta_r * surfaceBasisVector1[2] - dksi_r * surfaceBasisVector2[2];
+            da3_tilde_dr[2, 0] = dksi_r * surfaceBasisVector2[1] - dheta_r * surfaceBasisVector1[1];
 
-            double[] dnorma3_dr = new double[3]; //r1, r2 kai r3 sthles
-            for (int i1 = 0; i1 < 3; i1++)
-            {
-                dnorma3_dr[i1] = surfaceBasisVector3.DotProduct(da3_tilde_dr.GetColumn(i1));
-            }
+            da3_tilde_dr[0, 1] = dksi_r * surfaceBasisVector2[2] - dheta_r * surfaceBasisVector1[2];
+            da3_tilde_dr[2, 1] = dheta_r * surfaceBasisVector1[0] - dksi_r * surfaceBasisVector2[0];
 
-            Matrix3by3 da3_unit_dr = Matrix3by3.CreateZero(); 
-            for (int i1 = 0; i1 < 3; i1++)
-            {
-                var col = (1 / J1) * (da3_tilde_dr.GetColumn(i1) - surfaceBasisVector3.Scale(dnorma3_dr[i1]));
-                for (int i2 = 0; i2 < 3; i2++)
-                {
-                    da3_unit_dr[i2, i1] = col[i2];
-                }
-            }
+            da3_tilde_dr[0, 2] = dheta_r * surfaceBasisVector1[1] - dksi_r * surfaceBasisVector2[1];
+            da3_tilde_dr[1, 2] = dksi_r * surfaceBasisVector2[0] - dheta_r * surfaceBasisVector1[0];
 
-            return da3_unit_dr;
+
+            var dnorma3_dr = new double[3];
+            dnorma3_dr[0] = surfaceBasisVector3[0] * da3_tilde_dr[0, 0] +
+                            surfaceBasisVector3[1] * da3_tilde_dr[1, 0] +
+                            surfaceBasisVector3[2] * da3_tilde_dr[2, 0];
+
+            dnorma3_dr[1] = surfaceBasisVector3[0] * da3_tilde_dr[0, 1] +
+                            surfaceBasisVector3[1] * da3_tilde_dr[1, 1] +
+                            surfaceBasisVector3[2] * da3_tilde_dr[2, 1];
+
+            dnorma3_dr[2] = surfaceBasisVector3[0] * da3_tilde_dr[0, 2] +
+                            surfaceBasisVector3[1] * da3_tilde_dr[1, 2] +
+                            surfaceBasisVector3[2] * da3_tilde_dr[2, 2];
+
+            var da3_unit_dr = new double[3, 3];
+            da3_unit_dr[0, 0] = da3_tilde_dr[0, 0] - surfaceBasisVector3[0] * dnorma3_dr[0];
+            da3_unit_dr[1, 0] = da3_tilde_dr[1, 0] - surfaceBasisVector3[1] * dnorma3_dr[0];
+            da3_unit_dr[2, 0] = da3_tilde_dr[2, 0] - surfaceBasisVector3[2] * dnorma3_dr[0];
+
+            da3_unit_dr[0, 1] = da3_tilde_dr[0, 1] - surfaceBasisVector3[0] * dnorma3_dr[1];
+            da3_unit_dr[1, 1] = da3_tilde_dr[1, 1] - surfaceBasisVector3[1] * dnorma3_dr[1];
+            da3_unit_dr[2, 1] = da3_tilde_dr[2, 1] - surfaceBasisVector3[2] * dnorma3_dr[1];
+
+            da3_unit_dr[0, 2] = da3_tilde_dr[0, 2] - surfaceBasisVector3[0] * dnorma3_dr[2];
+            da3_unit_dr[1, 2] = da3_tilde_dr[1, 2] - surfaceBasisVector3[1] * dnorma3_dr[2];
+            da3_unit_dr[2, 2] = da3_tilde_dr[2, 2] - surfaceBasisVector3[2] * dnorma3_dr[2];
+            
+            return Matrix.CreateFromArray(da3_unit_dr);
         }
 
 		internal double[,] CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs, int j)
