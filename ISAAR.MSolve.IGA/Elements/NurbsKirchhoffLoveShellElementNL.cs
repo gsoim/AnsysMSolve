@@ -1068,30 +1068,27 @@ namespace ISAAR.MSolve.IGA.Elements
             return da3_unit_dr;
         }
 
-		internal Matrix CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs, int j)
+		internal double[,] CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs, int j)
 		{
-			var kmembraneNl =
-				Matrix.CreateZero(controlPoints.Length * 3, controlPoints.Length * 3);
+			var kmembraneNl = new double[controlPoints.Length * 3, controlPoints.Length * 3];
 
 			for (var i = 0; i < controlPoints.Length; i++)
-			{
-				var a1r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[i, j]);
-				var a2r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[i, j]);
+            {
+                var dksi_r = nurbs.NurbsDerivativeValuesKsi[i, j];
+                var dheta_r = nurbs.NurbsDerivativeValuesHeta[i, j];
+
 				for (int k = 0; k < controlPoints.Length; k++)
-				{
-					var a1s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[k, j]);
-					var a2s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[k, j]);
+                {
+                    var dksi_s = nurbs.NurbsDerivativeValuesKsi[k, j];
+                    var dheta_s = nurbs.NurbsDerivativeValuesHeta[k, j];
+                    
+					var aux = membraneForces[0] * dksi_r * dksi_s + membraneForces[1] * dheta_r * dheta_s +
+								 membraneForces[2] * (dksi_r * dheta_s + dksi_s * dheta_r);
 
-					var klocal = membraneForces[0] * a1r * a1s + membraneForces[1] * a2r * a2s +
-								 membraneForces[2] * (a1r * a2s + a1s * a2r);
+                    kmembraneNl[i * 3, k * 3] += aux;
+                    kmembraneNl[i * 3 + 1, k * 3 + 1] += aux;
+                    kmembraneNl[i * 3 + 2, k * 3 + 2] += aux;
 
-					for (int l = 0; l < 3; l++)
-					{
-						for (int m = 0; m < 3; m++)
-						{
-							kmembraneNl[i * 3 + l, k * 3 + m] += klocal[l, m];
-						}
-					}
 				}
 			}
 
