@@ -1110,16 +1110,19 @@ namespace ISAAR.MSolve.IGA.Elements
 
 
             var term1_532 = new double[3, 3][];
+            var aux1Term1 = (dheta_s * dksi_r - dheta_r * dksi_s) * J1;
+            var aux2Term1 = dheta_r * dksi_s - dheta_s * dksi_r;
+            var aux3Term1 = aux2Term1 * J1;
             term1_532[0, 0] = new double[3];
-            term1_532[0, 1] = new double[3] {0, 0, (dheta_s * dksi_r - dheta_r * dksi_s) * J1};
-            term1_532[0, 2] = new double[3] {0, (dheta_r * dksi_s - dheta_s * dksi_r) * J1, 0};
+            term1_532[0, 1] = new double[3] {0, 0, aux1Term1 };
+            term1_532[0, 2] = new double[3] {0, aux3Term1, 0};
 
-            term1_532[1, 0] = new double[3] {0, 0, (dheta_r * dksi_s - dheta_s * dksi_r) * J1};
+            term1_532[1, 0] = new double[3] {0, 0, aux3Term1 };
             term1_532[1, 1] = new double[3];
-            term1_532[1, 2] = new double[3] {(dheta_s * dksi_r - dheta_r * dksi_s) * J1, 0, 0};
+            term1_532[1, 2] = new double[3] { aux1Term1, 0, 0};
 
-            term1_532[2, 0] = new double[3] {0, (dheta_s * dksi_r - dheta_r * dksi_s) * J1, 0};
-            term1_532[2, 1] = new double[3] {(dheta_r * dksi_s - dheta_s * dksi_r) * J1, 0, 0};
+            term1_532[2, 0] = new double[3] {0, aux1Term1, 0};
+            term1_532[2, 1] = new double[3] { aux3Term1, 0, 0};
             term1_532[2, 2] = new double[3];
 
             var a3r_dashed = new double[3][];
@@ -1163,155 +1166,150 @@ namespace ISAAR.MSolve.IGA.Elements
 
 
             var term2_532 = new double[3, 3][];
+            var aux1Term2 = dheta_s * s11 - dksi_s * s21;
+            var aux2Term2 = dheta_s * s12 - dksi_s * s22;
+            var aux3Term2 = dheta_r * s12 - dksi_r * s22;
+            var aux4Term2 = dheta_r * s11 - dksi_r * s21;
+            var aux5Term2 = dheta_s * s10 - dksi_s * s20;
+            var aux6Term2 = dheta_r * s10 - dksi_r * s20;
+            var aux7Term2 = s32 * aux1Term2 - s31 * aux2Term2;
+            var aux8Term2 = s32 * aux5Term2 - s30 * aux2Term2;
+            var aux9Term2 = s31 * aux5Term2 - s30 * aux1Term2;
+
             term2_532[0, 0] = new double[3]
             {
                 0,
-                ((s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22)) *
-                 (dheta_r * s12 - dksi_r * s22)) / J1 / J1,
-                -((s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22)) *
-                  (dheta_r * s11 - dksi_r * s21)) / J1 / J1
+                (aux7Term2 *
+                 aux3Term2) / J1 / J1,
+                -(aux7Term2 *
+                  aux4Term2) / J1 / J1
             };
             term2_532[0, 1] = new double[3]
             {
                 0,
-                -((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) *
-                  (dheta_r * s12 - dksi_r * s22)) / J1 / J1,
-                ((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) *
-                 (dheta_r * s11 - dksi_r * s21)) / J1 / J1
+                -(aux8Term2 *
+                  aux3Term2) / J1 / J1,
+                (aux8Term2 *
+                 aux4Term2) / J1 / J1
             };
             term2_532[0, 2] = new double[3]
             {
                 0,
-                ((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                 (dheta_r * s12 - dksi_r * s22)) / J1 / J1,
-                -((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                  (dheta_r * s11 - dksi_r * s21)) / J1 / J1
+                (aux9Term2 *
+                 aux3Term2) / J1 / J1,
+                -(aux9Term2 *
+                  aux4Term2) / J1 / J1
             };
 
             term2_532[1, 0] = new double[3]
             {
-                -((s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22)) *
-                  (dheta_r * s12 - dksi_r * s22)) / J1 / J1,
+                -(aux7Term2 *
+                  aux3Term2) / J1 / J1,
                 0,
-                ((s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22)) *
-                 (dheta_r * s10 - dksi_r * s20)) / J1 / J1
+                (aux7Term2 *
+                 aux6Term2) / J1 / J1
             };
             term2_532[1, 1] = new double[3]
             {
-                ((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) *
-                 (dheta_r * s12 - dksi_r * s22)) / J1 / J1,
+                (aux8Term2 *
+                 aux3Term2) / J1 / J1,
                 0,
-                -((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) *
-                  (dheta_r * s10 - dksi_r * s20)) / J1 / J1
+                -(aux8Term2 *
+                  aux6Term2) / J1 / J1
             };
             term2_532[1, 2] = new double[3]
             {
-                -((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                  (dheta_r * s12 - dksi_r * s22)) / J1 / J1,
+                -(aux9Term2 *
+                  aux3Term2) / J1 / J1,
                 0,
-                ((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                 (dheta_r * s10 - dksi_r * s20)) / J1 / J1
+                (aux9Term2 *
+                 aux6Term2) / J1 / J1
             };
 
             term2_532[2, 0] = new double[3]
             {
-                ((s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22)) *
-                 (dheta_r * s11 - dksi_r * s21)) / J1 / J1,
-                -((s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22)) *
-                  (dheta_r * s10 - dksi_r * s20)) / J1 / J1,
+                (aux7Term2 *
+                 aux4Term2) / J1 / J1,
+                -(aux7Term2 *
+                  aux6Term2) / J1 / J1,
                 0
             };
             term2_532[2, 1] = new double[3]
             {
-                -((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) *
-                  (dheta_r * s11 - dksi_r * s21)) / J1 / J1,
-                ((s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22)) *
-                 (dheta_r * s10 - dksi_r * s20)) / J1 / J1,
+                -(aux8Term2 *
+                  aux4Term2) / J1 / J1,
+                (aux8Term2 *
+                 aux6Term2) / J1 / J1,
                 0
             };
             term2_532[2, 2] = new double[3]
             {
-                ((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                 (dheta_r * s11 - dksi_r * s21)) / J1 / J1,
-                -((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                  (dheta_r * s10 - dksi_r * s20)) / J1 / J1,
+                (aux9Term2 *
+                 aux4Term2) / J1 / J1,
+                -(aux9Term2 *
+                  aux6Term2) / J1 / J1,
                 0
             };
 
 
             var term3_532 = new double[3, 3][];
+            var aux1Term3 = s32 * aux4Term2 - s31 * aux3Term2;
+            var aux2Term3 = s32 * aux6Term2 - s30 * aux3Term2;
+            var aux3Term3 = s31 * aux6Term2 - s30 * aux4Term2;
             term3_532[0, 0] = new double[3]
             {
                 0,
-                ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                 (dheta_s * s12 - dksi_s * s22)) / J1 / J1,
-                -((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                  (dheta_s * s11 - dksi_s * s21)) / J1 / J1
+                (aux1Term3 * aux2Term2) / J1 / J1,
+                -(aux1Term3 * aux1Term2) / J1 / J1
             };
             term3_532[0, 1] = new double[3]
             {
-                -((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                  (dheta_s * s12 - dksi_s * s22)) / J1 / J1,
+                -(aux1Term3 * aux2Term2) / J1 / J1,
                 0,
-                ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                 (dheta_s * s10 - dksi_s * s20)) / J1 / J1
+                (aux1Term3 * aux5Term2) / J1 / J1
             };
             term3_532[0, 2] = new double[3]
             {
-                ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                 (dheta_s * s11 - dksi_s * s21)) / J1 / J1,
-                -((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                  (dheta_s * s10 - dksi_s * s20)) / J1 / J1,
+                (aux1Term3 * aux1Term2) / J1 / J1,
+                -(aux1Term3 * aux5Term2) / J1 / J1,
                 0
             };
 
             term3_532[1, 0] = new double[3]
             {
                 0,
-                -((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (dheta_s * s12 - dksi_s * s22)) / J1 / J1,
-                ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                 (dheta_s * s11 - dksi_s * s21)) / J1 / J1
+                -(aux2Term3 * aux2Term2) / J1 / J1,
+                (aux2Term3 * aux1Term2) / J1 / J1
             };
             term3_532[1, 1] = new double[3]
             {
-                ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                 (dheta_s * s12 - dksi_s * s22)) / J1 / J1,
+                (aux2Term3 * aux2Term2) / J1 / J1,
                 0,
-                -((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (dheta_s * s10 - dksi_s * s20)) / J1 / J1
+                -(aux2Term3 * aux5Term2) / J1 / J1
             };
             term3_532[1, 2] = new double[3]
             {
-                -((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (dheta_s * s11 - dksi_s * s21)) / J1 / J1,
-                ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                 (dheta_s * s10 - dksi_s * s20)) / J1 / J1,
+                -(aux2Term3 * aux1Term2) / J1 / J1,
+                (aux2Term3 * aux5Term2) / J1 / J1,
                 0
             };
 
             term3_532[2, 0] = new double[3]
             {
                 0,
-                ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (dheta_s * s12 - dksi_s * s22)) / J1 / J1,
-                -((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                  (dheta_s * s11 - dksi_s * s21)) / J1 / J1
+                (aux3Term3 * aux2Term2) / J1 / J1,
+                -(aux3Term3 * aux1Term2) / J1 / J1
             };
             term3_532[2, 1] = new double[3]
             {
-                -((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                  (dheta_s * s12 - dksi_s * s22)) / J1 / J1,
+                -(aux3Term3 * aux2Term2) / J1 / J1,
                 0,
-                ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (dheta_s * s10 - dksi_s * s20)) / J1 / J1
+                (aux3Term3 * aux5Term2) / J1 / J1
             };
             term3_532[2, 2] = new double[3]
             {
-                ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (dheta_s * s11 - dksi_s * s21)) / J1 / J1,
-                -((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                  (dheta_s * s10 - dksi_s * s20)) / J1 / J1,
+                (aux3Term3 * aux1Term2) / J1 / J1,
+                -(aux3Term3 * aux5Term2) / J1 / J1,
                 0
             };
 
@@ -1319,226 +1317,172 @@ namespace ISAAR.MSolve.IGA.Elements
             var term4_532 = new double[3, 3][];
             term4_532[0, 0] = new double[3]
             {
-                -(s30 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s11 - dksi_s * s21) +
-                          (dheta_r * s12 - dksi_r * s22) * (dheta_s * s12 - dksi_s * s22)) / J1 -
-                         ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                          (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                -(s31 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s11 - dksi_s * s21) +
-                          (dheta_r * s12 - dksi_r * s22) * (dheta_s * s12 - dksi_s * s22)) / J1 -
-                         ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                          (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                -(s32 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s11 - dksi_s * s21) +
-                          (dheta_r * s12 - dksi_r * s22) * (dheta_s * s12 - dksi_s * s22)) / J1 -
-                         ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                          (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1
+                -(s30 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+                         (aux1Term3 * aux7Term2) / J1)) / J1,
+                -(s31 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+                         (aux1Term3 * aux7Term2) / J1)) / J1,
+                -(s32 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+                         (aux1Term3 * aux7Term2) / J1)) / J1
             };
             term4_532[0, 1] = new double[3]
             {
-                (s30 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s10 - dksi_s * s20) +
-                         J1 * s32 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                (s31 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s10 - dksi_s * s20) +
-                         J1 * s32 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                (s32 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s10 - dksi_s * s20) +
-                         J1 * s32 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1
+                (s30 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+                        (aux1Term3 * aux8Term2) / J1)) / J1,
+                (s31 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+                        (aux1Term3 * aux8Term2) / J1)) / J1,
+                (s32 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+                        (aux1Term3 * aux8Term2) / J1)) / J1
             };
             term4_532[0, 2] = new double[3]
             {
-                (s30 * (((dheta_r * s12 - dksi_r * s22) * (dheta_s * s10 - dksi_s * s20) -
-                         J1 * s31 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 +
-                        ((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                         (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22))) / J1)) / J1,
-                (s31 * (((dheta_r * s12 - dksi_r * s22) * (dheta_s * s10 - dksi_s * s20) -
-                         J1 * s31 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 +
-                        ((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                         (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22))) / J1)) / J1,
-                (s32 * (((dheta_r * s12 - dksi_r * s22) * (dheta_s * s10 - dksi_s * s20) -
-                         J1 * s31 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 +
-                        ((s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                         (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22))) / J1)) / J1
+                (s30 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+                        (aux9Term2 * aux1Term3) / J1)) / J1,
+                (s31 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+                        (aux9Term2 * aux1Term3) / J1)) / J1,
+                (s32 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+                        (aux9Term2 * aux1Term3) / J1)) / J1
             };
 
             term4_532[1, 0] = new double[3]
             {
-                (s30 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s11 - dksi_s * s21) -
-                         J1 * s32 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                (s31 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s11 - dksi_s * s21) -
-                         J1 * s32 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                (s32 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s11 - dksi_s * s21) -
-                         J1 * s32 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1
+                (s30 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+                        (aux2Term3 * aux7Term2) / J1)) / J1,
+                (s31 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+                        (aux2Term3 * aux7Term2) / J1)) / J1,
+                (s32 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+                        (aux2Term3 * aux7Term2) / J1)) / J1
             };
             term4_532[1, 1] = new double[3]
             {
-                -(s30 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s10 - dksi_s * s20) +
-                          (dheta_r * s12 - dksi_r * s22) * (dheta_s * s12 - dksi_s * s22)) / J1 -
-                         ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                          (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                -(s31 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s10 - dksi_s * s20) +
-                          (dheta_r * s12 - dksi_r * s22) * (dheta_s * s12 - dksi_s * s22)) / J1 -
-                         ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                          (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                -(s32 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s10 - dksi_s * s20) +
-                          (dheta_r * s12 - dksi_r * s22) * (dheta_s * s12 - dksi_s * s22)) / J1 -
-                         ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                          (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1
+                -(s30 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+                         (aux2Term3 * aux8Term2) / J1)) / J1,
+                -(s31 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+                         (aux2Term3 * aux8Term2) / J1)) / J1,
+                -(s32 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+                         (aux2Term3 * aux8Term2) / J1)) / J1
             };
             term4_532[1, 2] = new double[3]
             {
-                (s30 * (((dheta_r * s12 - dksi_r * s22) * (dheta_s * s11 - dksi_s * s21) +
-                         J1 * s30 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1)) / J1,
-                (s31 * (((dheta_r * s12 - dksi_r * s22) * (dheta_s * s11 - dksi_s * s21) +
-                         J1 * s30 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1)) / J1,
-                (s32 * (((dheta_r * s12 - dksi_r * s22) * (dheta_s * s11 - dksi_s * s21) +
-                         J1 * s30 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                         (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1)) / J1
+                (s30 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+                        (aux2Term3 * aux9Term2) / J1)) / J1,
+                (s31 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+                        (aux2Term3 * aux9Term2) / J1)) / J1,
+                (s32 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+                        (aux2Term3 * aux9Term2) / J1)) / J1
             };
 
             term4_532[2, 0] = new double[3]
             {
-                (s30 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s12 - dksi_s * s22) +
-                         J1 * s31 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 +
-                        ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                         (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                (s31 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s12 - dksi_s * s22) +
-                         J1 * s31 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 +
-                        ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                         (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                (s32 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s12 - dksi_s * s22) +
-                         J1 * s31 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 +
-                        ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                         (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1
+                (s30 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+                        (aux3Term3 * aux7Term2) / J1)) / J1,
+                (s31 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+                        (aux3Term3 * aux7Term2) / J1)) / J1,
+                (s32 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+                        (aux3Term3 * aux7Term2) / J1)) / J1
             };
             term4_532[2, 1] = new double[3]
             {
-                (s30 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s12 - dksi_s * s22) -
-                         J1 * s30 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                         (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                (s31 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s12 - dksi_s * s22) -
-                         J1 * s30 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                         (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1,
-                (s32 * (((dheta_r * s11 - dksi_r * s21) * (dheta_s * s12 - dksi_s * s22) -
-                         J1 * s30 * J1 * (dheta_r * dksi_s - dheta_s * dksi_r)) / J1 -
-                        ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                         (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1)) / J1
+                (s30 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+                        (aux3Term3 * aux8Term2) / J1)) / J1,
+                (s31 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+                        (aux3Term3 * aux8Term2) / J1)) / J1,
+                (s32 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+                        (aux3Term3 * aux8Term2) / J1)) / J1
             };
             term4_532[2, 2] = new double[3]
             {
-                -(s30 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s10 - dksi_s * s20) +
-                          (dheta_r * s11 - dksi_r * s21) * (dheta_s * s11 - dksi_s * s21)) / J1 -
-                         ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                          (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1)) / J1,
-                -(s31 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s10 - dksi_s * s20) +
-                          (dheta_r * s11 - dksi_r * s21) * (dheta_s * s11 - dksi_s * s21)) / J1 -
-                         ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                          (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1)) / J1,
-                -(s32 * (((dheta_r * s10 - dksi_r * s20) * (dheta_s * s10 - dksi_s * s20) +
-                          (dheta_r * s11 - dksi_r * s21) * (dheta_s * s11 - dksi_s * s21)) / J1 -
-                         ((s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                          (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1)) / J1
+                -(s30 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+                         (aux3Term3 * aux9Term2) / J1)) / J1,
+                -(s31 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+                         (aux3Term3 * aux9Term2) / J1)) / J1,
+                -(s32 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+                         (aux3Term3 * aux9Term2) / J1)) / J1
             };
 
 
             var term5_532 = new double[3, 3][];
             term5_532[0, 0] = new double[3]
             {
-                (2 * s30 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                 (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                (2 * s31 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                 (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                (2 * s32 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                 (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1
+                (2 * s30 * aux1Term3 *
+                 aux7Term2) / J1 / J1,
+                (2 * s31 * aux1Term3 *
+                 aux7Term2) / J1 / J1,
+                (2 * s32 * aux1Term3 *
+                 aux7Term2) / J1 / J1
             };
             term5_532[0, 1] = new double[3]
             {
-                -(2 * s30 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                -(2 * s31 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                -(2 * s32 * (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1
+                -(2 * s30 * aux1Term3 *
+                  aux8Term2) / J1 / J1,
+                -(2 * s31 * aux1Term3 *
+                  aux8Term2) / J1 / J1,
+                -(2 * s32 * aux1Term3 *
+                  aux8Term2) / J1 / J1
             };
             term5_532[0, 2] = new double[3]
             {
-                (2 * s30 * (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                 (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22))) / J1 / J1,
-                (2 * s31 * (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                 (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22))) / J1 / J1,
-                (2 * s32 * (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21)) *
-                 (s32 * (dheta_r * s11 - dksi_r * s21) - s31 * (dheta_r * s12 - dksi_r * s22))) / J1 / J1
+                (2 * s30 * aux9Term2 *
+                 aux1Term3) / J1 / J1,
+                (2 * s31 * aux9Term2 *
+                 aux1Term3) / J1 / J1,
+                (2 * s32 * aux9Term2 *
+                 aux1Term3) / J1 / J1
             };
 
             term5_532[1, 0] = new double[3]
             {
-                -(2 * s30 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                -(2 * s31 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                -(2 * s32 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1
+                -(2 * s30 * aux2Term3 *
+                  aux7Term2) / J1 / J1,
+                -(2 * s31 * aux2Term3 *
+                  aux7Term2) / J1 / J1,
+                -(2 * s32 * aux2Term3 *
+                  aux7Term2) / J1 / J1
             };
             term5_532[1, 1] = new double[3]
             {
-                (2 * s30 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                 (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                (2 * s31 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                 (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                (2 * s32 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                 (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1
+                (2 * s30 * aux2Term3 *
+                 aux8Term2) / J1 / J1,
+                (2 * s31 * aux2Term3 *
+                 aux8Term2) / J1 / J1,
+                (2 * s32 * aux2Term3 *
+                 aux8Term2) / J1 / J1
             };
             term5_532[1, 2] = new double[3]
             {
-                -(2 * s30 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1 / J1,
-                -(2 * s31 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1 / J1,
-                -(2 * s32 * (s32 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s12 - dksi_r * s22)) *
-                  (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1 / J1
+                -(2 * s30 * aux2Term3 *
+                  aux9Term2) / J1 / J1,
+                -(2 * s31 * aux2Term3 *
+                  aux9Term2) / J1 / J1,
+                -(2 * s32 * aux2Term3 *
+                  aux9Term2) / J1 / J1
             };
 
             term5_532[2, 0] = new double[3]
             {
-                (2 * s30 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                (2 * s31 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                (2 * s32 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (s32 * (dheta_s * s11 - dksi_s * s21) - s31 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1
+                (2 * s30 * aux3Term3 *
+                 aux7Term2) / J1 / J1,
+                (2 * s31 * aux3Term3 *
+                 aux7Term2) / J1 / J1,
+                (2 * s32 * aux3Term3 *
+                 aux7Term2) / J1 / J1
             };
             term5_532[2, 1] = new double[3]
             {
-                -(2 * s30 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                  (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                -(2 * s31 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                  (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1,
-                -(2 * s32 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                  (s32 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s12 - dksi_s * s22))) / J1 / J1
+                -(2 * s30 * aux3Term3 *
+                  aux8Term2) / J1 / J1,
+                -(2 * s31 * aux3Term3 *
+                  aux8Term2) / J1 / J1,
+                -(2 * s32 * aux3Term3 *
+                  aux8Term2) / J1 / J1
             };
             term5_532[2, 2] = new double[3]
             {
-                (2 * s30 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1 / J1,
-                (2 * s31 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1 / J1,
-                (2 * s32 * (s31 * (dheta_r * s10 - dksi_r * s20) - s30 * (dheta_r * s11 - dksi_r * s21)) *
-                 (s31 * (dheta_s * s10 - dksi_s * s20) - s30 * (dheta_s * s11 - dksi_s * s21))) / J1 / J1
+                (2 * s30 * aux3Term3 *
+                 aux9Term2) / J1 / J1,
+                (2 * s31 * aux3Term3 *
+                 aux9Term2) / J1 / J1,
+                (2 * s32 * aux3Term3 *
+                 aux9Term2) / J1 / J1
             };
 
             var a3rs = new double[3, 3][];
