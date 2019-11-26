@@ -56,8 +56,9 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 						patch.KnotValueVectorHeta, projectiveControlPoints, ksiCoordinate, hetaCoordinate);
 					knots[count, 0] = point3D[0] / point3D[3];
 					knots[count, 1] = point3D[1] / point3D[3];
-					knots[count++, 2] = point3D[2] / point3D[3];
-				}
+					knots[count, 2] = point3D[2] / point3D[3];
+                    count++;
+                }
 			}
 
 			var incrementKsi = numberOfKnotsHeta;
@@ -81,11 +82,13 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 						(!_model.GlobalDofOrdering.GlobalFreeDofs.Contains(controlPoint, StructuralDof.TranslationY))
 							? 0.0
 							: _solution[_model.GlobalDofOrdering.GlobalFreeDofs[controlPoint, StructuralDof.TranslationY]];
-					localDisplacements[counterCP++, 2] =
+					localDisplacements[counterCP, 2] =
 						(!_model.GlobalDofOrdering.GlobalFreeDofs.Contains(controlPoint, StructuralDof.TranslationZ))
 							? 0.0
 							: _solution[_model.GlobalDofOrdering.GlobalFreeDofs[controlPoint, StructuralDof.TranslationZ]];
-				}
+                    counterCP++;
+
+                }
 				var elementKnotDisplacements = element.ElementType.CalculateDisplacementsForPostProcessing(element, localDisplacements);
 				for (int i = 0; i < elementConnectivity.GetLength(1); i++)
 				{
@@ -113,60 +116,60 @@ namespace ISAAR.MSolve.IGA.Postprocessing
 				paraviewCellCode = 9;
 			}
 
-			using (StreamWriter outputFile = new StreamWriter($"..\\..\\..\\MGroup.IGA.Tests\\OutputFiles\\{_filename}Paraview.vtu"))
-			{
-				outputFile.WriteLine("<VTKFile type=\"UnstructuredGrid\"  version=\"0.1\"   >");
-				outputFile.WriteLine("<UnstructuredGrid>");
-				outputFile.WriteLine($"<Piece  NumberOfPoints=\"{numberOfNodes}\" NumberOfCells=\"{numberOfCells}\">");
+            using (StreamWriter outputFile = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), $"{_filename}Paraview.vtu")))
+            {
+                outputFile.WriteLine("<VTKFile type=\"UnstructuredGrid\"  version=\"0.1\"   >");
+                outputFile.WriteLine("<UnstructuredGrid>");
+                outputFile.WriteLine($"<Piece  NumberOfPoints=\"{numberOfNodes}\" NumberOfCells=\"{numberOfCells}\">");
 
-				outputFile.WriteLine("<Points>");
-				outputFile.WriteLine("<DataArray  type=\"Float64\"  NumberOfComponents=\"3\"  format=\"ascii\" >");
-				for (int i = 0; i < numberOfNodes; i++)
-					outputFile.WriteLine($"{nodeCoordinates[i, 0]} {nodeCoordinates[i, 1]} {nodeCoordinates[i, 2]}");
+                outputFile.WriteLine("<Points>");
+                outputFile.WriteLine("<DataArray  type=\"Float64\"  NumberOfComponents=\"3\"  format=\"ascii\" >");
+                for (int i = 0; i < numberOfNodes; i++)
+                    outputFile.WriteLine($"{nodeCoordinates[i, 0]} {nodeCoordinates[i, 1]} {nodeCoordinates[i, 2]}");
 
-				outputFile.WriteLine("</DataArray>");
-				outputFile.WriteLine("</Points>");
+                outputFile.WriteLine("</DataArray>");
+                outputFile.WriteLine("</Points>");
 
-				outputFile.WriteLine("<Cells>");
-				outputFile.WriteLine("<DataArray  type=\"Int32\"  Name=\"connectivity\"  format=\"ascii\">");
-				for (int i = 0; i < numberOfCells; i++)
-				{
-					for (int j = 0; j < elementConnectivity.GetLength(1); j++)
-						outputFile.Write($"{elementConnectivity[i, j]} ");
-					outputFile.WriteLine("");
-				}
+                outputFile.WriteLine("<Cells>");
+                outputFile.WriteLine("<DataArray  type=\"Int32\"  Name=\"connectivity\"  format=\"ascii\">");
+                for (int i = 0; i < numberOfCells; i++)
+                {
+                    for (int j = 0; j < elementConnectivity.GetLength(1); j++)
+                        outputFile.Write($"{elementConnectivity[i, j]} ");
+                    outputFile.WriteLine("");
+                }
 
-				outputFile.WriteLine("</DataArray>");
-				outputFile.WriteLine("<DataArray  type=\"Int32\"  Name=\"offsets\"  format=\"ascii\">");
+                outputFile.WriteLine("</DataArray>");
+                outputFile.WriteLine("<DataArray  type=\"Int32\"  Name=\"offsets\"  format=\"ascii\">");
 
-				var offset = 0;
-				for (int i = 0; i < numberOfCells; i++)
-				{
-					offset += numberOfVerticesPerCell;
-					outputFile.WriteLine(offset);
-				}
+                var offset = 0;
+                for (int i = 0; i < numberOfCells; i++)
+                {
+                    offset += numberOfVerticesPerCell;
+                    outputFile.WriteLine(offset);
+                }
 
-				outputFile.WriteLine("</DataArray>");
-				outputFile.WriteLine("<DataArray  type=\"UInt8\"  Name=\"types\"  format=\"ascii\">");
-				for (int i = 0; i < numberOfCells; i++)
-					outputFile.WriteLine(paraviewCellCode);
+                outputFile.WriteLine("</DataArray>");
+                outputFile.WriteLine("<DataArray  type=\"UInt8\"  Name=\"types\"  format=\"ascii\">");
+                for (int i = 0; i < numberOfCells; i++)
+                    outputFile.WriteLine(paraviewCellCode);
 
-				outputFile.WriteLine("</DataArray>");
-				outputFile.WriteLine("</Cells>");
+                outputFile.WriteLine("</DataArray>");
+                outputFile.WriteLine("</Cells>");
 
-				outputFile.WriteLine("<PointData  Vectors=\"U\">");
+                outputFile.WriteLine("<PointData  Vectors=\"U\">");
 
-				outputFile.WriteLine("<DataArray  type=\"Float64\"  Name=\"U\" NumberOfComponents=\"3\" format=\"ascii\">");
+                outputFile.WriteLine("<DataArray  type=\"Float64\"  Name=\"U\" NumberOfComponents=\"3\" format=\"ascii\">");
 
-				for (int i = 0; i < numberOfNodes; i++)
-					outputFile.WriteLine($"{displacements[i, 0]} {displacements[i, 1]} {displacements[i, 2]}");
+                for (int i = 0; i < numberOfNodes; i++)
+                    outputFile.WriteLine($"{displacements[i, 0]} {displacements[i, 1]} {displacements[i, 2]}");
 
-				outputFile.WriteLine("</DataArray>");
-				outputFile.WriteLine("</PointData>");
-				outputFile.WriteLine("</Piece>");
-				outputFile.WriteLine("</UnstructuredGrid>");
-				outputFile.WriteLine("</VTKFile>");
-			}
+                outputFile.WriteLine("</DataArray>");
+                outputFile.WriteLine("</PointData>");
+                outputFile.WriteLine("</Piece>");
+                outputFile.WriteLine("</UnstructuredGrid>");
+                outputFile.WriteLine("</VTKFile>");
+            }
 		}
 
 		/// <summary>
