@@ -69,6 +69,32 @@ namespace ISAAR.MSolve.IGA.Elements
                     materialsAtThicknessGP[medianSurfaceGP].Add(point, shellMaterial.Clone());
                 }
             }
+
+            // Initialize a3rs
+            a3rs[0, 0] = new double[3];
+            a3rs[0, 1] = new double[3];
+            a3rs[0, 2] = new double[3];
+
+            a3rs[1, 0] = new double[3];
+            a3rs[1, 1] = new double[3];
+            a3rs[1, 2] = new double[3];
+
+            a3rs[2, 0] = new double[3];
+            a3rs[2, 1] = new double[3];
+            a3rs[2, 2] = new double[3];
+
+            // Initialize Bab_rs
+            Bab_rs[0, 0] = new double[3];
+            Bab_rs[0, 1] = new double[3];
+            Bab_rs[0, 2] = new double[3];
+
+            Bab_rs[1, 0] = new double[3];
+            Bab_rs[1, 1] = new double[3];
+            Bab_rs[1, 2] = new double[3];
+
+            Bab_rs[2, 0] = new double[3];
+            Bab_rs[2, 1] = new double[3];
+            Bab_rs[2, 2] = new double[3];
         }
 
         public CellType CellType { get; } = CellType.Unknown;
@@ -118,7 +144,7 @@ namespace ISAAR.MSolve.IGA.Elements
             _solution = localDisplacements;
 
             var newControlPoints = CurrentControlPoint(controlPoints);
-            var nurbs = CalculateShapeFunctions(shellElement, shellElement.ControlPoints);
+            var nurbs = CalculateShapeFunctions(shellElement, controlPoints);
             var gaussPoints = materialsAtThicknessGP.Keys.ToArray();
 
             for (int j = 0; j < gaussPoints.Length; j++)
@@ -197,7 +223,7 @@ namespace ISAAR.MSolve.IGA.Elements
         {
             var shellElement = (NurbsKirchhoffLoveShellElementNL) element;
             var elementControlPoints = shellElement.ControlPoints.ToArray();
-            var nurbs = CalculateShapeFunctions(shellElement, shellElement.ControlPoints);
+            var nurbs = CalculateShapeFunctions(shellElement, elementControlPoints);
 
             _solution = localDisplacements;
 
@@ -486,7 +512,7 @@ namespace ISAAR.MSolve.IGA.Elements
             var gaussPoints = materialsAtThicknessGP.Keys.ToArray();
 
             var controlPoints = shellElement.ControlPoints.ToArray();
-            var nurbs = CalculateShapeFunctions(shellElement, shellElement.ControlPoints);
+            var nurbs = CalculateShapeFunctions(shellElement, controlPoints);
 
             if (!isInitialized)
             {
@@ -631,9 +657,9 @@ namespace ISAAR.MSolve.IGA.Elements
         }
 
         private Nurbs2D CalculateShapeFunctions(NurbsKirchhoffLoveShellElementNL shellElement,
-            IEnumerable<ControlPoint> controlPoints)
+            ControlPoint[] controlPoints)
         {
-            return _nurbs ?? (_nurbs = new Nurbs2D(shellElement, controlPoints.ToArray()));
+            return _nurbs ?? (_nurbs = new Nurbs2D(shellElement, controlPoints));
         }
 
         internal ControlPoint[] CurrentControlPoint(ControlPoint[] controlPoints)
@@ -922,6 +948,11 @@ namespace ISAAR.MSolve.IGA.Elements
             }
         }
 
+        private double[,] a3r = new double[3, 3]; //reuse buffer for local computations
+        private double[,] a3s = new double[3, 3];
+        private double[,][] a3rs=new double[3,3][];
+        private double[,][] Bab_rs = new double[3, 3][];
+
         internal double[,] CalculateKbendingNL(ControlPoint[] controlPoints,
             double[] bendingMoments, Nurbs2D nurbs, double[] surfaceBasisVector1,
             double[] surfaceBasisVector2, double[] surfaceBasisVector3,
@@ -948,17 +979,17 @@ namespace ISAAR.MSolve.IGA.Elements
                     var dksi_s = nurbs.NurbsDerivativeValuesKsi[k, j];
                     var dheta_s = nurbs.NurbsDerivativeValuesHeta[k, j];
 
-                    var a3r = CalculateA3r(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, dksi_r,
-                        dheta_r, J1);
-                    var a3s = CalculateA3r(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, dksi_s,
-                        dheta_s, J1);
+                    CalculateA3r(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, dksi_r,
+                        dheta_r, J1, a3r);
+                    CalculateA3r(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, dksi_s,
+                        dheta_s, J1, a3s);
 
-                    var a3rs = Calculate_a3rs(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, J1, dksi_r,
-                        dheta_r, dksi_s, dheta_s);
+                    Calculate_a3rs(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, J1, dksi_r,
+                        dheta_r, dksi_s, dheta_s, a3rs);
                     
-                    var Bab_rs = CalculateBab_rs(surfaceBasisVectorDerivative1, surfaceBasisVectorDerivative2, 
+                    CalculateBab_rs(surfaceBasisVectorDerivative1, surfaceBasisVectorDerivative2, 
                         surfaceBasisVectorDerivative12, d2Ksi_dr2, a3s, d2Ksi_ds2, a3r, a3rs, d2Heta_dr2, 
-                        d2Heta_ds2, d2KsiHeta_dr2, d2KsiHeta_ds2);
+                        d2Heta_ds2, d2KsiHeta_dr2, d2KsiHeta_ds2, Bab_rs);
 
                     for (int l = 0; l < 3; l++)
                     {
@@ -975,155 +1006,131 @@ namespace ISAAR.MSolve.IGA.Elements
             return KbendingNL;
         }
 
-        private static double[,][] CalculateBab_rs(double[] surfaceBasisVectorDerivative1,
+        private static void CalculateBab_rs(double[] surfaceBasisVectorDerivative1,
             double[] surfaceBasisVectorDerivative2, double[] surfaceBasisVectorDerivative12, double d2Ksi_dr2, double[,] a3s,
             double d2Ksi_ds2, double[,] a3r, double[,][] a3rs, double d2Heta_dr2, double d2Heta_ds2, double d2KsiHeta_dr2,
-            double d2KsiHeta_ds2)
+            double d2KsiHeta_ds2, double[,][] Bab_rsOut)
         {
-            var Bab_rs = new double[3, 3][];
+            Bab_rsOut[0, 0][0] = d2Ksi_dr2 * a3s[0, 0] + d2Ksi_ds2 * a3r[0, 0] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[0, 0][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[0, 0][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[0, 0][2];
+            Bab_rsOut[0, 0][1] = d2Heta_dr2 * a3s[0, 0] + d2Heta_ds2 * a3r[0, 0] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[0, 0][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[0, 0][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[0, 0][2];
+            Bab_rsOut[0, 0][2] = (d2KsiHeta_dr2 * a3s[0, 0] + d2KsiHeta_ds2 * a3r[0, 0]) * 2 +
+                                 surfaceBasisVectorDerivative12[0] * a3rs[0, 0][0] +
+                                 surfaceBasisVectorDerivative12[1] * a3rs[0, 0][1] +
+                                 surfaceBasisVectorDerivative12[2] * a3rs[0, 0][2];
 
-            Bab_rs[0, 0] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[0, 0] + d2Ksi_ds2 * a3r[0, 0] +
-                surfaceBasisVectorDerivative1[0] * a3rs[0, 0][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[0, 0][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[0, 0][2],
-                d2Heta_dr2 * a3s[0, 0] + d2Heta_ds2 * a3r[0, 0] +
-                surfaceBasisVectorDerivative2[0] * a3rs[0, 0][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[0, 0][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[0, 0][2],
-                (d2KsiHeta_dr2 * a3s[0, 0] + d2KsiHeta_ds2 * a3r[0, 0]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[0, 0][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[0, 0][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[0, 0][2]
-            };
-            Bab_rs[0, 1] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[0, 1] + d2Ksi_ds2 * a3r[1, 0] +
-                surfaceBasisVectorDerivative1[0] * a3rs[0, 1][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[0, 1][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[0, 1][2],
-                d2Heta_dr2 * a3s[0, 1] + d2Heta_ds2 * a3r[1, 0] +
-                surfaceBasisVectorDerivative2[0] * a3rs[0, 1][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[0, 1][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[0, 1][2],
-                (d2KsiHeta_dr2 * a3s[0, 1] + d2KsiHeta_ds2 * a3r[1, 0]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[0, 1][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[0, 1][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[0, 1][2]
-            };
-            Bab_rs[0, 2] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[0, 2] + d2Ksi_ds2 * a3r[2, 0] +
-                surfaceBasisVectorDerivative1[0] * a3rs[0, 2][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[0, 2][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[0, 2][2],
-                d2Heta_dr2 * a3s[0, 2] + d2Heta_ds2 * a3r[2, 0] +
-                surfaceBasisVectorDerivative2[0] * a3rs[0, 2][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[0, 2][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[0, 2][2],
-                (d2KsiHeta_dr2 * a3s[0, 2] + d2KsiHeta_ds2 * a3r[2, 0]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[0, 2][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[0, 2][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[0, 2][2]
-            };
+            Bab_rsOut[0, 1][0] = d2Ksi_dr2 * a3s[0, 1] + d2Ksi_ds2 * a3r[1, 0] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[0, 1][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[0, 1][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[0, 1][2];
+            Bab_rsOut[0, 1][1] = d2Heta_dr2 * a3s[0, 1] + d2Heta_ds2 * a3r[1, 0] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[0, 1][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[0, 1][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[0, 1][2];
+            Bab_rsOut[0, 1][2]= (d2KsiHeta_dr2 * a3s[0, 1] + d2KsiHeta_ds2 * a3r[1, 0]) * 2 +
+                                surfaceBasisVectorDerivative12[0] * a3rs[0, 1][0] +
+                                surfaceBasisVectorDerivative12[1] * a3rs[0, 1][1] +
+                                surfaceBasisVectorDerivative12[2] * a3rs[0, 1][2];
 
-            Bab_rs[1, 0] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[1, 0] + d2Ksi_ds2 * a3r[0, 1] +
-                surfaceBasisVectorDerivative1[0] * a3rs[1, 0][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[1, 0][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[1, 0][2],
-                d2Heta_dr2 * a3s[1, 0] + d2Heta_ds2 * a3r[0, 1] +
-                surfaceBasisVectorDerivative2[0] * a3rs[1, 0][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[1, 0][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[1, 0][2],
-                (d2KsiHeta_dr2 * a3s[1, 0] + d2KsiHeta_ds2 * a3r[0, 1]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[1, 0][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[1, 0][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[1, 0][2]
-            };
-            Bab_rs[1, 1] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[1, 1] + d2Ksi_ds2 * a3r[1, 1] +
-                surfaceBasisVectorDerivative1[0] * a3rs[1, 1][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[1, 1][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[1, 1][2],
-                d2Heta_dr2 * a3s[1, 1] + d2Heta_ds2 * a3r[1, 1] +
-                surfaceBasisVectorDerivative2[0] * a3rs[1, 1][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[1, 1][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[1, 1][2],
-                (d2KsiHeta_dr2 * a3s[1, 1] + d2KsiHeta_ds2 * a3r[1, 1]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[1, 1][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[1, 1][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[1, 1][2]
-            };
-            Bab_rs[1, 2] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[1, 2] + d2Ksi_ds2 * a3r[2, 1] +
-                surfaceBasisVectorDerivative1[0] * a3rs[1, 2][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[1, 2][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[1, 2][2],
-                d2Heta_dr2 * a3s[1, 2] + d2Heta_ds2 * a3r[2, 1] +
-                surfaceBasisVectorDerivative2[0] * a3rs[1, 2][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[1, 2][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[1, 2][2],
-                (d2KsiHeta_dr2 * a3s[1, 2] + d2KsiHeta_ds2 * a3r[2, 1]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[1, 2][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[1, 2][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[1, 2][2]
-            };
+            Bab_rsOut[0, 2][0] = d2Ksi_dr2 * a3s[0, 2] + d2Ksi_ds2 * a3r[2, 0] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[0, 2][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[0, 2][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[0, 2][2];
+            Bab_rsOut[0, 2][1] = d2Heta_dr2 * a3s[0, 2] + d2Heta_ds2 * a3r[2, 0] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[0, 2][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[0, 2][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[0, 2][2];
+            Bab_rsOut[0, 2][2] = (d2KsiHeta_dr2 * a3s[0, 2] + d2KsiHeta_ds2 * a3r[2, 0]) * 2 +
+                                 surfaceBasisVectorDerivative12[0] * a3rs[0, 2][0] +
+                                 surfaceBasisVectorDerivative12[1] * a3rs[0, 2][1] +
+                                 surfaceBasisVectorDerivative12[2] * a3rs[0, 2][2];
 
-            Bab_rs[2, 0] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[2, 0] + d2Ksi_ds2 * a3r[0, 2] +
-                surfaceBasisVectorDerivative1[0] * a3rs[2, 0][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[2, 0][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[2, 0][2],
-                d2Heta_dr2 * a3s[2, 0] + d2Heta_ds2 * a3r[0, 2] +
-                surfaceBasisVectorDerivative2[0] * a3rs[2, 0][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[2, 0][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[2, 0][2],
-                (d2KsiHeta_dr2 * a3s[2, 0] + d2KsiHeta_ds2 * a3r[0, 2]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[2, 0][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[2, 0][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[2, 0][2]
-            };
-            Bab_rs[2, 1] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[2, 1] + d2Ksi_ds2 * a3r[1, 2] +
-                surfaceBasisVectorDerivative1[0] * a3rs[2, 1][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[2, 1][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[2, 1][2],
-                d2Heta_dr2 * a3s[2, 1] + d2Heta_ds2 * a3r[1, 2] +
-                surfaceBasisVectorDerivative2[0] * a3rs[2, 1][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[2, 1][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[2, 1][2],
-                (d2KsiHeta_dr2 * a3s[2, 1] + d2KsiHeta_ds2 * a3r[1, 2]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[2, 1][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[2, 1][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[2, 1][2]
-            };
-            Bab_rs[2, 2] = new double[3]
-            {
-                d2Ksi_dr2 * a3s[2, 2] + d2Ksi_ds2 * a3r[2, 2] +
-                surfaceBasisVectorDerivative1[0] * a3rs[2, 2][0] +
-                surfaceBasisVectorDerivative1[1] * a3rs[2, 2][1] +
-                surfaceBasisVectorDerivative1[2] * a3rs[2, 2][2],
-                d2Heta_dr2 * a3s[2, 2] + d2Heta_ds2 * a3r[2, 2] +
-                surfaceBasisVectorDerivative2[0] * a3rs[2, 2][0] +
-                surfaceBasisVectorDerivative2[1] * a3rs[2, 2][1] +
-                surfaceBasisVectorDerivative2[2] * a3rs[2, 2][2],
-                (d2KsiHeta_dr2 * a3s[2, 2] + d2KsiHeta_ds2 * a3r[2, 2]) * 2 +
-                surfaceBasisVectorDerivative12[0] * a3rs[2, 2][0] +
-                surfaceBasisVectorDerivative12[1] * a3rs[2, 2][1] +
-                surfaceBasisVectorDerivative12[2] * a3rs[2, 2][2]
-            };
-            return Bab_rs;
+            Bab_rsOut[1, 0][0] = d2Ksi_dr2 * a3s[1, 0] + d2Ksi_ds2 * a3r[0, 1] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[1, 0][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[1, 0][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[1, 0][2];
+            Bab_rsOut[1, 0][1] = d2Heta_dr2 * a3s[1, 0] + d2Heta_ds2 * a3r[0, 1] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[1, 0][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[1, 0][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[1, 0][2];
+            Bab_rsOut[1, 0][2] = (d2KsiHeta_dr2 * a3s[1, 0] + d2KsiHeta_ds2 * a3r[0, 1]) * 2 +
+                                 surfaceBasisVectorDerivative12[0] * a3rs[1, 0][0] +
+                                 surfaceBasisVectorDerivative12[1] * a3rs[1, 0][1] +
+                                 surfaceBasisVectorDerivative12[2] * a3rs[1, 0][2];
+
+            Bab_rsOut[1, 1][0] = d2Ksi_dr2 * a3s[1, 1] + d2Ksi_ds2 * a3r[1, 1] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[1, 1][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[1, 1][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[1, 1][2];
+            Bab_rsOut[1, 1][1] = d2Heta_dr2 * a3s[1, 1] + d2Heta_ds2 * a3r[1, 1] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[1, 1][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[1, 1][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[1, 1][2];
+            Bab_rsOut[1, 1][2] = (d2KsiHeta_dr2 * a3s[1, 1] + d2KsiHeta_ds2 * a3r[1, 1]) * 2 +
+                                 surfaceBasisVectorDerivative12[0] * a3rs[1, 1][0] +
+                                 surfaceBasisVectorDerivative12[1] * a3rs[1, 1][1] +
+                                 surfaceBasisVectorDerivative12[2] * a3rs[1, 1][2];
+
+            Bab_rsOut[1, 2][0] = d2Ksi_dr2 * a3s[1, 2] + d2Ksi_ds2 * a3r[2, 1] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[1, 2][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[1, 2][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[1, 2][2];
+            Bab_rsOut[1, 2][1] = d2Heta_dr2 * a3s[1, 2] + d2Heta_ds2 * a3r[2, 1] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[1, 2][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[1, 2][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[1, 2][2];
+            Bab_rsOut[1, 2][2] = (d2KsiHeta_dr2 * a3s[1, 2] + d2KsiHeta_ds2 * a3r[2, 1]) * 2 +
+                                 surfaceBasisVectorDerivative12[0] * a3rs[1, 2][0] +
+                                 surfaceBasisVectorDerivative12[1] * a3rs[1, 2][1] +
+                                 surfaceBasisVectorDerivative12[2] * a3rs[1, 2][2];
+
+            Bab_rsOut[2, 0][0] = d2Ksi_dr2 * a3s[2, 0] + d2Ksi_ds2 * a3r[0, 2] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[2, 0][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[2, 0][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[2, 0][2];
+            Bab_rsOut[2, 0][1] = d2Heta_dr2 * a3s[2, 0] + d2Heta_ds2 * a3r[0, 2] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[2, 0][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[2, 0][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[2, 0][2];
+            Bab_rsOut[2, 0][2] = (d2KsiHeta_dr2 * a3s[2, 0] + d2KsiHeta_ds2 * a3r[0, 2]) * 2 +
+                                 surfaceBasisVectorDerivative12[0] * a3rs[2, 0][0] +
+                                 surfaceBasisVectorDerivative12[1] * a3rs[2, 0][1] +
+                                 surfaceBasisVectorDerivative12[2] * a3rs[2, 0][2];
+
+            Bab_rsOut[2, 1][0] = d2Ksi_dr2 * a3s[2, 1] + d2Ksi_ds2 * a3r[1, 2] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[2, 1][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[2, 1][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[2, 1][2];
+            Bab_rsOut[2, 1][1] = d2Heta_dr2 * a3s[2, 1] + d2Heta_ds2 * a3r[1, 2] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[2, 1][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[2, 1][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[2, 1][2];
+            Bab_rsOut[2, 1][2] = (d2KsiHeta_dr2 * a3s[2, 1] + d2KsiHeta_ds2 * a3r[1, 2]) * 2 +
+                                 surfaceBasisVectorDerivative12[0] * a3rs[2, 1][0] +
+                                 surfaceBasisVectorDerivative12[1] * a3rs[2, 1][1] +
+                                 surfaceBasisVectorDerivative12[2] * a3rs[2, 1][2];
+
+            Bab_rsOut[2, 2][0] = d2Ksi_dr2 * a3s[2, 2] + d2Ksi_ds2 * a3r[2, 2] +
+                                 surfaceBasisVectorDerivative1[0] * a3rs[2, 2][0] +
+                                 surfaceBasisVectorDerivative1[1] * a3rs[2, 2][1] +
+                                 surfaceBasisVectorDerivative1[2] * a3rs[2, 2][2];
+            Bab_rsOut[2, 2][1] = d2Heta_dr2 * a3s[2, 2] + d2Heta_ds2 * a3r[2, 2] +
+                                 surfaceBasisVectorDerivative2[0] * a3rs[2, 2][0] +
+                                 surfaceBasisVectorDerivative2[1] * a3rs[2, 2][1] +
+                                 surfaceBasisVectorDerivative2[2] * a3rs[2, 2][2];
+            Bab_rsOut[2, 2][2] = (d2KsiHeta_dr2 * a3s[2, 2] + d2KsiHeta_ds2 * a3r[2, 2]) * 2 +
+                                 surfaceBasisVectorDerivative12[0] * a3rs[2, 2][0] +
+                                 surfaceBasisVectorDerivative12[1] * a3rs[2, 2][1] +
+                                 surfaceBasisVectorDerivative12[2] * a3rs[2, 2][2];
         }
 
-        private static double[,][] Calculate_a3rs(double[] surfaceBasisVector1, double[] surfaceBasisVector2,
-            double[] surfaceBasisVector3, double J1, double dksi_r, double dheta_r, double dksi_s, double dheta_s)
+        private static void Calculate_a3rs(double[] surfaceBasisVector1, double[] surfaceBasisVector2,
+            double[] surfaceBasisVector3, double J1, double dksi_r, double dheta_r, double dksi_s, double dheta_s, double[,][] a3rsOut)
         {
             #region Initializations
             var s10 = surfaceBasisVector1[0];
@@ -1138,32 +1145,31 @@ namespace ISAAR.MSolve.IGA.Elements
             var s31 = surfaceBasisVector3[1];
             var s32 = surfaceBasisVector3[2];
 
-            var a3rs = new double[3, 3][];
-            a3rs[0, 0] = new double[3];
-            a3rs[0, 1] = new double[3];
-            a3rs[0, 2] = new double[3];
+            a3rsOut[0, 0][0] = a3rsOut[0, 0][1] = a3rsOut[0, 0][2] = 0.0;
+            a3rsOut[0, 1][0] = a3rsOut[0, 1][1] = a3rsOut[0, 1][2] = 0.0;
+            a3rsOut[0, 2][0] = a3rsOut[0, 2][1] = a3rsOut[0, 2][2] = 0.0;
 
-            a3rs[1, 0] = new double[3];
-            a3rs[1, 1] = new double[3];
-            a3rs[1, 2] = new double[3];
+            a3rsOut[1, 0][0] = a3rsOut[1, 0][1] = a3rsOut[1, 0][2] = 0.0;
+            a3rsOut[1, 1][0] = a3rsOut[1, 1][1] = a3rsOut[1, 1][2] = 0.0;
+            a3rsOut[1, 2][0] = a3rsOut[1, 2][1] = a3rsOut[1, 2][2] = 0.0;
 
-            a3rs[2, 0] = new double[3];
-            a3rs[2, 1] = new double[3];
-            a3rs[2, 2] = new double[3];
+            a3rsOut[2, 0][0] = a3rsOut[2, 0][1] = a3rsOut[2, 0][2] = 0.0;
+            a3rsOut[2, 1][0] = a3rsOut[2, 1][1] = a3rsOut[2, 1][2] = 0.0;
+            a3rsOut[2, 2][0] = a3rsOut[2, 2][1] = a3rsOut[2, 2][2] = 0.0;
             #endregion
-            
+
             #region Term1
             var aux1Term1 = (dheta_s * dksi_r - dheta_r * dksi_s) * J1;
             var aux2Term1 = dheta_r * dksi_s - dheta_s * dksi_r;
             var aux3Term1 = aux2Term1 * J1;
-            a3rs[0, 1][2] = aux1Term1;
-            a3rs[0, 2][1] = aux3Term1;
+            a3rsOut[0, 1][2] = aux1Term1;
+            a3rsOut[0, 2][1] = aux3Term1;
 
-            a3rs[1, 0][2] = aux3Term1;
-            a3rs[1, 2][0] = aux1Term1;
+            a3rsOut[1, 0][2] = aux3Term1;
+            a3rsOut[1, 2][0] = aux1Term1;
 
-            a3rs[2, 0][1] = aux1Term1;
-            a3rs[2, 1][0] = aux3Term1;
+            a3rsOut[2, 0][1] = aux1Term1;
+            a3rsOut[2, 1][0] = aux3Term1;
             #endregion
 
             #region Term2
@@ -1179,32 +1185,32 @@ namespace ISAAR.MSolve.IGA.Elements
             var J1squared = J1 * J1;
 
 
-            a3rs[0, 0][1] += (aux7Term2 * aux3Term2) / J1squared;
-            a3rs[0, 0][2] += -(aux7Term2 * aux4Term2) / J1squared;
+            a3rsOut[0, 0][1] += (aux7Term2 * aux3Term2) / J1squared;
+            a3rsOut[0, 0][2] += -(aux7Term2 * aux4Term2) / J1squared;
 
-            a3rs[0, 1][1] += -(aux8Term2 * aux3Term2) / J1squared;
-            a3rs[0, 1][2] += (aux8Term2 * aux4Term2) / J1squared;
+            a3rsOut[0, 1][1] += -(aux8Term2 * aux3Term2) / J1squared;
+            a3rsOut[0, 1][2] += (aux8Term2 * aux4Term2) / J1squared;
 
-            a3rs[0, 2][1] += (aux9Term2 * aux3Term2) / J1squared;
-            a3rs[0, 2][2] += -(aux9Term2 * aux4Term2) / J1squared;
+            a3rsOut[0, 2][1] += (aux9Term2 * aux3Term2) / J1squared;
+            a3rsOut[0, 2][2] += -(aux9Term2 * aux4Term2) / J1squared;
 
-            a3rs[1, 0][0] += -(aux7Term2 * aux3Term2) / J1squared;
-            a3rs[1, 0][2] += (aux7Term2 * aux6Term2) / J1squared;
+            a3rsOut[1, 0][0] += -(aux7Term2 * aux3Term2) / J1squared;
+            a3rsOut[1, 0][2] += (aux7Term2 * aux6Term2) / J1squared;
 
-            a3rs[1, 1][0] += (aux8Term2 * aux3Term2) / J1squared;
-            a3rs[1, 1][2] += -(aux8Term2 * aux6Term2) / J1squared;
+            a3rsOut[1, 1][0] += (aux8Term2 * aux3Term2) / J1squared;
+            a3rsOut[1, 1][2] += -(aux8Term2 * aux6Term2) / J1squared;
 
-            a3rs[1, 2][0] += -(aux9Term2 * aux3Term2) / J1squared;
-            a3rs[1, 2][2] += (aux9Term2 * aux6Term2) / J1squared;
+            a3rsOut[1, 2][0] += -(aux9Term2 * aux3Term2) / J1squared;
+            a3rsOut[1, 2][2] += (aux9Term2 * aux6Term2) / J1squared;
 
-            a3rs[2, 0][0] += (aux7Term2 * aux4Term2) / J1squared;
-            a3rs[2, 0][1] += -(aux7Term2 * aux6Term2) / J1squared;
+            a3rsOut[2, 0][0] += (aux7Term2 * aux4Term2) / J1squared;
+            a3rsOut[2, 0][1] += -(aux7Term2 * aux6Term2) / J1squared;
 
-            a3rs[2, 1][0] += -(aux8Term2 * aux4Term2) / J1squared;
-            a3rs[2, 1][1] += (aux8Term2 * aux6Term2) / J1squared;
+            a3rsOut[2, 1][0] += -(aux8Term2 * aux4Term2) / J1squared;
+            a3rsOut[2, 1][1] += (aux8Term2 * aux6Term2) / J1squared;
 
-            a3rs[2, 2][0] += (aux9Term2 * aux4Term2) / J1squared;
-            a3rs[2, 2][1] += -(aux9Term2 * aux6Term2) / J1squared;
+            a3rsOut[2, 2][0] += (aux9Term2 * aux4Term2) / J1squared;
+            a3rsOut[2, 2][1] += -(aux9Term2 * aux6Term2) / J1squared;
             #endregion
 
             #region Term3
@@ -1212,144 +1218,143 @@ namespace ISAAR.MSolve.IGA.Elements
             var aux2Term3 = s32 * aux6Term2 - s30 * aux3Term2;
             var aux3Term3 = s31 * aux6Term2 - s30 * aux4Term2;
 
-            a3rs[0, 0][1] += (aux1Term3 * aux2Term2) / J1squared;
-            a3rs[0, 0][2] += -(aux1Term3 * aux1Term2) / J1squared;
+            a3rsOut[0, 0][1] += (aux1Term3 * aux2Term2) / J1squared;
+            a3rsOut[0, 0][2] += -(aux1Term3 * aux1Term2) / J1squared;
 
-            a3rs[0, 1][0] += -(aux1Term3 * aux2Term2) / J1squared;
-            a3rs[0, 1][2] += (aux1Term3 * aux5Term2) / J1squared;
+            a3rsOut[0, 1][0] += -(aux1Term3 * aux2Term2) / J1squared;
+            a3rsOut[0, 1][2] += (aux1Term3 * aux5Term2) / J1squared;
 
-            a3rs[0, 2][0] += (aux1Term3 * aux1Term2) / J1squared;
-            a3rs[0, 2][1] += -(aux1Term3 * aux5Term2) / J1squared;
+            a3rsOut[0, 2][0] += (aux1Term3 * aux1Term2) / J1squared;
+            a3rsOut[0, 2][1] += -(aux1Term3 * aux5Term2) / J1squared;
 
-            a3rs[1, 0][1] += -(aux2Term3 * aux2Term2) / J1squared;
-            a3rs[1, 0][2] += (aux2Term3 * aux1Term2) / J1squared;
+            a3rsOut[1, 0][1] += -(aux2Term3 * aux2Term2) / J1squared;
+            a3rsOut[1, 0][2] += (aux2Term3 * aux1Term2) / J1squared;
 
-            a3rs[1, 1][0] += (aux2Term3 * aux2Term2) / J1squared;
-            a3rs[1, 1][2] += -(aux2Term3 * aux5Term2) / J1squared;
+            a3rsOut[1, 1][0] += (aux2Term3 * aux2Term2) / J1squared;
+            a3rsOut[1, 1][2] += -(aux2Term3 * aux5Term2) / J1squared;
 
-            a3rs[1, 2][0] += -(aux2Term3 * aux1Term2) / J1squared;
-            a3rs[1, 2][1] += (aux2Term3 * aux5Term2) / J1squared;
+            a3rsOut[1, 2][0] += -(aux2Term3 * aux1Term2) / J1squared;
+            a3rsOut[1, 2][1] += (aux2Term3 * aux5Term2) / J1squared;
 
-            a3rs[2, 0][1] += (aux3Term3 * aux2Term2) / J1squared;
-            a3rs[2, 0][2] += -(aux3Term3 * aux1Term2) / J1squared;
+            a3rsOut[2, 0][1] += (aux3Term3 * aux2Term2) / J1squared;
+            a3rsOut[2, 0][2] += -(aux3Term3 * aux1Term2) / J1squared;
 
-            a3rs[2, 1][0] += -(aux3Term3 * aux2Term2) / J1squared;
-            a3rs[2, 1][2] += (aux3Term3 * aux5Term2) / J1squared;
+            a3rsOut[2, 1][0] += -(aux3Term3 * aux2Term2) / J1squared;
+            a3rsOut[2, 1][2] += (aux3Term3 * aux5Term2) / J1squared;
 
-            a3rs[2, 2][0] += (aux3Term3 * aux1Term2) / J1squared;
-            a3rs[2, 2][1] += -(aux3Term3 * aux5Term2) / J1squared;
+            a3rsOut[2, 2][0] += (aux3Term3 * aux1Term2) / J1squared;
+            a3rsOut[2, 2][1] += -(aux3Term3 * aux5Term2) / J1squared;
             #endregion
 
             #region Term4
-            a3rs[0, 0][0] += -(s30 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut[0, 0][0] += -(s30 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux1Term3 * aux7Term2) / J1)) / J1;
-            a3rs[0, 0][1] += -(s31 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut[0, 0][1] += -(s31 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux1Term3 * aux7Term2) / J1)) / J1;
-            a3rs[0, 0][2] += -(s32 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut[0, 0][2] += -(s32 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux1Term3 * aux7Term2) / J1)) / J1;
 
-            a3rs[0, 1][0] += (s30 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut[0, 1][0] += (s30 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux1Term3 * aux8Term2) / J1)) / J1;
-            a3rs[0, 1][1] += (s31 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut[0, 1][1] += (s31 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux1Term3 * aux8Term2) / J1)) / J1;
-            a3rs[0, 1][2] += (s32 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut[0, 1][2] += (s32 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux1Term3 * aux8Term2) / J1)) / J1;
 
-            a3rs[0, 2][0] += (s30 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut[0, 2][0] += (s30 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux9Term2 * aux1Term3) / J1)) / J1;
-            a3rs[0, 2][1] += (s31 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut[0, 2][1] += (s31 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux9Term2 * aux1Term3) / J1)) / J1;
-            a3rs[0, 2][2] += (s32 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut[0, 2][2] += (s32 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux9Term2 * aux1Term3) / J1)) / J1;
 
-            a3rs[1, 0][0] += (s30 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut[1, 0][0] += (s30 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux7Term2) / J1)) / J1;
-            a3rs[1, 0][1] += (s31 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut[1, 0][1] += (s31 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux7Term2) / J1)) / J1;
-            a3rs[1, 0][2] += (s32 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut[1, 0][2] += (s32 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux7Term2) / J1)) / J1;
 
-            a3rs[1, 1][0] += -(s30 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut[1, 1][0] += -(s30 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux2Term3 * aux8Term2) / J1)) / J1;
-            a3rs[1, 1][1] += -(s31 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut[1, 1][1] += -(s31 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux2Term3 * aux8Term2) / J1)) / J1;
-            a3rs[1, 1][2] += -(s32 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut[1, 1][2] += -(s32 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux2Term3 * aux8Term2) / J1)) / J1;
 
-            a3rs[1, 2][0] += (s30 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut[1, 2][0] += (s30 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux9Term2) / J1)) / J1;
-            a3rs[1, 2][1] += (s31 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut[1, 2][1] += (s31 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux9Term2) / J1)) / J1;
-            a3rs[1, 2][2] += (s32 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut[1, 2][2] += (s32 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux9Term2) / J1)) / J1;
 
-            a3rs[2, 0][0] += (s30 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut[2, 0][0] += (s30 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux3Term3 * aux7Term2) / J1)) / J1;
-            a3rs[2, 0][1] += (s31 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut[2, 0][1] += (s31 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux3Term3 * aux7Term2) / J1)) / J1;
-            a3rs[2, 0][2] += (s32 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut[2, 0][2] += (s32 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux3Term3 * aux7Term2) / J1)) / J1;
 
-            a3rs[2, 1][0] += (s30 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut[2, 1][0] += (s30 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux3Term3 * aux8Term2) / J1)) / J1;
-            a3rs[2, 1][1] += (s31 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut[2, 1][1] += (s31 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux3Term3 * aux8Term2) / J1)) / J1;
-            a3rs[2, 1][2] += (s32 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut[2, 1][2] += (s32 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux3Term3 * aux8Term2) / J1)) / J1;
 
-            a3rs[2, 2][0] += -(s30 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+            a3rsOut[2, 2][0] += -(s30 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
                                       (aux3Term3 * aux9Term2) / J1)) / J1;
-            a3rs[2, 2][1] += -(s31 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+            a3rsOut[2, 2][1] += -(s31 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
                                       (aux3Term3 * aux9Term2) / J1)) / J1;
-            a3rs[2, 2][2] += -(s32 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+            a3rsOut[2, 2][2] += -(s32 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
                                       (aux3Term3 * aux9Term2) / J1)) / J1;
             #endregion
 
             #region Term5
 
-            a3rs[0, 0][0] += (2 * s30 * aux1Term3 * aux7Term2) / J1squared;
-            a3rs[0, 0][1] += (2 * s31 * aux1Term3 * aux7Term2) / J1squared;
-            a3rs[0, 0][2] += (2 * s32 * aux1Term3 * aux7Term2) / J1squared;
+            a3rsOut[0, 0][0] += (2 * s30 * aux1Term3 * aux7Term2) / J1squared;
+            a3rsOut[0, 0][1] += (2 * s31 * aux1Term3 * aux7Term2) / J1squared;
+            a3rsOut[0, 0][2] += (2 * s32 * aux1Term3 * aux7Term2) / J1squared;
 
-            a3rs[0, 1][0] += -(2 * s30 * aux1Term3 * aux8Term2) / J1squared;
-            a3rs[0, 1][1] += -(2 * s31 * aux1Term3 * aux8Term2) / J1squared;
-            a3rs[0, 1][2] += -(2 * s32 * aux1Term3 * aux8Term2) / J1squared;
+            a3rsOut[0, 1][0] += -(2 * s30 * aux1Term3 * aux8Term2) / J1squared;
+            a3rsOut[0, 1][1] += -(2 * s31 * aux1Term3 * aux8Term2) / J1squared;
+            a3rsOut[0, 1][2] += -(2 * s32 * aux1Term3 * aux8Term2) / J1squared;
 
-            a3rs[0, 2][0] += (2 * s30 * aux9Term2 * aux1Term3) / J1squared;
-            a3rs[0, 2][1] += (2 * s31 * aux9Term2 * aux1Term3) / J1squared;
-            a3rs[0, 2][2] += (2 * s32 * aux9Term2 * aux1Term3) / J1squared;
+            a3rsOut[0, 2][0] += (2 * s30 * aux9Term2 * aux1Term3) / J1squared;
+            a3rsOut[0, 2][1] += (2 * s31 * aux9Term2 * aux1Term3) / J1squared;
+            a3rsOut[0, 2][2] += (2 * s32 * aux9Term2 * aux1Term3) / J1squared;
 
-            a3rs[1, 0][0] += -(2 * s30 * aux2Term3 * aux7Term2) / J1squared;
-            a3rs[1, 0][1] += -(2 * s31 * aux2Term3 * aux7Term2) / J1squared;
-            a3rs[1, 0][2] += -(2 * s32 * aux2Term3 * aux7Term2) / J1squared;
+            a3rsOut[1, 0][0] += -(2 * s30 * aux2Term3 * aux7Term2) / J1squared;
+            a3rsOut[1, 0][1] += -(2 * s31 * aux2Term3 * aux7Term2) / J1squared;
+            a3rsOut[1, 0][2] += -(2 * s32 * aux2Term3 * aux7Term2) / J1squared;
 
-            a3rs[1, 1][0] += (2 * s30 * aux2Term3 * aux8Term2) / J1squared;
-            a3rs[1, 1][1] += (2 * s31 * aux2Term3 * aux8Term2) / J1squared;
-            a3rs[1, 1][2] += (2 * s32 * aux2Term3 * aux8Term2) / J1squared;
+            a3rsOut[1, 1][0] += (2 * s30 * aux2Term3 * aux8Term2) / J1squared;
+            a3rsOut[1, 1][1] += (2 * s31 * aux2Term3 * aux8Term2) / J1squared;
+            a3rsOut[1, 1][2] += (2 * s32 * aux2Term3 * aux8Term2) / J1squared;
 
-            a3rs[1, 2][0] += -(2 * s30 * aux2Term3 * aux9Term2) / J1squared;
-            a3rs[1, 2][1] += -(2 * s31 * aux2Term3 * aux9Term2) / J1squared;
-            a3rs[1, 2][2] += -(2 * s32 * aux2Term3 * aux9Term2) / J1squared;
+            a3rsOut[1, 2][0] += -(2 * s30 * aux2Term3 * aux9Term2) / J1squared;
+            a3rsOut[1, 2][1] += -(2 * s31 * aux2Term3 * aux9Term2) / J1squared;
+            a3rsOut[1, 2][2] += -(2 * s32 * aux2Term3 * aux9Term2) / J1squared;
 
-            a3rs[2, 0][0] += (2 * s30 * aux3Term3 * aux7Term2) / J1squared;
-            a3rs[2, 0][1] += (2 * s31 * aux3Term3 * aux7Term2) / J1squared;
-            a3rs[2, 0][2] += (2 * s32 * aux3Term3 * aux7Term2) / J1squared;
+            a3rsOut[2, 0][0] += (2 * s30 * aux3Term3 * aux7Term2) / J1squared;
+            a3rsOut[2, 0][1] += (2 * s31 * aux3Term3 * aux7Term2) / J1squared;
+            a3rsOut[2, 0][2] += (2 * s32 * aux3Term3 * aux7Term2) / J1squared;
 
-            a3rs[2, 1][0] += -(2 * s30 * aux3Term3 * aux8Term2) / J1squared;
-            a3rs[2, 1][1] += -(2 * s31 * aux3Term3 * aux8Term2) / J1squared;
-            a3rs[2, 1][2] += -(2 * s32 * aux3Term3 * aux8Term2) / J1squared;
+            a3rsOut[2, 1][0] += -(2 * s30 * aux3Term3 * aux8Term2) / J1squared;
+            a3rsOut[2, 1][1] += -(2 * s31 * aux3Term3 * aux8Term2) / J1squared;
+            a3rsOut[2, 1][2] += -(2 * s32 * aux3Term3 * aux8Term2) / J1squared;
 
-            a3rs[2, 2][0] += (2 * s30 * aux3Term3 * aux9Term2) / J1squared;
-            a3rs[2, 2][1] += (2 * s31 * aux3Term3 * aux9Term2) / J1squared;
-            a3rs[2, 2][2] += (2 * s32 * aux3Term3 * aux9Term2) / J1squared;
+            a3rsOut[2, 2][0] += (2 * s30 * aux3Term3 * aux9Term2) / J1squared;
+            a3rsOut[2, 2][1] += (2 * s31 * aux3Term3 * aux9Term2) / J1squared;
+            a3rsOut[2, 2][2] += (2 * s32 * aux3Term3 * aux9Term2) / J1squared;
             #endregion
-            return a3rs;
         }
 
 
-        private double[,] CalculateA3r(double[] surfaceBasisVector1,
+        private void CalculateA3r(double[] surfaceBasisVector1,
             double[] surfaceBasisVector2, double[] surfaceBasisVector3,
-            double dksi_r, double dheta_r, double J1)
+            double dksi_r, double dheta_r, double J1, double[,] da3_unit_dr_out)
         {
             var s30 = surfaceBasisVector3[0];
             var s31 = surfaceBasisVector3[1];
@@ -1374,20 +1379,17 @@ namespace ISAAR.MSolve.IGA.Elements
             var dnorma3_dr2 = s30 * da3_tilde_dr02 +
                               s31 * da3_tilde_dr12;
 
-            var da3_unit_dr = new double[3, 3];
-            da3_unit_dr[0, 0] = -s30 * dnorma3_dr0;
-            da3_unit_dr[1, 0] = da3_tilde_dr10 - s31 * dnorma3_dr0;
-            da3_unit_dr[2, 0] = da3_tilde_dr20 - s32 * dnorma3_dr0;
+            da3_unit_dr_out[0, 0] = -s30 * dnorma3_dr0;
+            da3_unit_dr_out[1, 0] = da3_tilde_dr10 - s31 * dnorma3_dr0;
+            da3_unit_dr_out[2, 0] = da3_tilde_dr20 - s32 * dnorma3_dr0;
 
-            da3_unit_dr[0, 1] = da3_tilde_dr01 - s30 * dnorma3_dr1;
-            da3_unit_dr[1, 1] = -s31 * dnorma3_dr1;
-            da3_unit_dr[2, 1] = da3_tilde_dr21 - s32 * dnorma3_dr1;
+            da3_unit_dr_out[0, 1] = da3_tilde_dr01 - s30 * dnorma3_dr1;
+            da3_unit_dr_out[1, 1] = -s31 * dnorma3_dr1;
+            da3_unit_dr_out[2, 1] = da3_tilde_dr21 - s32 * dnorma3_dr1;
 
-            da3_unit_dr[0, 2] = da3_tilde_dr02 - s30 * dnorma3_dr2;
-            da3_unit_dr[1, 2] = da3_tilde_dr12 - s31 * dnorma3_dr2;
-            da3_unit_dr[2, 2] = -s32 * dnorma3_dr2;
-
-            return da3_unit_dr;
+            da3_unit_dr_out[0, 2] = da3_tilde_dr02 - s30 * dnorma3_dr2;
+            da3_unit_dr_out[1, 2] = da3_tilde_dr12 - s31 * dnorma3_dr2;
+            da3_unit_dr_out[2, 2] = -s32 * dnorma3_dr2;
         }
 
         internal double[,] CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs,
