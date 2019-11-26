@@ -383,7 +383,7 @@ namespace ISAAR.MSolve.IGA.Elements
 		public IMatrix StiffnessMatrix(IElement element)
 		{
 			var shellElement = (NurbsKirchhoffLoveShellElementSectionNL)element;
-			var gaussPoints = _midsurfaceGaussPoints.ToArray();
+			var gaussPoints = _midsurfaceGaussPoints;
 
 			var controlPoints = shellElement.ControlPoints.ToArray();
 
@@ -408,7 +408,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			var BmbTransposeMultStiffness = new double[bCols, bRows];
 			var BbmTransposeMultStiffness = new double[bCols, bRows];
 
-			for (int j = 0; j < gaussPoints.Length; j++)
+			for (int j = 0; j < gaussPoints.Count; j++)
 			{
 				var jacobianMatrix = CalculateJacobian(elementControlPoints, nurbs, j);
 
@@ -510,8 +510,8 @@ namespace ISAAR.MSolve.IGA.Elements
 					}
 				}
 
-                var MembraneForces = shellElement.materialsAtMidsurfaceGP[gaussPoints[j]].MembraneForces;
-                var BendingMoments = shellElement.materialsAtMidsurfaceGP[gaussPoints[j]].Moments;
+                var MembraneForces = materialsAtMidsurfaceGP[gaussPoints[j]].MembraneForces;
+                var BendingMoments = materialsAtMidsurfaceGP[gaussPoints[j]].Moments;
 
                 var KmembraneNL = CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j);
 
