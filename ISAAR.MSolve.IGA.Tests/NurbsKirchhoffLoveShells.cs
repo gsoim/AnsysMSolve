@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using ISAAR.MSolve.Analyzers;
@@ -18,6 +19,7 @@ using ISAAR.MSolve.Solvers.Direct;
 using MathNet.Numerics.Data.Matlab;
 using MathNet.Numerics.LinearAlgebra;
 using Xunit;
+using MatlabWriter = ISAAR.MSolve.LinearAlgebra.Output.MatlabWriter;
 
 namespace ISAAR.MSolve.IGA.Tests
 {
@@ -442,15 +444,80 @@ namespace ISAAR.MSolve.IGA.Tests
 				Utilities.AreValuesEqual(expectedSolution[i], solver.LinearSystems[0].Solution[i], 7);
 		}
 
+        [Fact]
+        public static void ScordelisLoShell()
+        {
+            var model = new Model();
+            var filename = "ScordelisLoShell";
+            var filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt")
+                .ToString(CultureInfo.InvariantCulture);
+            var modelReader = new IsogeometricShellReader(model, filepath);
+            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
 
-		[Fact]
+            model.SurfaceLoads.Add(new SurfaceDistributedLoad(-90, StructuralDof.TranslationY));
+
+            // Rigid diaphragm for AB
+            for (var i = 0; i < 19; i++)
+            {
+                model.ControlPointsDictionary[i * 19].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                model.ControlPointsDictionary[i * 19].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+            }
+
+            // Symmetry for CD
+            for (var i = 0; i < 19; i++)
+            {
+                model.ControlPointsDictionary[i * 19 + 18].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+
+                model.AddPenaltyConstrainedDofPair(new PenaltyDofPair(
+                    new NodalDof(model.ControlPointsDictionary[i * 19 + 18], StructuralDof.TranslationX),
+                    new NodalDof(model.ControlPointsDictionary[i * 19 + 17], StructuralDof.TranslationX)));
+                model.AddPenaltyConstrainedDofPair(new PenaltyDofPair(
+                    new NodalDof(model.ControlPointsDictionary[i * 19 + 18], StructuralDof.TranslationY),
+                    new NodalDof(model.ControlPointsDictionary[i * 19 + 17], StructuralDof.TranslationY)));
+            }
+
+            // Symmetry for AD
+            for (var j = 0; j < 19; j++)
+            {
+                model.ControlPointsDictionary[j].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                model.AddPenaltyConstrainedDofPair(new PenaltyDofPair(
+                    new NodalDof(model.ControlPointsDictionary[j], StructuralDof.TranslationY),
+                    new NodalDof(model.ControlPointsDictionary[j + 19], StructuralDof.TranslationY)));
+                model.AddPenaltyConstrainedDofPair(new PenaltyDofPair(
+                    new NodalDof(model.ControlPointsDictionary[j], StructuralDof.TranslationZ),
+                    new NodalDof(model.ControlPointsDictionary[j + 19], StructuralDof.TranslationZ)));
+            }
+
+            // Solvers
+            var solverBuilder = new SkylineSolver.Builder();
+            ISolver solver = solverBuilder.BuildSolver(model);
+
+            // Structural problem provider
+            var provider = new ProblemStructural(model, solver);
+
+            // Linear static analysis
+            var childAnalyzer = new LinearAnalyzer(model, solver, provider);
+            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
+
+            // Run the analysis
+            parentAnalyzer.Initialize();
+            parentAnalyzer.Solve();
+
+
+            var cp = model.ControlPointsDictionary.Values.Last();
+            var dofA = model.GlobalDofOrdering.GlobalFreeDofs[cp, StructuralDof.TranslationY];
+
+            var solution = solver.LinearSystems[0].Solution[dofA];
+        }
+
+        [Fact]
 		public void IsogeometricSquareShell()
 		{
 			Model model = new Model();
 			var filename = "SquareShell";
 			string filepath = $"..\\..\\..\\InputFiles\\{filename}.txt";
 			IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-			modelReader.CreateShellModelFromFile(GeometricalFormulation.Linear);
+			modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
 
 
 			Matrix<double> loadVector =
@@ -505,10 +572,10 @@ namespace ISAAR.MSolve.IGA.Tests
 			parentAnalyzer.Initialize();
 			parentAnalyzer.Solve();
 
-			//var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
-			//paraview.CreateParaview2DFile();
+            var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
+            paraview.CreateParaview2DFile();
 
-			Matrix<double> solutionVectorExpected =
+            Matrix<double> solutionVectorExpected =
 				MatlabReader.Read<double>("..\\..\\..\\InputFiles\\SquareShell.mat", "SolutionVector");
 
 			for (int i = 0; i < solutionVectorExpected.ColumnCount; i++)
@@ -526,11 +593,11 @@ namespace ISAAR.MSolve.IGA.Tests
             IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
             modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
 
-            foreach (var controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary.Values)
+            for (int i = 0; i < 20; i++)
             {
-                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
             }
 
             Value verticalDistributedLoad = delegate (double x, double y, double z)
@@ -554,6 +621,9 @@ namespace ISAAR.MSolve.IGA.Tests
             // Run the analysis
             parentAnalyzer.Initialize();
             parentAnalyzer.Solve();
+
+            //var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
+            //paraview.CreateParaview2DFile();
 
             var a = solver.LinearSystems[0].Solution;
         }
@@ -567,11 +637,11 @@ namespace ISAAR.MSolve.IGA.Tests
             IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
             modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
 
-            foreach (var controlPoint in model.PatchesDictionary[0].EdgesDictionary[0].ControlPointsDictionary.Values)
+            for (int i = 0; i < 20; i++)
             {
-                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-                model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
             }
 
             Value verticalDistributedLoad = delegate (double x, double y, double z)
@@ -594,7 +664,14 @@ namespace ISAAR.MSolve.IGA.Tests
 
             // Run the analysis
             parentAnalyzer.Initialize();
+
+            MatlabWriter writer = new MatlabWriter();
+            writer.WriteToFile((ISparseMatrix)solver.LinearSystems[0].Matrix,Path.Combine(Directory.GetCurrentDirectory(),"Kff.mat"));
+
             parentAnalyzer.Solve();
+
+            //var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
+            //paraview.CreateParaview2DFile();
 
             var a = solver.LinearSystems[0].Solution;
         }

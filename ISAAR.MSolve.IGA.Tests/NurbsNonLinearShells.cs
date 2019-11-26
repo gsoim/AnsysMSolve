@@ -178,6 +178,52 @@ namespace ISAAR.MSolve.IGA.Tests
             parentAnalyzer.Solve();
         }
 
+        //[Fact]
+        public void SlitAnnularPlate()
+        {
+            Model model = new Model();
+            var filename = "SplitAnnularPlate";
+            var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
+            IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
+            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
+
+            Value verticalDistributedLoad = delegate (double x, double y, double z)
+            {
+                return new double[] { 0, 0, 0.8 };
+            };
+            model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
+
+            for (int i = 0; i < 20; i++)
+            {
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+            }
+
+            // Solvers
+            var solverBuilder = new DenseMatrixSolver.Builder();
+            ISolver solver = solverBuilder.BuildSolver(model);
+
+            // Structural problem provider
+            var provider = new ProblemStructural(model, solver);
+
+            // Linear static analysis
+            var newtonRaphsonBuilder = new LoadControlAnalyzer.Builder(model, solver, provider, 1000);
+            var childAnalyzer = newtonRaphsonBuilder.Build();
+            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
+
+            var loggerA = new TotalLoadsDisplacementsPerIncrementLog(model.PatchesDictionary[0], 1000,
+                model.ControlPointsDictionary.Values.Last(), StructuralDof.TranslationZ, "SplitAnnularPlateWa.txt");
+            var loggerB = new TotalLoadsDisplacementsPerIncrementLog(model.PatchesDictionary[0], 1000,
+                model.ControlPointsDictionary[790], StructuralDof.TranslationZ, "SplitAnnularPlateWb.txt");
+            childAnalyzer.IncrementalLogs.Add(0, loggerA);
+            childAnalyzer.IncrementalLogs.Add(1, loggerB);
+
+            // Run the analysis
+            parentAnalyzer.Initialize();
+            parentAnalyzer.Solve();
+        }
+
         [Fact]
         public void JacobianTest()
         {
@@ -315,12 +361,11 @@ namespace ISAAR.MSolve.IGA.Tests
 
             var expectedKmembraneNL = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "KmembraneNL");
 
-            for (var i = 0; i < KmembraneNL.NumRows; i++)
+            for (var i = 0; i < KmembraneNL.GetLength(0); i++)
             {
-                for (var j = 0; j < KmembraneNL.NumColumns; j++)
+                for (var j = 0; j < KmembraneNL.GetLength(1); j++)
                 {
-                    Assert.True(Utilities.AreValuesEqual(expectedKmembraneNL[i, j], KmembraneNL[i, j],
-                        Tolerance));
+                    Assert.True(Utilities.AreValuesEqual(expectedKmembraneNL[i, j], KmembraneNL[i, j], Tolerance));
                 }
             }
         }
@@ -356,22 +401,18 @@ namespace ISAAR.MSolve.IGA.Tests
 
 
             var KbendingNL = shellElement.CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
-                Vector.CreateFromArray(surfaceBasisVector1), 
-                Vector.CreateFromArray(surfaceBasisVector2),
-                Vector.CreateFromArray(surfaceBasisVector3),
-                Vector.CreateFromArray(surfaceBasisVectorDerivative1),
-                Vector.CreateFromArray(surfaceBasisVectorDerivative2),
-                Vector.CreateFromArray(surfaceBasisVectorDerivative12), J1, 0);
+                surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3,
+                surfaceBasisVectorDerivative1, surfaceBasisVectorDerivative2,
+                surfaceBasisVectorDerivative12, J1, 0);
 
             var expectedKbendingNL = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "KbendingNL");
 
 
-            for (var i = 0; i < KbendingNL.NumRows; i++)
+            for (var i = 0; i < KbendingNL.GetLength(0); i++)
             {
-                for (var j = 0; j < KbendingNL.NumColumns; j++)
+                for (var j = 0; j < KbendingNL.GetLength(1); j++)
                 {
-                    Assert.True(Utilities.AreValuesEqual(expectedKbendingNL[i, j], KbendingNL[i, j],
-                        Tolerance));
+                    Assert.True(Utilities.AreValuesEqual(expectedKbendingNL[i, j], KbendingNL[i, j],1e-04));
                 }
             }
         }
@@ -454,7 +495,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 for (var j = 0; j < Ktotal.NumColumns; j++)
                 {
                     Assert.True(Utilities.AreValuesEqual(expectedKtotal[i, j], Ktotal[i, j],
-                        Tolerance));
+                        1e-6));
                 }
             }
         }
