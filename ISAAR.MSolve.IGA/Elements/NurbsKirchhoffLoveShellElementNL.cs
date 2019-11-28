@@ -521,7 +521,7 @@ namespace ISAAR.MSolve.IGA.Elements
             }
 
             var elementControlPoints = CurrentControlPoint(controlPoints);
-
+            
             var bRows = 3;
             var bCols = elementControlPoints.Length * 3;
             var stiffnessMatrix = new double[bCols, bCols];
@@ -651,6 +651,9 @@ namespace ISAAR.MSolve.IGA.Elements
                         stiffnessMatrix[i, k] += KbendingNL[i, k] * wFactor;
                     }
                 }
+
+
+               
             }
 
             return Matrix.CreateFromArray(stiffnessMatrix);

@@ -99,7 +99,10 @@ namespace ISAAR.MSolve.IGA.Elements
 			var controlPoints = shellElement.ControlPoints.ToArray();
 			var elementNodalForces = new double[shellElement.ControlPointsDictionary.Count * 3];
 
-			_solution = localDisplacements;
+            var elementMembraneForces = new double[shellElement.ControlPointsDictionary.Count * 3];
+            var elementBendingForces = new double[shellElement.ControlPointsDictionary.Count * 3];
+
+            _solution = localDisplacements;
 			//var newControlPoints = CurrentControlPoint(controlPoints);
 			//var newControlPoints = controlPoints;
 			var newControlPoints = CurrentControlPoint(controlPoints);
@@ -148,8 +151,10 @@ namespace ISAAR.MSolve.IGA.Elements
 				for (int i = 0; i < Bmembrane.GetLength(1); i++)
 				{
 					for (int k = 0; k < Bmembrane.GetLength(0); k++)
-					{
-						elementNodalForces[i] += (+Bmembrane[k, i] * membraneForces[k] * wfactor +
+                    {
+                        elementMembraneForces[i] += Bmembrane[k, i] * membraneForces[k] * wfactor;
+                        elementBendingForces[i] += Bbending[k, i] * bendingMoments[k] * wfactor;
+                        elementNodalForces[i] += (+Bmembrane[k, i] * membraneForces[k] * wfactor +
 												 +Bbending[k, i] * bendingMoments[k] * wfactor);
 					}
 				}
@@ -397,7 +402,16 @@ namespace ISAAR.MSolve.IGA.Elements
 
 			var elementControlPoints = CurrentControlPoint(controlPoints);
 
-			var bRows = 3;
+            var KmemTotal = Matrix.CreateZero(elementControlPoints.Length * 3, elementControlPoints.Length * 3);
+            var KmemTotalL = Matrix.CreateZero(elementControlPoints.Length * 3, elementControlPoints.Length * 3);
+            var KmemTotalNL = Matrix.CreateZero(elementControlPoints.Length * 3, elementControlPoints.Length * 3);
+
+            var KbenTotal = Matrix.CreateZero(elementControlPoints.Length * 3, elementControlPoints.Length * 3);
+            var KbenTotalL = Matrix.CreateZero(elementControlPoints.Length * 3, elementControlPoints.Length * 3);
+            var KbenTotalNL = Matrix.CreateZero(elementControlPoints.Length * 3, elementControlPoints.Length * 3);
+
+
+            var bRows = 3;
 			var bCols = elementControlPoints.Length * 3;
 			var stiffnessMatrix = new double[bCols, bCols];
 			var BmTranspose = new double[bCols, bRows];
@@ -521,6 +535,26 @@ namespace ISAAR.MSolve.IGA.Elements
                     Vector.CreateFromArray(surfaceBasisVectorDerivative1),
                     Vector.CreateFromArray(surfaceBasisVectorDerivative2),
                     Vector.CreateFromArray(surfaceBasisVectorDerivative12), J1, j);
+
+                KmemTotal.AddIntoThis(((KmembraneNL +
+                                        Matrix.CreateFromArray(Bmembrane).Transpose() *
+                                        MembraneConstitutiveMatrix *
+                                        Matrix.CreateFromArray(Bmembrane)).Scale(wFactor)));
+                KmemTotalL.AddIntoThis((Matrix.CreateFromArray(Bmembrane).Transpose() *
+                                        MembraneConstitutiveMatrix *
+                                        Matrix.CreateFromArray(Bmembrane)).Scale(wFactor));
+                KmemTotalNL.AddIntoThis(KmembraneNL.Scale(wFactor));
+
+
+                KbenTotal.AddIntoThis(((KbendingNL +
+                                        Matrix.CreateFromArray(Bbending).Transpose() *
+                                        BendingConstitutiveMatrix *
+                                        Matrix.CreateFromArray(Bbending)).Scale(wFactor)));
+                KbenTotalL.AddIntoThis((Matrix.CreateFromArray(Bbending).Transpose() *
+                                        BendingConstitutiveMatrix *
+                                        Matrix.CreateFromArray(Bbending)).Scale(wFactor));
+                KbenTotalNL.AddIntoThis(KbendingNL.Scale(wFactor));
+
 
                 for (var i = 0; i < stiffnessMatrix.GetLength(0); i++)
                 {
@@ -793,7 +827,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			}
 		}
 
-		internal IMatrix CalculateKbendingNL(ControlPoint[] controlPoints,
+		internal Matrix CalculateKbendingNL(ControlPoint[] controlPoints,
 		   double[] bendingMoments, Nurbs2D nurbs, Vector surfaceBasisVector1,
 		   Vector surfaceBasisVector2, Vector surfaceBasisVector3, Vector surfaceBasisVectorDerivative1, Vector surfaceBasisVectorDerivative2,
 		   Vector surfaceBasisVectorDerivative12, double J1, int j)

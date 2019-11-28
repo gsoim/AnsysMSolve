@@ -8,16 +8,16 @@ namespace ISAAR.MSolve.Materials
     public class ShellElasticSectionMaterial2D : IShellSectionMaterial
     {
 
-        private IMatrixView _couplingConstitutiveMatrix;
-        private IMatrixView _bendingConstitutiveMatrix;
-        private IMatrixView _membraneConstitutiveMatrix;
+        private Matrix _couplingConstitutiveMatrix;
+        private Matrix _bendingConstitutiveMatrix;
+        private Matrix _membraneConstitutiveMatrix;
 
         object ICloneable.Clone() => Clone();
 
         public double[] MembraneForces { get; } = new double[3];
         public double[] Moments { get; } = new double[3];
 
-        public IMatrixView MembraneConstitutiveMatrix
+        public Matrix MembraneConstitutiveMatrix
         {
             get
             {
@@ -28,7 +28,7 @@ namespace ISAAR.MSolve.Materials
             set => _membraneConstitutiveMatrix = value;
         }
 
-        public IMatrixView BendingConstitutiveMatrix
+        public Matrix BendingConstitutiveMatrix
         {
             get
             {
@@ -39,7 +39,7 @@ namespace ISAAR.MSolve.Materials
             private set => _bendingConstitutiveMatrix = value;
         }
 
-        public IMatrixView CouplingConstitutiveMatrix
+        public Matrix CouplingConstitutiveMatrix
         {
             get
             {
