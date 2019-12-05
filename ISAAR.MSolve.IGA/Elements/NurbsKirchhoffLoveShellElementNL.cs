@@ -70,31 +70,7 @@ namespace ISAAR.MSolve.IGA.Elements
                 }
             }
 
-            // Initialize a3rs
-            a3rs[0, 0] = new double[3];
-            a3rs[0, 1] = new double[3];
-            a3rs[0, 2] = new double[3];
-
-            a3rs[1, 0] = new double[3];
-            a3rs[1, 1] = new double[3];
-            a3rs[1, 2] = new double[3];
-
-            a3rs[2, 0] = new double[3];
-            a3rs[2, 1] = new double[3];
-            a3rs[2, 2] = new double[3];
-
-            // Initialize Bab_rs
-            Bab_rs[0, 0] = new double[3];
-            Bab_rs[0, 1] = new double[3];
-            Bab_rs[0, 2] = new double[3];
-
-            Bab_rs[1, 0] = new double[3];
-            Bab_rs[1, 1] = new double[3];
-            Bab_rs[1, 2] = new double[3];
-
-            Bab_rs[2, 0] = new double[3];
-            Bab_rs[2, 1] = new double[3];
-            Bab_rs[2, 2] = new double[3];
+            _controlPoints = elementControlPoints.ToArray();
         }
 
         public CellType CellType { get; } = CellType.Unknown;
@@ -138,18 +114,21 @@ namespace ISAAR.MSolve.IGA.Elements
         public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
         {
             var shellElement = (NurbsKirchhoffLoveShellElementNL) element;
-            var controlPoints = shellElement.ControlPoints.ToArray();
             var elementNodalForces = new double[shellElement.ControlPointsDictionary.Count * 3];
 
             _solution = localDisplacements;
 
-            var newControlPoints = CurrentControlPoint(controlPoints);
-            var nurbs = CalculateShapeFunctions(shellElement, controlPoints);
+            var newControlPoints = CurrentControlPoint(_controlPoints);
+            var nurbs = CalculateShapeFunctions(shellElement, _controlPoints);
             var gaussPoints = materialsAtThicknessGP.Keys.ToArray();
+
+            var Bmembrane = new double[3, _controlPoints.Length * 3];
+            var Bbending = new double[3, _controlPoints.Length * 3];
+            var numberOfControlPoints = _controlPoints.Length;
 
             for (int j = 0; j < gaussPoints.Length; j++)
             {
-                var jacobianMatrix = CalculateJacobian(newControlPoints, nurbs, j);
+                CalculateJacobian(newControlPoints, nurbs, j, jacobianMatrix);
 
                 var hessianMatrix = CalculateHessian(newControlPoints, nurbs, j);
 
@@ -174,13 +153,13 @@ namespace ISAAR.MSolve.IGA.Elements
                 var surfaceBasisVectorDerivative1 = CalculateSurfaceBasisVector1(hessianMatrix, 0);
                 var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
                 var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
-
-                var Bmembrane = CalculateMembraneDeformationMatrix(newControlPoints, nurbs, j, surfaceBasisVector1,
-                    surfaceBasisVector2);
-                var Bbending = CalculateBendingDeformationMatrix(newControlPoints, surfaceBasisVector3, nurbs, j,
+                
+                CalculateMembraneDeformationMatrix(numberOfControlPoints, nurbs, j, surfaceBasisVector1,
+                    surfaceBasisVector2, Bmembrane);
+                CalculateBendingDeformationMatrix(numberOfControlPoints, surfaceBasisVector3, nurbs, j,
                     surfaceBasisVector2,
                     surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
-                    surfaceBasisVectorDerivative12);
+                    surfaceBasisVectorDerivative12, Bbending);
 
                 var (membraneForces, bendingMoments) =
                     IntegratedStressesOverThickness(gaussPoints[j]);
@@ -218,6 +197,7 @@ namespace ISAAR.MSolve.IGA.Elements
         public Dictionary<int, double> CalculateLoadingCondition(Element element, Face face,
             PressureBoundaryCondition pressure) => throw new NotImplementedException();
 
+        double[,] jacobianMatrix = new double[2, 3];
         public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements,
             double[] localdDisplacements)
         {
@@ -228,14 +208,11 @@ namespace ISAAR.MSolve.IGA.Elements
             _solution = localDisplacements;
 
             var newControlPoints = CurrentControlPoint(elementControlPoints);
-
-
-            //var newControlPoints = elementControlPoints;
-
+            
             var midsurfaceGP = materialsAtThicknessGP.Keys.ToArray();
             for (var j = 0; j < midsurfaceGP.Length; j++)
             {
-                var jacobianMatrix = CalculateJacobian(newControlPoints, nurbs, j);
+                CalculateJacobian(newControlPoints, nurbs, j, jacobianMatrix);
 
                 var hessianMatrix = CalculateHessian(newControlPoints, nurbs, j);
 
@@ -345,7 +322,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
             for (var j = 0; j < gaussPoints.Count; j++)
             {
-                var jacobianMatrix = CalculateJacobian(elementControlPoints, nurbs, j);
+                CalculateJacobian(elementControlPoints, nurbs, j, jacobianMatrix);
                 var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
                 var surfaceBasisVector2 = CalculateSurfaceBasisVector1(jacobianMatrix, 1);
                 var surfaceBasisVector3 = surfaceBasisVector1.CrossProduct(surfaceBasisVector2);
@@ -385,7 +362,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
             for (var j = 0; j < gaussPoints.Count; j++)
             {
-                var jacobianMatrix = CalculateJacobian(elementControlPoints, nurbs, j);
+                CalculateJacobian(elementControlPoints, nurbs, j, jacobianMatrix);
                 var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
                 var surfaceBasisVector2 = CalculateSurfaceBasisVector1(jacobianMatrix, 1);
                 var surfaceBasisVector3 = surfaceBasisVector1.CrossProduct(surfaceBasisVector2);
@@ -510,21 +487,24 @@ namespace ISAAR.MSolve.IGA.Elements
         {
             var shellElement = (NurbsKirchhoffLoveShellElementNL) element;
             var gaussPoints = materialsAtThicknessGP.Keys.ToArray();
-
-            var controlPoints = shellElement.ControlPoints.ToArray();
-            var nurbs = CalculateShapeFunctions(shellElement, controlPoints);
+            var nurbs = CalculateShapeFunctions(shellElement, _controlPoints);
 
             if (!isInitialized)
             {
-                CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
+                CalculateInitialConfigurationData(_controlPoints, nurbs, gaussPoints);
                 isInitialized = true;
             }
 
-            var elementControlPoints = CurrentControlPoint(controlPoints);
+            var elementControlPoints = CurrentControlPoint(_controlPoints);
             
             var bRows = 3;
             var bCols = elementControlPoints.Length * 3;
             var stiffnessMatrix = new double[bCols, bCols];
+            var KmembraneNL = new double[bCols, bCols];
+            var KbendingNL = new double[bCols, bCols];
+            var Bmembrane = new double[bRows, bCols];
+            var Bbending = new double[bRows, bCols];
+
             var BmTranspose = new double[bCols, bRows];
             var BbTranspose = new double[bCols, bRows];
 
@@ -535,7 +515,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
             for (int j = 0; j < gaussPoints.Length; j++)
             {
-                var jacobianMatrix = CalculateJacobian(elementControlPoints, nurbs, j);
+                CalculateJacobian(elementControlPoints, nurbs, j, jacobianMatrix);
 
                 var hessianMatrix = CalculateHessian(elementControlPoints, nurbs, j);
                 var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
@@ -549,24 +529,23 @@ namespace ISAAR.MSolve.IGA.Elements
                     surfaceBasisVector1[0] * surfaceBasisVector2[1] - surfaceBasisVector1[1] * surfaceBasisVector2[0],
                 };
 
-                double norm = 0;
-                for (int i = 0; i < surfaceBasisVector3.Length; i++)
-                    norm += surfaceBasisVector3[i] * surfaceBasisVector3[i];
-                var J1 = Math.Sqrt(norm);
+                var J1 = Math.Sqrt(surfaceBasisVector3[0]* surfaceBasisVector3[0]+
+                                   surfaceBasisVector3[1] * surfaceBasisVector3[1]+
+                                   surfaceBasisVector3[2] * surfaceBasisVector3[2]);
 
-                for (int i = 0; i < surfaceBasisVector3.Length; i++)
-                    surfaceBasisVector3[i] = surfaceBasisVector3[i] / J1;
+                surfaceBasisVector3[0] /= J1;
+                surfaceBasisVector3[1] /= J1;
+                surfaceBasisVector3[2] /= J1;
 
                 var surfaceBasisVectorDerivative1 = CalculateSurfaceBasisVector1(hessianMatrix, 0);
                 var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
                 var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
 
-                var Bmembrane = CalculateMembraneDeformationMatrix(elementControlPoints, nurbs, j, surfaceBasisVector1,
-                    surfaceBasisVector2);
-                var Bbending = CalculateBendingDeformationMatrix(elementControlPoints, surfaceBasisVector3, nurbs, j,
-                    surfaceBasisVector2,
-                    surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
-                    surfaceBasisVectorDerivative12);
+                CalculateMembraneDeformationMatrix(elementControlPoints.Length, nurbs, j, surfaceBasisVector1,
+                    surfaceBasisVector2, Bmembrane);
+                CalculateBendingDeformationMatrix(elementControlPoints.Length, surfaceBasisVector3, nurbs, j,
+                    surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
+                    surfaceBasisVectorDerivative12, Bbending);
 
                 var (MembraneConstitutiveMatrix, BendingConstitutiveMatrix, CouplingConstitutiveMatrix) =
                     IntegratedConstitutiveOverThickness(gaussPoints[j]);
@@ -636,12 +615,15 @@ namespace ISAAR.MSolve.IGA.Elements
 
                 var (MembraneForces, BendingMoments) = IntegratedStressesOverThickness(gaussPoints[j]);
 
-                var KmembraneNL = CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j);
-                var KbendingNL = CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
+                Array.Clear(KmembraneNL, 0, bCols * bCols);
+                Array.Clear(KbendingNL, 0, bCols * bCols);
+
+                CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j, KmembraneNL);
+                CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
                     surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3,
                     surfaceBasisVectorDerivative1,
                     surfaceBasisVectorDerivative2,
-                    surfaceBasisVectorDerivative12, J1, j);
+                    surfaceBasisVectorDerivative12, J1, j, KbendingNL);
 
                 for (var i = 0; i < stiffnessMatrix.GetLength(0); i++)
                 {
@@ -715,20 +697,19 @@ namespace ISAAR.MSolve.IGA.Elements
             return hessianMatrix;
         }
 
-        internal double[,] CalculateJacobian(ControlPoint[] controlPoints, Nurbs2D nurbs, int j)
+        internal void CalculateJacobian(ControlPoint[] controlPoints, Nurbs2D nurbs, int j, double[,] jacobianOut)
         {
-            var jacobianMatrix = new double[2, 3];
+            jacobianOut[0, 0] = jacobianOut[0, 1] = jacobianOut[0, 2] =
+                jacobianOut[1, 0] = jacobianOut[1, 1] = jacobianOut[1, 2] = 0.0;
             for (var k = 0; k < controlPoints.Length; k++)
             {
-                jacobianMatrix[0, 0] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].X;
-                jacobianMatrix[0, 1] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].Y;
-                jacobianMatrix[0, 2] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].Z;
-                jacobianMatrix[1, 0] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].X;
-                jacobianMatrix[1, 1] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].Y;
-                jacobianMatrix[1, 2] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].Z;
+                jacobianOut[0, 0] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].X;
+                jacobianOut[0, 1] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].Y;
+                jacobianOut[0, 2] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].Z;
+                jacobianOut[1, 0] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].X;
+                jacobianOut[1, 1] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].Y;
+                jacobianOut[1, 2] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].Z;
             }
-
-            return jacobianMatrix;
         }
 
         internal double[] CalculateSurfaceBasisVector1(double[,] Matrix, int row)
@@ -740,12 +721,11 @@ namespace ISAAR.MSolve.IGA.Elements
             return surfaceBasisVector1;
         }
 
-        internal double[,] CalculateBendingDeformationMatrix(ControlPoint[] controlPoints, double[] surfaceBasisVector3,
+        internal void CalculateBendingDeformationMatrix(int controlPointsCount, double[] surfaceBasisVector3,
             Nurbs2D nurbs, int j, double[] surfaceBasisVector2, double[] surfaceBasisVectorDerivative1,
-            double[] surfaceBasisVector1,
-            double J1, double[] surfaceBasisVectorDerivative2, double[] surfaceBasisVectorDerivative12)
+            double[] surfaceBasisVector1, double J1, double[] surfaceBasisVectorDerivative2,
+            double[] surfaceBasisVectorDerivative12, double[,] BbendingOut)
         {
-            var Bbending = new double[3, controlPoints.Length * 3];
             var s10 = surfaceBasisVector1[0];
             var s11 = surfaceBasisVector1[1];
             var s12 = surfaceBasisVector1[2];
@@ -770,13 +750,7 @@ namespace ISAAR.MSolve.IGA.Elements
             var s12_1 = surfaceBasisVectorDerivative12[1];
             var s12_2 = surfaceBasisVectorDerivative12[2];
 
-            //var s1 = Vector.CreateFromArray(surfaceBasisVector1);
-            //var s2 = Vector.CreateFromArray(surfaceBasisVector2);
-            //var s3 = Vector.CreateFromArray(surfaceBasisVector3);
-            //var s11 = Vector.CreateFromArray(surfaceBasisVectorDerivative1);
-            //var s22 = Vector.CreateFromArray(surfaceBasisVectorDerivative2);
-            //var s12 = Vector.CreateFromArray(surfaceBasisVectorDerivative12);
-            for (int column = 0; column < controlPoints.Length * 3; column += 3)
+            for (int column = 0; column < controlPointsCount * 3; column += 3)
             {
                 var dksi = nurbs.NurbsDerivativeValuesKsi[column / 3, j];
                 var dheta = nurbs.NurbsDerivativeValuesHeta[column / 3, j];
@@ -784,108 +758,18 @@ namespace ISAAR.MSolve.IGA.Elements
                 var d2Heta = nurbs.NurbsSecondDerivativeValueHeta[column / 3, j];
                 var d2KsiHeta = nurbs.NurbsSecondDerivativeValueKsiHeta[column / 3, j];
 
-                //#region BI1
+                BbendingOut[0, column] = -d2Ksi * s30 - ((dheta * (s11 * s32 - s12 * s31) - dksi * (s21 * s32 - s22 * s31)) * (s11_0 * s30 + s11_1 * s31 + s11_2 * s32) - dheta * (s11 * s11_2 - s12 * s11_1) + dksi * (s21 * s11_2 - s22 * s11_1)) / J1;
+                BbendingOut[0, column + 1] = ((dheta * (s10 * s32 - s12 * s30) - dksi * (s20 * s32 - s22 * s30)) * (s11_0 * s30 + s11_1 * s31 + s11_2 * s32) - dheta * (s10 * s11_2 - s12 * s11_0) + dksi * (s20 * s11_2 - s22 * s11_0)) / J1 - d2Ksi * s31;
+                BbendingOut[0, column + 2] = -d2Ksi * s32 - ((dheta * (s10 * s31 - s11 * s30) - dksi * (s20 * s31 - s21 * s30)) * (s11_0 * s30 + s11_1 * s31 + s11_2 * s32) - dheta * (s10 * s11_1 - s11 * s11_0) + dksi * (s20 * s11_1 - s21 * s11_0)) / J1;
 
-                //var BI1 = s3.CrossProduct(s1);
-                //BI1.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
+                BbendingOut[1, column] = -d2Heta * s30 - ((dheta * (s11 * s32 - s12 * s31) - dksi * (s21 * s32 - s22 * s31)) * (s22_0 * s30 + s22_1 * s31 + s22_2 * s32) - dheta * (s11 * s22_2 - s12 * s22_1) + dksi * (s21 * s22_2 - s22 * s22_1)) / J1;
+                BbendingOut[1, column + 1] = ((dheta * (s10 * s32 - s12 * s30) - dksi * (s20 * s32 - s22 * s30)) * (s22_0 * s30 + s22_1 * s31 + s22_2 * s32) - dheta * (s10 * s22_2 - s12 * s22_0) + dksi * (s20 * s22_2 - s22 * s22_0)) / J1 - d2Heta * s31;
+                BbendingOut[1, column + 2] = -d2Heta * s32 - ((dheta * (s10 * s31 - s11 * s30) - dksi * (s20 * s31 - s21 * s30)) * (s22_0 * s30 + s22_1 * s31 + s22_2 * s32) - dheta * (s10 * s22_1 - s11 * s22_0) + dksi * (s20 * s22_1 - s21 * s22_0)) / J1;
 
-                //var auxVector = s2.CrossProduct(s3);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
-                //BI1.AddIntoThis(auxVector);
-
-                //BI1.ScaleIntoThis(s3.DotProduct(s11));
-                //auxVector = s1.CrossProduct(s11);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
-                //BI1.AddIntoThis(auxVector);
-
-                //auxVector = s11.CrossProduct(s2);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
-                //BI1.AddIntoThis(auxVector);
-
-                //BI1.ScaleIntoThis(1 / J1);
-                //auxVector[0] = surfaceBasisVector3[0];
-                //auxVector[1] = surfaceBasisVector3[1];
-                //auxVector[2] = surfaceBasisVector3[2];
-                //auxVector.ScaleIntoThis(-nurbs.NurbsSecondDerivativeValueKsi[column / 3, j]);
-                //BI1.AddIntoThis(auxVector);
-
-                //#endregion BI1
-
-                //#region BI2
-
-                //IVector BI2 = s3.CrossProduct(s1);
-                //BI2.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
-                //auxVector = s2.CrossProduct(s3);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
-                //BI2.AddIntoThis(auxVector);
-                //BI2.ScaleIntoThis(s3.DotProduct(s22));
-                //auxVector = s1.CrossProduct(s22);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
-                //BI2.AddIntoThis(auxVector);
-                //auxVector = s22.CrossProduct(s2);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
-                //BI2.AddIntoThis(auxVector);
-                //BI2.ScaleIntoThis(1 / J1);
-                //auxVector[0] = surfaceBasisVector3[0];
-                //auxVector[1] = surfaceBasisVector3[1];
-                //auxVector[2] = surfaceBasisVector3[2];
-                //auxVector.ScaleIntoThis(-nurbs.NurbsSecondDerivativeValueHeta[column / 3, j]);
-                //BI2.AddIntoThis(auxVector);
-
-                //#endregion BI2
-
-                //#region BI3
-
-                //var BI3 = s3.CrossProduct(s1);
-                //BI3.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
-                //auxVector = s2.CrossProduct(s3);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
-                //BI3.AddIntoThis(auxVector);
-                //BI3.ScaleIntoThis(s3.DotProduct(s12));
-                //auxVector = s1.CrossProduct(s12);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
-                //BI3.AddIntoThis(auxVector);
-                //auxVector = s22.CrossProduct(s2);
-                //auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
-                //BI3.AddIntoThis(auxVector);
-                //BI3.ScaleIntoThis(1 / J1);
-                //auxVector[0] = surfaceBasisVector3[0];
-                //auxVector[1] = surfaceBasisVector3[1];
-                //auxVector[2] = surfaceBasisVector3[2];
-                //auxVector.ScaleIntoThis(-nurbs.NurbsSecondDerivativeValueKsiHeta[column / 3, j]);
-                //BI3.AddIntoThis(auxVector);
-
-                //#endregion BI3
-
-
-                //Bbending[0, column] = BI1[0];
-                //Bbending[0, column + 1] = BI1[1];
-                //Bbending[0, column + 2] = BI1[2];
-
-                //Bbending[1, column] = BI2[0];
-                //Bbending[1, column + 1] = BI2[1];
-                //Bbending[1, column + 2] = BI2[2];
-
-                //Bbending[2, column] = 2 * BI3[0];
-                //Bbending[2, column + 1] = 2 * BI3[1];
-                //Bbending[2, column + 2] = 2 * BI3[2];
-
-
-
-                Bbending[0, column] = -d2Ksi * s30 - ((dheta * (s11 * s32 - s12 * s31) - dksi * (s21 * s32 - s22 * s31)) * (s11_0 * s30 + s11_1 * s31 + s11_2 * s32) - dheta * (s11 * s11_2 - s12 * s11_1) + dksi * (s21 * s11_2 - s22 * s11_1)) / J1;
-                Bbending[0, column + 1] = ((dheta * (s10 * s32 - s12 * s30) - dksi * (s20 * s32 - s22 * s30)) * (s11_0 * s30 + s11_1 * s31 + s11_2 * s32) - dheta * (s10 * s11_2 - s12 * s11_0) + dksi * (s20 * s11_2 - s22 * s11_0)) / J1 - d2Ksi * s31;
-                Bbending[0, column + 2] = -d2Ksi * s32 - ((dheta * (s10 * s31 - s11 * s30) - dksi * (s20 * s31 - s21 * s30)) * (s11_0 * s30 + s11_1 * s31 + s11_2 * s32) - dheta * (s10 * s11_1 - s11 * s11_0) + dksi * (s20 * s11_1 - s21 * s11_0)) / J1;
-
-                Bbending[1, column] = -d2Heta * s30 - ((dheta * (s11 * s32 - s12 * s31) - dksi * (s21 * s32 - s22 * s31)) * (s22_0 * s30 + s22_1 * s31 + s22_2 * s32) - dheta * (s11 * s22_2 - s12 * s22_1) + dksi * (s21 * s22_2 - s22 * s22_1)) / J1;
-                Bbending[1, column + 1] = ((dheta * (s10 * s32 - s12 * s30) - dksi * (s20 * s32 - s22 * s30)) * (s22_0 * s30 + s22_1 * s31 + s22_2 * s32) - dheta * (s10 * s22_2 - s12 * s22_0) + dksi * (s20 * s22_2 - s22 * s22_0)) / J1 - d2Heta * s31;
-                Bbending[1, column + 2] = -d2Heta * s32 - ((dheta * (s10 * s31 - s11 * s30) - dksi * (s20 * s31 - s21 * s30)) * (s22_0 * s30 + s22_1 * s31 + s22_2 * s32) - dheta * (s10 * s22_1 - s11 * s22_0) + dksi * (s20 * s22_1 - s21 * s22_0)) / J1;
-
-                Bbending[2, column] = -2 * d2KsiHeta * s30 - (2 * ((dheta * (s11 * s32 - s12 * s31) - dksi * (s21 * s32 - s22 * s31)) * (s12_0 * s30 + s12_1 * s31 + s12_2 * s32) - dheta * (s11 * s12_2 - s12 * s12_1) + dksi * (s21 * s12_2 - s22 * s12_1))) / J1;
-                Bbending[2, column + 1] = (2 * ((dheta * (s10 * s32 - s12 * s30) - dksi * (s20 * s32 - s22 * s30)) * (s12_0 * s30 + s12_1 * s31 + s12_2 * s32) - dheta * (s10 * s12_2 - s12 * s12_0) + dksi * (s20 * s12_2 - s22 * s12_0))) / J1 - 2 * d2KsiHeta * s31;
-                Bbending[2, column + 2] = -2 * d2KsiHeta * s32 - (2 * ((dheta * (s10 * s31 - s11 * s30) - dksi * (s20 * s31 - s21 * s30)) * (s12_0 * s30 + s12_1 * s31 + s12_2 * s32) - dheta * (s10 * s12_1 - s11 * s12_0) + dksi * (s20 * s12_1 - s21 * s12_0))) / J1;
+                BbendingOut[2, column] = -2 * d2KsiHeta * s30 - (2 * ((dheta * (s11 * s32 - s12 * s31) - dksi * (s21 * s32 - s22 * s31)) * (s12_0 * s30 + s12_1 * s31 + s12_2 * s32) - dheta * (s11 * s12_2 - s12 * s12_1) + dksi * (s21 * s12_2 - s22 * s12_1))) / J1;
+                BbendingOut[2, column + 1] = (2 * ((dheta * (s10 * s32 - s12 * s30) - dksi * (s20 * s32 - s22 * s30)) * (s12_0 * s30 + s12_1 * s31 + s12_2 * s32) - dheta * (s10 * s12_2 - s12 * s12_0) + dksi * (s20 * s12_2 - s22 * s12_0))) / J1 - 2 * d2KsiHeta * s31;
+                BbendingOut[2, column + 2] = -2 * d2KsiHeta * s32 - (2 * ((dheta * (s10 * s31 - s11 * s30) - dksi * (s20 * s31 - s21 * s30)) * (s12_0 * s30 + s12_1 * s31 + s12_2 * s32) - dheta * (s10 * s12_1 - s11 * s12_0) + dksi * (s20 * s12_1 - s21 * s12_0))) / J1;
             }
-
-            return Bbending;
         }
 
         private double[] CalculateCrossProduct(double[] vector1, double[] vector2)
@@ -922,7 +806,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
             for (int j = 0; j < gaussPoints.Count; j++)
             {
-                var jacobianMatrix = CalculateJacobian(controlPoints, nurbs, j);
+                CalculateJacobian(controlPoints, nurbs, j, jacobianMatrix);
 
                 var hessianMatrix = CalculateHessian(controlPoints, nurbs, j);
                 initialSurfaceBasisVectors1[j] = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
@@ -951,19 +835,18 @@ namespace ISAAR.MSolve.IGA.Elements
             }
         }
 
-        private double[,] a3r = new double[3, 3]; //reuse buffer for local computations
-        private double[,] a3s = new double[3, 3];
-        private double[,][] a3rs=new double[3,3][];
-        private double[,][] Bab_rs = new double[3, 3][];
+        private a3rs a3rs=new a3rs();
+        private Bab_rs Bab_rs = new Bab_rs();
+        private a3r a3r= new a3r();
+        private a3r a3s= new a3r();
+        private ControlPoint[] _controlPoints;
 
-        internal double[,] CalculateKbendingNL(ControlPoint[] controlPoints,
+        internal void CalculateKbendingNL(ControlPoint[] controlPoints,
             double[] bendingMoments, Nurbs2D nurbs, double[] surfaceBasisVector1,
             double[] surfaceBasisVector2, double[] surfaceBasisVector3,
             double[] surfaceBasisVectorDerivative1, double[] surfaceBasisVectorDerivative2,
-            double[] surfaceBasisVectorDerivative12, double J1, int j)
+            double[] surfaceBasisVectorDerivative12, double J1, int j, double[,] KbendingNLOut)
         {
-            var KbendingNL = new double[controlPoints.Length * 3, controlPoints.Length * 3];
-
             for (int i = 0; i < controlPoints.Length; i++)
             {
                 var dksi_r = nurbs.NurbsDerivativeValuesKsi[i, j];
@@ -983,157 +866,173 @@ namespace ISAAR.MSolve.IGA.Elements
                     var dheta_s = nurbs.NurbsDerivativeValuesHeta[k, j];
 
                     CalculateA3r(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, dksi_r,
-                        dheta_r, J1, a3r);
+                        dheta_r, J1, ref a3r);
                     CalculateA3r(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, dksi_s,
-                        dheta_s, J1, a3s);
-
+                        dheta_s, J1, ref a3s);
+                    a3rs=new a3rs();//Clear struct values
                     Calculate_a3rs(surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, J1, dksi_r,
-                        dheta_r, dksi_s, dheta_s, a3rs);
+                        dheta_r, dksi_s, dheta_s, ref a3rs);
                     
                     CalculateBab_rs(surfaceBasisVectorDerivative1, surfaceBasisVectorDerivative2, 
-                        surfaceBasisVectorDerivative12, d2Ksi_dr2, a3s, d2Ksi_ds2, a3r, a3rs, d2Heta_dr2, 
-                        d2Heta_ds2, d2KsiHeta_dr2, d2KsiHeta_ds2, Bab_rs);
+                        surfaceBasisVectorDerivative12, d2Ksi_dr2, ref a3s, d2Ksi_ds2, ref a3r, ref a3rs, d2Heta_dr2, 
+                        d2Heta_ds2, d2KsiHeta_dr2, d2KsiHeta_ds2, ref Bab_rs);
 
-                    for (int l = 0; l < 3; l++)
-                    {
-                        for (int m = 0; m < 3; m++)
-                        {
-                            KbendingNL[i * 3 + l, k * 3 + m] -= (Bab_rs[l, m][0] * bendingMoments[0] +
-                                                                 Bab_rs[l, m][1] * bendingMoments[1] +
-                                                                 Bab_rs[l, m][2] * bendingMoments[2]);
-                        }
-                    }
+
+                    KbendingNLOut[i * 3 + 0, k * 3 + 0] -= (Bab_rs.Bab_rs00_0 * bendingMoments[0] + Bab_rs.Bab_rs00_1 * bendingMoments[1] + Bab_rs.Bab_rs00_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 0, k * 3 + 1] -= (Bab_rs.Bab_rs01_0 * bendingMoments[0] + Bab_rs.Bab_rs01_1 * bendingMoments[1] + Bab_rs.Bab_rs01_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 0, k * 3 + 2] -= (Bab_rs.Bab_rs02_0 * bendingMoments[0] + Bab_rs.Bab_rs02_1 * bendingMoments[1] + Bab_rs.Bab_rs02_2 * bendingMoments[2]);
+
+                    KbendingNLOut[i * 3 + 1, k * 3 + 0] -= (Bab_rs.Bab_rs10_0 * bendingMoments[0] + Bab_rs.Bab_rs10_1 * bendingMoments[1] + Bab_rs.Bab_rs10_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 1, k * 3 + 1] -= (Bab_rs.Bab_rs11_0 * bendingMoments[0] + Bab_rs.Bab_rs11_1 * bendingMoments[1] + Bab_rs.Bab_rs11_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 1, k * 3 + 2] -= (Bab_rs.Bab_rs12_0 * bendingMoments[0] + Bab_rs.Bab_rs12_1 * bendingMoments[1] + Bab_rs.Bab_rs12_2 * bendingMoments[2]);
+
+                    KbendingNLOut[i * 3 + 2, k * 3 + 0] -= (Bab_rs.Bab_rs20_0 * bendingMoments[0] + Bab_rs.Bab_rs20_1 * bendingMoments[1] + Bab_rs.Bab_rs20_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 2, k * 3 + 1] -= (Bab_rs.Bab_rs21_0 * bendingMoments[0] + Bab_rs.Bab_rs21_1 * bendingMoments[1] + Bab_rs.Bab_rs21_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 2, k * 3 + 2] -= (Bab_rs.Bab_rs22_0 * bendingMoments[0] + Bab_rs.Bab_rs22_1 * bendingMoments[1] + Bab_rs.Bab_rs22_2 * bendingMoments[2]);
+
                 }
             }
-
-            return KbendingNL;
         }
 
         private static void CalculateBab_rs(double[] surfaceBasisVectorDerivative1,
-            double[] surfaceBasisVectorDerivative2, double[] surfaceBasisVectorDerivative12, double d2Ksi_dr2, double[,] a3s,
-            double d2Ksi_ds2, double[,] a3r, double[,][] a3rs, double d2Heta_dr2, double d2Heta_ds2, double d2KsiHeta_dr2,
-            double d2KsiHeta_ds2, double[,][] Bab_rsOut)
+            double[] surfaceBasisVectorDerivative2, double[] surfaceBasisVectorDerivative12, double d2Ksi_dr2, ref a3r a3s,
+            double d2Ksi_ds2, ref a3r a3r, ref a3rs a3rs, double d2Heta_dr2, double d2Heta_ds2, double d2KsiHeta_dr2,
+            double d2KsiHeta_ds2, ref Bab_rs Bab_rsOut)
         {
-            Bab_rsOut[0, 0][0] = d2Ksi_dr2 * a3s[0, 0] + d2Ksi_ds2 * a3r[0, 0] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[0, 0][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[0, 0][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[0, 0][2];
-            Bab_rsOut[0, 0][1] = d2Heta_dr2 * a3s[0, 0] + d2Heta_ds2 * a3r[0, 0] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[0, 0][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[0, 0][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[0, 0][2];
-            Bab_rsOut[0, 0][2] = (d2KsiHeta_dr2 * a3s[0, 0] + d2KsiHeta_ds2 * a3r[0, 0]) * 2 +
-                                 surfaceBasisVectorDerivative12[0] * a3rs[0, 0][0] +
-                                 surfaceBasisVectorDerivative12[1] * a3rs[0, 0][1] +
-                                 surfaceBasisVectorDerivative12[2] * a3rs[0, 0][2];
+            var s11_0 = surfaceBasisVectorDerivative1[0];
+            var s11_1 = surfaceBasisVectorDerivative1[1];
+            var s11_2 = surfaceBasisVectorDerivative1[2];
 
-            Bab_rsOut[0, 1][0] = d2Ksi_dr2 * a3s[0, 1] + d2Ksi_ds2 * a3r[1, 0] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[0, 1][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[0, 1][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[0, 1][2];
-            Bab_rsOut[0, 1][1] = d2Heta_dr2 * a3s[0, 1] + d2Heta_ds2 * a3r[1, 0] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[0, 1][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[0, 1][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[0, 1][2];
-            Bab_rsOut[0, 1][2]= (d2KsiHeta_dr2 * a3s[0, 1] + d2KsiHeta_ds2 * a3r[1, 0]) * 2 +
-                                surfaceBasisVectorDerivative12[0] * a3rs[0, 1][0] +
-                                surfaceBasisVectorDerivative12[1] * a3rs[0, 1][1] +
-                                surfaceBasisVectorDerivative12[2] * a3rs[0, 1][2];
+            var s22_0 = surfaceBasisVectorDerivative2[0];
+            var s22_1 = surfaceBasisVectorDerivative2[1];
+            var s22_2 = surfaceBasisVectorDerivative2[2];
 
-            Bab_rsOut[0, 2][0] = d2Ksi_dr2 * a3s[0, 2] + d2Ksi_ds2 * a3r[2, 0] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[0, 2][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[0, 2][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[0, 2][2];
-            Bab_rsOut[0, 2][1] = d2Heta_dr2 * a3s[0, 2] + d2Heta_ds2 * a3r[2, 0] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[0, 2][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[0, 2][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[0, 2][2];
-            Bab_rsOut[0, 2][2] = (d2KsiHeta_dr2 * a3s[0, 2] + d2KsiHeta_ds2 * a3r[2, 0]) * 2 +
-                                 surfaceBasisVectorDerivative12[0] * a3rs[0, 2][0] +
-                                 surfaceBasisVectorDerivative12[1] * a3rs[0, 2][1] +
-                                 surfaceBasisVectorDerivative12[2] * a3rs[0, 2][2];
+            var s12_0 = surfaceBasisVectorDerivative12[0];
+            var s12_1 = surfaceBasisVectorDerivative12[1];
+            var s12_2 = surfaceBasisVectorDerivative12[2];
 
-            Bab_rsOut[1, 0][0] = d2Ksi_dr2 * a3s[1, 0] + d2Ksi_ds2 * a3r[0, 1] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[1, 0][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[1, 0][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[1, 0][2];
-            Bab_rsOut[1, 0][1] = d2Heta_dr2 * a3s[1, 0] + d2Heta_ds2 * a3r[0, 1] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[1, 0][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[1, 0][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[1, 0][2];
-            Bab_rsOut[1, 0][2] = (d2KsiHeta_dr2 * a3s[1, 0] + d2KsiHeta_ds2 * a3r[0, 1]) * 2 +
-                                 surfaceBasisVectorDerivative12[0] * a3rs[1, 0][0] +
-                                 surfaceBasisVectorDerivative12[1] * a3rs[1, 0][1] +
-                                 surfaceBasisVectorDerivative12[2] * a3rs[1, 0][2];
+            Bab_rsOut.Bab_rs00_0 = d2Ksi_dr2 * a3s.a3r00 + d2Ksi_ds2 * a3r.a3r00 +
+                                 s11_0 * a3rs.a3rs00_0 +
+                                 s11_1 * a3rs.a3rs00_1 +
+                                 s11_2 * a3rs.a3rs00_2;
+            
+            Bab_rsOut.Bab_rs00_1 = d2Heta_dr2 * a3s.a3r00 + d2Heta_ds2 * a3r.a3r00 +
+                                 s22_0 * a3rs.a3rs00_0 +
+                                 s22_1 * a3rs.a3rs00_1 +
+                                 s22_2 * a3rs.a3rs00_2;
+            
+            Bab_rsOut.Bab_rs00_2 = (d2KsiHeta_dr2 * a3s.a3r00 + d2KsiHeta_ds2 * a3r.a3r00) * 2 +
+                                 s12_0 * a3rs.a3rs00_0 +
+                                 s12_1 * a3rs.a3rs00_1 +
+                                 s12_2 * a3rs.a3rs00_2;
 
-            Bab_rsOut[1, 1][0] = d2Ksi_dr2 * a3s[1, 1] + d2Ksi_ds2 * a3r[1, 1] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[1, 1][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[1, 1][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[1, 1][2];
-            Bab_rsOut[1, 1][1] = d2Heta_dr2 * a3s[1, 1] + d2Heta_ds2 * a3r[1, 1] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[1, 1][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[1, 1][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[1, 1][2];
-            Bab_rsOut[1, 1][2] = (d2KsiHeta_dr2 * a3s[1, 1] + d2KsiHeta_ds2 * a3r[1, 1]) * 2 +
-                                 surfaceBasisVectorDerivative12[0] * a3rs[1, 1][0] +
-                                 surfaceBasisVectorDerivative12[1] * a3rs[1, 1][1] +
-                                 surfaceBasisVectorDerivative12[2] * a3rs[1, 1][2];
+            Bab_rsOut.Bab_rs01_0 = d2Ksi_dr2 * a3s.a3r01 + d2Ksi_ds2 * a3r.a3r10 +
+                                 s11_0 * a3rs.a3rs01_0 +
+                                 s11_1 * a3rs.a3rs01_1 +
+                                 s11_2 * a3rs.a3rs01_2;
+            Bab_rsOut.Bab_rs01_1 = d2Heta_dr2 * a3s.a3r01 + d2Heta_ds2 * a3r.a3r10 +
+                                 s22_0 * a3rs.a3rs01_0 +
+                                 s22_1 * a3rs.a3rs01_1 +
+                                 s22_2 * a3rs.a3rs01_2;
+            Bab_rsOut.Bab_rs01_2= (d2KsiHeta_dr2 * a3s.a3r01 + d2KsiHeta_ds2 * a3r.a3r10) * 2 +
+                                s12_0 * a3rs.a3rs01_0 +
+                                s12_1 * a3rs.a3rs01_1 +
+                                s12_2 * a3rs.a3rs01_2;
 
-            Bab_rsOut[1, 2][0] = d2Ksi_dr2 * a3s[1, 2] + d2Ksi_ds2 * a3r[2, 1] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[1, 2][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[1, 2][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[1, 2][2];
-            Bab_rsOut[1, 2][1] = d2Heta_dr2 * a3s[1, 2] + d2Heta_ds2 * a3r[2, 1] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[1, 2][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[1, 2][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[1, 2][2];
-            Bab_rsOut[1, 2][2] = (d2KsiHeta_dr2 * a3s[1, 2] + d2KsiHeta_ds2 * a3r[2, 1]) * 2 +
-                                 surfaceBasisVectorDerivative12[0] * a3rs[1, 2][0] +
-                                 surfaceBasisVectorDerivative12[1] * a3rs[1, 2][1] +
-                                 surfaceBasisVectorDerivative12[2] * a3rs[1, 2][2];
+            Bab_rsOut.Bab_rs02_0 = d2Ksi_dr2 * a3s.a3r02 + d2Ksi_ds2 * a3r.a3r20 +
+                                 s11_0 * a3rs.a3rs02_0 +
+                                 s11_1 * a3rs.a3rs02_1 +
+                                 s11_2 * a3rs.a3rs02_2;
+            Bab_rsOut.Bab_rs02_1 = d2Heta_dr2 * a3s.a3r02 + d2Heta_ds2 * a3r.a3r20 +
+                                 s22_0 * a3rs.a3rs02_0 +
+                                 s22_1 * a3rs.a3rs02_1 +
+                                 s22_2 * a3rs.a3rs02_2;
+            Bab_rsOut.Bab_rs02_2 = (d2KsiHeta_dr2 * a3s.a3r02 + d2KsiHeta_ds2 * a3r.a3r20) * 2 +
+                                 s12_0 * a3rs.a3rs02_0 +
+                                 s12_1 * a3rs.a3rs02_1 +
+                                 s12_2 * a3rs.a3rs02_2;
 
-            Bab_rsOut[2, 0][0] = d2Ksi_dr2 * a3s[2, 0] + d2Ksi_ds2 * a3r[0, 2] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[2, 0][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[2, 0][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[2, 0][2];
-            Bab_rsOut[2, 0][1] = d2Heta_dr2 * a3s[2, 0] + d2Heta_ds2 * a3r[0, 2] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[2, 0][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[2, 0][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[2, 0][2];
-            Bab_rsOut[2, 0][2] = (d2KsiHeta_dr2 * a3s[2, 0] + d2KsiHeta_ds2 * a3r[0, 2]) * 2 +
-                                 surfaceBasisVectorDerivative12[0] * a3rs[2, 0][0] +
-                                 surfaceBasisVectorDerivative12[1] * a3rs[2, 0][1] +
-                                 surfaceBasisVectorDerivative12[2] * a3rs[2, 0][2];
+            Bab_rsOut.Bab_rs10_0 = d2Ksi_dr2 * a3s.a3r10 + d2Ksi_ds2 * a3r.a3r01 +
+                                 s11_0 * a3rs.a3rs10_0 +
+                                 s11_1 * a3rs.a3rs10_1 +
+                                 s11_2 * a3rs.a3rs10_2;
+            Bab_rsOut.Bab_rs10_1 = d2Heta_dr2 * a3s.a3r10 + d2Heta_ds2 * a3r.a3r01 +
+                                 s22_0 * a3rs.a3rs10_0 +
+                                 s22_1 * a3rs.a3rs10_1 +
+                                 s22_2 * a3rs.a3rs10_2;
+            Bab_rsOut.Bab_rs10_2 = (d2KsiHeta_dr2 * a3s.a3r10 + d2KsiHeta_ds2 * a3r.a3r01) * 2 +
+                                 s12_0 * a3rs.a3rs10_0 +
+                                 s12_1 * a3rs.a3rs10_1 +
+                                 s12_2 * a3rs.a3rs10_2;
 
-            Bab_rsOut[2, 1][0] = d2Ksi_dr2 * a3s[2, 1] + d2Ksi_ds2 * a3r[1, 2] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[2, 1][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[2, 1][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[2, 1][2];
-            Bab_rsOut[2, 1][1] = d2Heta_dr2 * a3s[2, 1] + d2Heta_ds2 * a3r[1, 2] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[2, 1][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[2, 1][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[2, 1][2];
-            Bab_rsOut[2, 1][2] = (d2KsiHeta_dr2 * a3s[2, 1] + d2KsiHeta_ds2 * a3r[1, 2]) * 2 +
-                                 surfaceBasisVectorDerivative12[0] * a3rs[2, 1][0] +
-                                 surfaceBasisVectorDerivative12[1] * a3rs[2, 1][1] +
-                                 surfaceBasisVectorDerivative12[2] * a3rs[2, 1][2];
+            Bab_rsOut.Bab_rs11_0 = d2Ksi_dr2 * a3s.a3r11 + d2Ksi_ds2 * a3r.a3r11 +
+                                 s11_0 * a3rs.a3rs11_0 +
+                                 s11_1 * a3rs.a3rs11_1 +
+                                 s11_2 * a3rs.a3rs11_2;
+            Bab_rsOut.Bab_rs11_1 = d2Heta_dr2 * a3s.a3r11 + d2Heta_ds2 * a3r.a3r11 +
+                                 s22_0 * a3rs.a3rs11_0 +
+                                 s22_1 * a3rs.a3rs11_1 +
+                                 s22_2 * a3rs.a3rs11_2;
+            Bab_rsOut.Bab_rs11_2 = (d2KsiHeta_dr2 * a3s.a3r11 + d2KsiHeta_ds2 * a3r.a3r11) * 2 +
+                                 s12_0 * a3rs.a3rs11_0 +
+                                 s12_1 * a3rs.a3rs11_1 +
+                                 s12_2 * a3rs.a3rs11_2;
 
-            Bab_rsOut[2, 2][0] = d2Ksi_dr2 * a3s[2, 2] + d2Ksi_ds2 * a3r[2, 2] +
-                                 surfaceBasisVectorDerivative1[0] * a3rs[2, 2][0] +
-                                 surfaceBasisVectorDerivative1[1] * a3rs[2, 2][1] +
-                                 surfaceBasisVectorDerivative1[2] * a3rs[2, 2][2];
-            Bab_rsOut[2, 2][1] = d2Heta_dr2 * a3s[2, 2] + d2Heta_ds2 * a3r[2, 2] +
-                                 surfaceBasisVectorDerivative2[0] * a3rs[2, 2][0] +
-                                 surfaceBasisVectorDerivative2[1] * a3rs[2, 2][1] +
-                                 surfaceBasisVectorDerivative2[2] * a3rs[2, 2][2];
-            Bab_rsOut[2, 2][2] = (d2KsiHeta_dr2 * a3s[2, 2] + d2KsiHeta_ds2 * a3r[2, 2]) * 2 +
-                                 surfaceBasisVectorDerivative12[0] * a3rs[2, 2][0] +
-                                 surfaceBasisVectorDerivative12[1] * a3rs[2, 2][1] +
-                                 surfaceBasisVectorDerivative12[2] * a3rs[2, 2][2];
+            Bab_rsOut.Bab_rs12_0 = d2Ksi_dr2 * a3s.a3r12 + d2Ksi_ds2 * a3r.a3r21 +
+                                 s11_0 * a3rs.a3rs12_0 +
+                                 s11_1 * a3rs.a3rs12_1 +
+                                 s11_2 * a3rs.a3rs12_2;
+            Bab_rsOut.Bab_rs12_1 = d2Heta_dr2 * a3s.a3r12 + d2Heta_ds2 * a3r.a3r21 +
+                                 s22_0 * a3rs.a3rs12_0 +
+                                 s22_1 * a3rs.a3rs12_1 +
+                                 s22_2 * a3rs.a3rs12_2;
+            Bab_rsOut.Bab_rs12_2 = (d2KsiHeta_dr2 * a3s.a3r12 + d2KsiHeta_ds2 * a3r.a3r21) * 2 +
+                                 s12_0 * a3rs.a3rs12_0 +
+                                 s12_1 * a3rs.a3rs12_1 +
+                                 s12_2 * a3rs.a3rs12_2;
+
+            Bab_rsOut.Bab_rs20_0 = d2Ksi_dr2 * a3s.a3r20 + d2Ksi_ds2 * a3r.a3r02 +
+                                 s11_0 * a3rs.a3rs20_0 +
+                                 s11_1 * a3rs.a3rs20_1 +
+                                 s11_2 * a3rs.a3rs20_2;
+            Bab_rsOut.Bab_rs20_1 = d2Heta_dr2 * a3s.a3r20 + d2Heta_ds2 * a3r.a3r02 +
+                                 s22_0 * a3rs.a3rs20_0 +
+                                 s22_1 * a3rs.a3rs20_1 +
+                                 s22_2 * a3rs.a3rs20_2;
+            Bab_rsOut.Bab_rs20_2 = (d2KsiHeta_dr2 * a3s.a3r20 + d2KsiHeta_ds2 * a3r.a3r02) * 2 +
+                                 s12_0 * a3rs.a3rs20_0 +
+                                 s12_1 * a3rs.a3rs20_1 +
+                                 s12_2 * a3rs.a3rs20_2;
+
+            Bab_rsOut.Bab_rs21_0 = d2Ksi_dr2 * a3s.a3r21 + d2Ksi_ds2 * a3r.a3r12 +
+                                 s11_0 * a3rs.a3rs21_0 +
+                                 s11_1 * a3rs.a3rs21_1 +
+                                 s11_2 * a3rs.a3rs21_2;
+            Bab_rsOut.Bab_rs21_1 = d2Heta_dr2 * a3s.a3r21 + d2Heta_ds2 * a3r.a3r12 +
+                                 s22_0 * a3rs.a3rs21_0 +
+                                 s22_1 * a3rs.a3rs21_1 +
+                                 s22_2 * a3rs.a3rs21_2;
+            Bab_rsOut.Bab_rs21_2 = (d2KsiHeta_dr2 * a3s.a3r21 + d2KsiHeta_ds2 * a3r.a3r12) * 2 +
+                                 s12_0 * a3rs.a3rs21_0 +
+                                 s12_1 * a3rs.a3rs21_1 +
+                                 s12_2 * a3rs.a3rs21_2;
+
+            Bab_rsOut.Bab_rs22_0 = d2Ksi_dr2 * a3s.a3r22 + d2Ksi_ds2 * a3r.a3r22 +
+                                 s11_0 * a3rs.a3rs22_0 +
+                                 s11_1 * a3rs.a3rs22_1 +
+                                 s11_2 * a3rs.a3rs22_2;
+            Bab_rsOut.Bab_rs22_1 = d2Heta_dr2 * a3s.a3r22 + d2Heta_ds2 * a3r.a3r22 +
+                                 s22_0 * a3rs.a3rs22_0 +
+                                 s22_1 * a3rs.a3rs22_1 +
+                                 s22_2 * a3rs.a3rs22_2;
+            Bab_rsOut.Bab_rs22_2 = (d2KsiHeta_dr2 * a3s.a3r22 + d2KsiHeta_ds2 * a3r.a3r22) * 2 +
+                                 s12_0 * a3rs.a3rs22_0 +
+                                 s12_1 * a3rs.a3rs22_1 +
+                                 s12_2 * a3rs.a3rs22_2;
         }
 
         private static void Calculate_a3rs(double[] surfaceBasisVector1, double[] surfaceBasisVector2,
-            double[] surfaceBasisVector3, double J1, double dksi_r, double dheta_r, double dksi_s, double dheta_s, double[,][] a3rsOut)
+            double[] surfaceBasisVector3, double J1, double dksi_r, double dheta_r, double dksi_s, double dheta_s, ref a3rs a3rsOut)
         {
             #region Initializations
             var s10 = surfaceBasisVector1[0];
@@ -1148,31 +1047,20 @@ namespace ISAAR.MSolve.IGA.Elements
             var s31 = surfaceBasisVector3[1];
             var s32 = surfaceBasisVector3[2];
 
-            a3rsOut[0, 0][0] = a3rsOut[0, 0][1] = a3rsOut[0, 0][2] = 0.0;
-            a3rsOut[0, 1][0] = a3rsOut[0, 1][1] = a3rsOut[0, 1][2] = 0.0;
-            a3rsOut[0, 2][0] = a3rsOut[0, 2][1] = a3rsOut[0, 2][2] = 0.0;
-
-            a3rsOut[1, 0][0] = a3rsOut[1, 0][1] = a3rsOut[1, 0][2] = 0.0;
-            a3rsOut[1, 1][0] = a3rsOut[1, 1][1] = a3rsOut[1, 1][2] = 0.0;
-            a3rsOut[1, 2][0] = a3rsOut[1, 2][1] = a3rsOut[1, 2][2] = 0.0;
-
-            a3rsOut[2, 0][0] = a3rsOut[2, 0][1] = a3rsOut[2, 0][2] = 0.0;
-            a3rsOut[2, 1][0] = a3rsOut[2, 1][1] = a3rsOut[2, 1][2] = 0.0;
-            a3rsOut[2, 2][0] = a3rsOut[2, 2][1] = a3rsOut[2, 2][2] = 0.0;
             #endregion
 
             #region Term1
             var aux1Term1 = (dheta_s * dksi_r - dheta_r * dksi_s) * J1;
             var aux2Term1 = dheta_r * dksi_s - dheta_s * dksi_r;
             var aux3Term1 = aux2Term1 * J1;
-            a3rsOut[0, 1][2] = aux1Term1;
-            a3rsOut[0, 2][1] = aux3Term1;
+            a3rsOut.a3rs01_2 = aux1Term1;
+            a3rsOut.a3rs02_1 = aux3Term1;
 
-            a3rsOut[1, 0][2] = aux3Term1;
-            a3rsOut[1, 2][0] = aux1Term1;
+            a3rsOut.a3rs10_2 = aux3Term1;
+            a3rsOut.a3rs12_0 = aux1Term1;
 
-            a3rsOut[2, 0][1] = aux1Term1;
-            a3rsOut[2, 1][0] = aux3Term1;
+            a3rsOut.a3rs20_1 = aux1Term1;
+            a3rsOut.a3rs21_0 = aux3Term1;
             #endregion
 
             #region Term2
@@ -1188,32 +1076,32 @@ namespace ISAAR.MSolve.IGA.Elements
             var J1squared = J1 * J1;
 
 
-            a3rsOut[0, 0][1] += (aux7Term2 * aux3Term2) / J1squared;
-            a3rsOut[0, 0][2] += -(aux7Term2 * aux4Term2) / J1squared;
+            a3rsOut.a3rs00_1 += (aux7Term2 * aux3Term2) / J1squared;
+            a3rsOut.a3rs00_2 += -(aux7Term2 * aux4Term2) / J1squared;
 
-            a3rsOut[0, 1][1] += -(aux8Term2 * aux3Term2) / J1squared;
-            a3rsOut[0, 1][2] += (aux8Term2 * aux4Term2) / J1squared;
+            a3rsOut.a3rs01_1 += -(aux8Term2 * aux3Term2) / J1squared;
+            a3rsOut.a3rs01_2 += (aux8Term2 * aux4Term2) / J1squared;
 
-            a3rsOut[0, 2][1] += (aux9Term2 * aux3Term2) / J1squared;
-            a3rsOut[0, 2][2] += -(aux9Term2 * aux4Term2) / J1squared;
+            a3rsOut.a3rs02_1 += (aux9Term2 * aux3Term2) / J1squared;
+            a3rsOut.a3rs02_2 += -(aux9Term2 * aux4Term2) / J1squared;
 
-            a3rsOut[1, 0][0] += -(aux7Term2 * aux3Term2) / J1squared;
-            a3rsOut[1, 0][2] += (aux7Term2 * aux6Term2) / J1squared;
+            a3rsOut.a3rs10_0 += -(aux7Term2 * aux3Term2) / J1squared;
+            a3rsOut.a3rs10_2 += (aux7Term2 * aux6Term2) / J1squared;
 
-            a3rsOut[1, 1][0] += (aux8Term2 * aux3Term2) / J1squared;
-            a3rsOut[1, 1][2] += -(aux8Term2 * aux6Term2) / J1squared;
+            a3rsOut.a3rs11_0 += (aux8Term2 * aux3Term2) / J1squared;
+            a3rsOut.a3rs11_2 += -(aux8Term2 * aux6Term2) / J1squared;
 
-            a3rsOut[1, 2][0] += -(aux9Term2 * aux3Term2) / J1squared;
-            a3rsOut[1, 2][2] += (aux9Term2 * aux6Term2) / J1squared;
+            a3rsOut.a3rs12_0 += -(aux9Term2 * aux3Term2) / J1squared;
+            a3rsOut.a3rs12_2 += (aux9Term2 * aux6Term2) / J1squared;
 
-            a3rsOut[2, 0][0] += (aux7Term2 * aux4Term2) / J1squared;
-            a3rsOut[2, 0][1] += -(aux7Term2 * aux6Term2) / J1squared;
+            a3rsOut.a3rs20_0 += (aux7Term2 * aux4Term2) / J1squared;
+            a3rsOut.a3rs20_1 += -(aux7Term2 * aux6Term2) / J1squared;
 
-            a3rsOut[2, 1][0] += -(aux8Term2 * aux4Term2) / J1squared;
-            a3rsOut[2, 1][1] += (aux8Term2 * aux6Term2) / J1squared;
+            a3rsOut.a3rs21_0 += -(aux8Term2 * aux4Term2) / J1squared;
+            a3rsOut.a3rs21_1 += (aux8Term2 * aux6Term2) / J1squared;
 
-            a3rsOut[2, 2][0] += (aux9Term2 * aux4Term2) / J1squared;
-            a3rsOut[2, 2][1] += -(aux9Term2 * aux6Term2) / J1squared;
+            a3rsOut.a3rs22_0 += (aux9Term2 * aux4Term2) / J1squared;
+            a3rsOut.a3rs22_1 += -(aux9Term2 * aux6Term2) / J1squared;
             #endregion
 
             #region Term3
@@ -1221,143 +1109,143 @@ namespace ISAAR.MSolve.IGA.Elements
             var aux2Term3 = s32 * aux6Term2 - s30 * aux3Term2;
             var aux3Term3 = s31 * aux6Term2 - s30 * aux4Term2;
 
-            a3rsOut[0, 0][1] += (aux1Term3 * aux2Term2) / J1squared;
-            a3rsOut[0, 0][2] += -(aux1Term3 * aux1Term2) / J1squared;
+            a3rsOut.a3rs00_1 += (aux1Term3 * aux2Term2) / J1squared;
+            a3rsOut.a3rs00_2 += -(aux1Term3 * aux1Term2) / J1squared;
 
-            a3rsOut[0, 1][0] += -(aux1Term3 * aux2Term2) / J1squared;
-            a3rsOut[0, 1][2] += (aux1Term3 * aux5Term2) / J1squared;
+            a3rsOut.a3rs01_0 += -(aux1Term3 * aux2Term2) / J1squared;
+            a3rsOut.a3rs01_2 += (aux1Term3 * aux5Term2) / J1squared;
 
-            a3rsOut[0, 2][0] += (aux1Term3 * aux1Term2) / J1squared;
-            a3rsOut[0, 2][1] += -(aux1Term3 * aux5Term2) / J1squared;
+            a3rsOut.a3rs02_0 += (aux1Term3 * aux1Term2) / J1squared;
+            a3rsOut.a3rs02_1 += -(aux1Term3 * aux5Term2) / J1squared;
 
-            a3rsOut[1, 0][1] += -(aux2Term3 * aux2Term2) / J1squared;
-            a3rsOut[1, 0][2] += (aux2Term3 * aux1Term2) / J1squared;
+            a3rsOut.a3rs10_1 += -(aux2Term3 * aux2Term2) / J1squared;
+            a3rsOut.a3rs10_2 += (aux2Term3 * aux1Term2) / J1squared;
 
-            a3rsOut[1, 1][0] += (aux2Term3 * aux2Term2) / J1squared;
-            a3rsOut[1, 1][2] += -(aux2Term3 * aux5Term2) / J1squared;
+            a3rsOut.a3rs11_0 += (aux2Term3 * aux2Term2) / J1squared;
+            a3rsOut.a3rs11_2 += -(aux2Term3 * aux5Term2) / J1squared;
 
-            a3rsOut[1, 2][0] += -(aux2Term3 * aux1Term2) / J1squared;
-            a3rsOut[1, 2][1] += (aux2Term3 * aux5Term2) / J1squared;
+            a3rsOut.a3rs12_0 += -(aux2Term3 * aux1Term2) / J1squared;
+            a3rsOut.a3rs12_1 += (aux2Term3 * aux5Term2) / J1squared;
 
-            a3rsOut[2, 0][1] += (aux3Term3 * aux2Term2) / J1squared;
-            a3rsOut[2, 0][2] += -(aux3Term3 * aux1Term2) / J1squared;
+            a3rsOut.a3rs20_1 += (aux3Term3 * aux2Term2) / J1squared;
+            a3rsOut.a3rs20_2 += -(aux3Term3 * aux1Term2) / J1squared;
 
-            a3rsOut[2, 1][0] += -(aux3Term3 * aux2Term2) / J1squared;
-            a3rsOut[2, 1][2] += (aux3Term3 * aux5Term2) / J1squared;
+            a3rsOut.a3rs21_0 += -(aux3Term3 * aux2Term2) / J1squared;
+            a3rsOut.a3rs21_2 += (aux3Term3 * aux5Term2) / J1squared;
 
-            a3rsOut[2, 2][0] += (aux3Term3 * aux1Term2) / J1squared;
-            a3rsOut[2, 2][1] += -(aux3Term3 * aux5Term2) / J1squared;
+            a3rsOut.a3rs22_0 += (aux3Term3 * aux1Term2) / J1squared;
+            a3rsOut.a3rs22_1 += -(aux3Term3 * aux5Term2) / J1squared;
             #endregion
 
             #region Term4
-            a3rsOut[0, 0][0] += -(s30 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut.a3rs00_0 += -(s30 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux1Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut[0, 0][1] += -(s31 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut.a3rs00_1 += -(s31 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux1Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut[0, 0][2] += -(s32 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut.a3rs00_2 += -(s32 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux1Term3 * aux7Term2) / J1)) / J1;
 
-            a3rsOut[0, 1][0] += (s30 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs01_0 += (s30 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux1Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut[0, 1][1] += (s31 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs01_1 += (s31 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux1Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut[0, 1][2] += (s32 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs01_2 += (s32 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux1Term3 * aux8Term2) / J1)) / J1;
 
-            a3rsOut[0, 2][0] += (s30 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut.a3rs02_0 += (s30 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux9Term2 * aux1Term3) / J1)) / J1;
-            a3rsOut[0, 2][1] += (s31 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut.a3rs02_1 += (s31 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux9Term2 * aux1Term3) / J1)) / J1;
-            a3rsOut[0, 2][2] += (s32 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut.a3rs02_2 += (s32 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux9Term2 * aux1Term3) / J1)) / J1;
 
-            a3rsOut[1, 0][0] += (s30 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs10_0 += (s30 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut[1, 0][1] += (s31 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs10_1 += (s31 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut[1, 0][2] += (s32 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs10_2 += (s32 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux7Term2) / J1)) / J1;
 
-            a3rsOut[1, 1][0] += -(s30 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut.a3rs11_0 += -(s30 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux2Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut[1, 1][1] += -(s31 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut.a3rs11_1 += -(s31 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux2Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut[1, 1][2] += -(s32 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+            a3rsOut.a3rs11_2 += -(s32 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
                                       (aux2Term3 * aux8Term2) / J1)) / J1;
 
-            a3rsOut[1, 2][0] += (s30 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs12_0 += (s30 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux9Term2) / J1)) / J1;
-            a3rsOut[1, 2][1] += (s31 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs12_1 += (s31 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux9Term2) / J1)) / J1;
-            a3rsOut[1, 2][2] += (s32 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs12_2 += (s32 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux2Term3 * aux9Term2) / J1)) / J1;
 
-            a3rsOut[2, 0][0] += (s30 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut.a3rs20_0 += (s30 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux3Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut[2, 0][1] += (s31 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut.a3rs20_1 += (s31 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux3Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut[2, 0][2] += (s32 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+            a3rsOut.a3rs20_2 += (s32 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
                                      (aux3Term3 * aux7Term2) / J1)) / J1;
 
-            a3rsOut[2, 1][0] += (s30 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs21_0 += (s30 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux3Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut[2, 1][1] += (s31 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs21_1 += (s31 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux3Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut[2, 1][2] += (s32 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
+            a3rsOut.a3rs21_2 += (s32 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
                                      (aux3Term3 * aux8Term2) / J1)) / J1;
 
-            a3rsOut[2, 2][0] += -(s30 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+            a3rsOut.a3rs22_0 += -(s30 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
                                       (aux3Term3 * aux9Term2) / J1)) / J1;
-            a3rsOut[2, 2][1] += -(s31 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+            a3rsOut.a3rs22_1 += -(s31 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
                                       (aux3Term3 * aux9Term2) / J1)) / J1;
-            a3rsOut[2, 2][2] += -(s32 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+            a3rsOut.a3rs22_2 += -(s32 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
                                       (aux3Term3 * aux9Term2) / J1)) / J1;
             #endregion
 
             #region Term5
 
-            a3rsOut[0, 0][0] += (2 * s30 * aux1Term3 * aux7Term2) / J1squared;
-            a3rsOut[0, 0][1] += (2 * s31 * aux1Term3 * aux7Term2) / J1squared;
-            a3rsOut[0, 0][2] += (2 * s32 * aux1Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs00_0 += (2 * s30 * aux1Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs00_1 += (2 * s31 * aux1Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs00_2 += (2 * s32 * aux1Term3 * aux7Term2) / J1squared;
 
-            a3rsOut[0, 1][0] += -(2 * s30 * aux1Term3 * aux8Term2) / J1squared;
-            a3rsOut[0, 1][1] += -(2 * s31 * aux1Term3 * aux8Term2) / J1squared;
-            a3rsOut[0, 1][2] += -(2 * s32 * aux1Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs01_0 += -(2 * s30 * aux1Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs01_1 += -(2 * s31 * aux1Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs01_2 += -(2 * s32 * aux1Term3 * aux8Term2) / J1squared;
 
-            a3rsOut[0, 2][0] += (2 * s30 * aux9Term2 * aux1Term3) / J1squared;
-            a3rsOut[0, 2][1] += (2 * s31 * aux9Term2 * aux1Term3) / J1squared;
-            a3rsOut[0, 2][2] += (2 * s32 * aux9Term2 * aux1Term3) / J1squared;
+            a3rsOut.a3rs02_0 += (2 * s30 * aux9Term2 * aux1Term3) / J1squared;
+            a3rsOut.a3rs02_1 += (2 * s31 * aux9Term2 * aux1Term3) / J1squared;
+            a3rsOut.a3rs02_2 += (2 * s32 * aux9Term2 * aux1Term3) / J1squared;
 
-            a3rsOut[1, 0][0] += -(2 * s30 * aux2Term3 * aux7Term2) / J1squared;
-            a3rsOut[1, 0][1] += -(2 * s31 * aux2Term3 * aux7Term2) / J1squared;
-            a3rsOut[1, 0][2] += -(2 * s32 * aux2Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs10_0 += -(2 * s30 * aux2Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs10_1 += -(2 * s31 * aux2Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs10_2 += -(2 * s32 * aux2Term3 * aux7Term2) / J1squared;
 
-            a3rsOut[1, 1][0] += (2 * s30 * aux2Term3 * aux8Term2) / J1squared;
-            a3rsOut[1, 1][1] += (2 * s31 * aux2Term3 * aux8Term2) / J1squared;
-            a3rsOut[1, 1][2] += (2 * s32 * aux2Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs11_0 += (2 * s30 * aux2Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs11_1 += (2 * s31 * aux2Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs11_2 += (2 * s32 * aux2Term3 * aux8Term2) / J1squared;
 
-            a3rsOut[1, 2][0] += -(2 * s30 * aux2Term3 * aux9Term2) / J1squared;
-            a3rsOut[1, 2][1] += -(2 * s31 * aux2Term3 * aux9Term2) / J1squared;
-            a3rsOut[1, 2][2] += -(2 * s32 * aux2Term3 * aux9Term2) / J1squared;
+            a3rsOut.a3rs12_0 += -(2 * s30 * aux2Term3 * aux9Term2) / J1squared;
+            a3rsOut.a3rs12_1 += -(2 * s31 * aux2Term3 * aux9Term2) / J1squared;
+            a3rsOut.a3rs12_2 += -(2 * s32 * aux2Term3 * aux9Term2) / J1squared;
 
-            a3rsOut[2, 0][0] += (2 * s30 * aux3Term3 * aux7Term2) / J1squared;
-            a3rsOut[2, 0][1] += (2 * s31 * aux3Term3 * aux7Term2) / J1squared;
-            a3rsOut[2, 0][2] += (2 * s32 * aux3Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs20_0 += (2 * s30 * aux3Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs20_1 += (2 * s31 * aux3Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs20_2 += (2 * s32 * aux3Term3 * aux7Term2) / J1squared;
 
-            a3rsOut[2, 1][0] += -(2 * s30 * aux3Term3 * aux8Term2) / J1squared;
-            a3rsOut[2, 1][1] += -(2 * s31 * aux3Term3 * aux8Term2) / J1squared;
-            a3rsOut[2, 1][2] += -(2 * s32 * aux3Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs21_0 += -(2 * s30 * aux3Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs21_1 += -(2 * s31 * aux3Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs21_2 += -(2 * s32 * aux3Term3 * aux8Term2) / J1squared;
 
-            a3rsOut[2, 2][0] += (2 * s30 * aux3Term3 * aux9Term2) / J1squared;
-            a3rsOut[2, 2][1] += (2 * s31 * aux3Term3 * aux9Term2) / J1squared;
-            a3rsOut[2, 2][2] += (2 * s32 * aux3Term3 * aux9Term2) / J1squared;
+            a3rsOut.a3rs22_0 += (2 * s30 * aux3Term3 * aux9Term2) / J1squared;
+            a3rsOut.a3rs22_1 += (2 * s31 * aux3Term3 * aux9Term2) / J1squared;
+            a3rsOut.a3rs22_2 += (2 * s32 * aux3Term3 * aux9Term2) / J1squared;
             #endregion
         }
 
 
         private void CalculateA3r(double[] surfaceBasisVector1,
             double[] surfaceBasisVector2, double[] surfaceBasisVector3,
-            double dksi_r, double dheta_r, double J1, double[,] da3_unit_dr_out)
+            double dksi_r, double dheta_r, double J1, ref a3r da3_unit_dr_out)
         {
             var s30 = surfaceBasisVector3[0];
             var s31 = surfaceBasisVector3[1];
@@ -1382,24 +1270,25 @@ namespace ISAAR.MSolve.IGA.Elements
             var dnorma3_dr2 = s30 * da3_tilde_dr02 +
                               s31 * da3_tilde_dr12;
 
-            da3_unit_dr_out[0, 0] = -s30 * dnorma3_dr0;
-            da3_unit_dr_out[1, 0] = da3_tilde_dr10 - s31 * dnorma3_dr0;
-            da3_unit_dr_out[2, 0] = da3_tilde_dr20 - s32 * dnorma3_dr0;
+            da3_unit_dr_out.a3r00 = -s30 * dnorma3_dr0;
+            da3_unit_dr_out.a3r10 = da3_tilde_dr10 - s31 * dnorma3_dr0;
+            da3_unit_dr_out.a3r20 = da3_tilde_dr20 - s32 * dnorma3_dr0;
 
-            da3_unit_dr_out[0, 1] = da3_tilde_dr01 - s30 * dnorma3_dr1;
-            da3_unit_dr_out[1, 1] = -s31 * dnorma3_dr1;
-            da3_unit_dr_out[2, 1] = da3_tilde_dr21 - s32 * dnorma3_dr1;
+            da3_unit_dr_out.a3r01 = da3_tilde_dr01 - s30 * dnorma3_dr1;
+            da3_unit_dr_out.a3r11 = -s31 * dnorma3_dr1;
+            da3_unit_dr_out.a3r21 = da3_tilde_dr21 - s32 * dnorma3_dr1;
 
-            da3_unit_dr_out[0, 2] = da3_tilde_dr02 - s30 * dnorma3_dr2;
-            da3_unit_dr_out[1, 2] = da3_tilde_dr12 - s31 * dnorma3_dr2;
-            da3_unit_dr_out[2, 2] = -s32 * dnorma3_dr2;
+            da3_unit_dr_out.a3r02 = da3_tilde_dr02 - s30 * dnorma3_dr2;
+            da3_unit_dr_out.a3r12 = da3_tilde_dr12 - s31 * dnorma3_dr2;
+            da3_unit_dr_out.a3r22 = -s32 * dnorma3_dr2;
         }
 
-        internal double[,] CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs,
-            int j)
+        internal void CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs,
+            int j, double[,] KmembraneNLOut)
         {
-            var kmembraneNl = new double[controlPoints.Length * 3, controlPoints.Length * 3];
-
+            var membraneForce0 = membraneForces[0];
+            var membraneForce1 = membraneForces[1];
+            var membraneForce2 = membraneForces[2];
             for (var i = 0; i < controlPoints.Length; i++)
             {
                 var dksi_r = nurbs.NurbsDerivativeValuesKsi[i, j];
@@ -1410,49 +1299,45 @@ namespace ISAAR.MSolve.IGA.Elements
                     var dksi_s = nurbs.NurbsDerivativeValuesKsi[k, j];
                     var dheta_s = nurbs.NurbsDerivativeValuesHeta[k, j];
 
-                    var aux = membraneForces[0] * dksi_r * dksi_s + membraneForces[1] * dheta_r * dheta_s +
-                              membraneForces[2] * (dksi_r * dheta_s + dksi_s * dheta_r);
+                    
+                    var aux = membraneForce0 * dksi_r * dksi_s + membraneForce1 * dheta_r * dheta_s +
+                              membraneForce2 * (dksi_r * dheta_s + dksi_s * dheta_r);
 
-                    kmembraneNl[i * 3, k * 3] += aux;
-                    kmembraneNl[i * 3 + 1, k * 3 + 1] += aux;
-                    kmembraneNl[i * 3 + 2, k * 3 + 2] += aux;
+                    KmembraneNLOut[i * 3, k * 3] += aux;
+                    KmembraneNLOut[i * 3 + 1, k * 3 + 1] += aux;
+                    KmembraneNLOut[i * 3 + 2, k * 3 + 2] += aux;
                 }
             }
-
-            return kmembraneNl;
         }
         
-        internal double[,] CalculateMembraneDeformationMatrix(ControlPoint[] controlPoints, Nurbs2D nurbs, int j,
-            double[] surfaceBasisVector1,
-            double[] surfaceBasisVector2)
+        internal void CalculateMembraneDeformationMatrix(int controlPointsCount, Nurbs2D nurbs, int j,
+            double[] surfaceBasisVector1, double[] surfaceBasisVector2, double[,] BmembraneOut)
         {
-            var dRIa = new double[3, controlPoints.Length * 3];
-            for (int i = 0; i < controlPoints.Length; i++)
+            var s1_0 = surfaceBasisVector1[0];
+            var s1_1 = surfaceBasisVector1[1];
+            var s1_2 = surfaceBasisVector1[2];
+
+            var s2_0 = surfaceBasisVector2[0];
+            var s2_1 = surfaceBasisVector2[1];
+            var s2_2 = surfaceBasisVector2[2];
+
+            for (int column = 0; column < controlPointsCount * 3; column += 3)
             {
-                for (int m = 0; m < 3; m++)
-                {
-                    dRIa[m, i] = nurbs.NurbsDerivativeValuesHeta[i, j] * surfaceBasisVector1[m] +
-                                 nurbs.NurbsDerivativeValuesKsi[i, j] * surfaceBasisVector2[m];
-                }
+                var dKsi = nurbs.NurbsDerivativeValuesKsi[column / 3, j];
+                var dHeta = nurbs.NurbsDerivativeValuesHeta[column / 3, j];
+                
+                BmembraneOut[0, column] = dKsi * s1_0;
+                BmembraneOut[0, column + 1] = dKsi * s1_1;
+                BmembraneOut[0, column + 2] = dKsi * s1_2;
+                
+                BmembraneOut[1, column] = dHeta * s2_0;
+                BmembraneOut[1, column + 1] = dHeta * s2_1;
+                BmembraneOut[1, column + 2] = dHeta * s2_2;
+
+                BmembraneOut[2, column] = dHeta * s1_0 + dKsi * s2_0;
+                BmembraneOut[2, column + 1] = dHeta * s1_1 + dKsi * s2_1;
+                BmembraneOut[2, column + 2] = dHeta * s1_2 + dKsi * s2_2;
             }
-
-            var bmembrane = new double[3, controlPoints.Length * 3];
-            for (int column = 0; column < controlPoints.Length * 3; column += 3)
-            {
-                bmembrane[0, column] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[0];
-                bmembrane[0, column + 1] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[1];
-                bmembrane[0, column + 2] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[2];
-
-                bmembrane[1, column] = nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[0];
-                bmembrane[1, column + 1] = nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[1];
-                bmembrane[1, column + 2] = nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[2];
-
-                bmembrane[2, column] = dRIa[0, column / 3];
-                bmembrane[2, column + 1] = dRIa[1, column / 3];
-                bmembrane[2, column + 2] = dRIa[2, column / 3];
-            }
-
-            return bmembrane;
         }
         
         private IList<GaussLegendrePoint3D> CreateElementGaussPoints(NurbsKirchhoffLoveShellElementNL shellElement)
@@ -1480,5 +1365,98 @@ namespace ISAAR.MSolve.IGA.Elements
         private const int ThicknessIntegrationDegree = 2;
 
         public double Thickness { get; set; }
+    }
+
+    public struct a3r
+    {
+        public double a3r00;
+        public double a3r01;
+        public double a3r02;
+
+        public double a3r10;
+        public double a3r11;
+        public double a3r12;
+
+        public double a3r20;
+        public double a3r21;
+        public double a3r22;
+    }
+
+    public struct a3rs
+    {
+        public double a3rs00_0;
+        public double a3rs00_1;
+        public double a3rs00_2;
+
+        public double a3rs01_0;
+        public double a3rs01_1;
+        public double a3rs01_2;
+
+        public double a3rs02_0;
+        public double a3rs02_1;
+        public double a3rs02_2;
+
+        public double a3rs10_0;
+        public double a3rs10_1;
+        public double a3rs10_2;
+
+        public double a3rs11_0;
+        public double a3rs11_1;
+        public double a3rs11_2;
+
+        public double a3rs12_0;
+        public double a3rs12_1;
+        public double a3rs12_2;
+
+        public double a3rs20_0 ;
+        public double a3rs20_1 ;
+        public double a3rs20_2 ;
+
+        public double a3rs21_0 ;
+        public double a3rs21_1 ;
+        public double a3rs21_2 ;
+
+        public double a3rs22_0 ;
+        public double a3rs22_1 ;
+        public double a3rs22_2 ;
+    }
+
+    public struct Bab_rs
+    {
+        public double Bab_rs00_0 ;
+        public double Bab_rs00_1 ;
+        public double Bab_rs00_2 ;
+
+        public double Bab_rs01_0 ;
+        public double Bab_rs01_1 ;
+        public double Bab_rs01_2 ;
+
+        public double Bab_rs02_0 ;
+        public double Bab_rs02_1 ;
+        public double Bab_rs02_2 ;
+
+        public double Bab_rs10_0 ;
+        public double Bab_rs10_1 ;
+        public double Bab_rs10_2 ;
+
+        public double Bab_rs11_0 ;
+        public double Bab_rs11_1 ;
+        public double Bab_rs11_2 ;
+
+        public double Bab_rs12_0 ;
+        public double Bab_rs12_1 ;
+        public double Bab_rs12_2 ;
+
+        public double Bab_rs20_0 ;
+        public double Bab_rs20_1 ;
+        public double Bab_rs20_2 ;
+
+        public double Bab_rs21_0 ;
+        public double Bab_rs21_1 ;
+        public double Bab_rs21_2 ;
+
+        public double Bab_rs22_0 ;
+        public double Bab_rs22_1 ;
+        public double Bab_rs22_2 ;
     }
 }
