@@ -1064,16 +1064,6 @@ namespace ISAAR.MSolve.IGA.Elements
 			double[] surfaceBasisVector1,
 			double[] surfaceBasisVector2)
 		{
-			var dRIa = new double[3, controlPoints.Length * 3];
-			for (int i = 0; i < controlPoints.Length; i++)
-			{
-				for (int m = 0; m < 3; m++)
-				{
-					dRIa[m, i] = nurbs.NurbsDerivativeValuesHeta[i, j] * surfaceBasisVector1[m] +
-								 nurbs.NurbsDerivativeValuesKsi[i, j] * surfaceBasisVector2[m];
-				}
-			}
-
 			var bmembrane = new double[3, controlPoints.Length * 3];
 			for (int column = 0; column < controlPoints.Length * 3; column += 3)
 			{
@@ -1085,9 +1075,12 @@ namespace ISAAR.MSolve.IGA.Elements
 				bmembrane[1, column + 1] = nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[1];
 				bmembrane[1, column + 2] = nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[2];
 
-				bmembrane[2, column] = dRIa[0, column / 3];
-				bmembrane[2, column + 1] = dRIa[1, column / 3];
-				bmembrane[2, column + 2] = dRIa[2, column / 3];
+				bmembrane[2, column] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[0]+
+                                       nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[0] ;
+                bmembrane[2, column + 1] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[1] +
+                                           nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[1];
+				bmembrane[2, column + 2] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[2] +
+                                           nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[2];
 			}
 
 			return bmembrane;

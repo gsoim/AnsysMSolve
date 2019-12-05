@@ -227,14 +227,14 @@ namespace ISAAR.MSolve.IGA.Elements
                     surfaceBasisVector1[0] * surfaceBasisVector2[1] - surfaceBasisVector1[1] * surfaceBasisVector2[0]
                 };
 
-                var norm = surfaceBasisVector3.Sum(t => t * t);
-                var J1 = Math.Sqrt(norm);
+                var J1 = Math.Sqrt(surfaceBasisVector3[0] * surfaceBasisVector3[0] +
+                                   surfaceBasisVector3[1] * surfaceBasisVector3[1] +
+                                   surfaceBasisVector3[2] * surfaceBasisVector3[2]);
 
-                var unitVector3 = new double[]
-                {
-                    surfaceBasisVector3[0] / J1, surfaceBasisVector3[1] / J1, surfaceBasisVector3[2] / J1
-                };
-
+                surfaceBasisVector3[0] /= J1;
+                surfaceBasisVector3[1] /= J1;
+                surfaceBasisVector3[2] /= J1;
+                
                 var surfaceBasisVectorDerivative1 = CalculateSurfaceBasisVector1(hessianMatrix, 0);
                 var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
                 var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
@@ -277,17 +277,17 @@ namespace ISAAR.MSolve.IGA.Elements
                           initialSurfaceBasisVectorDerivative12[j][1] * initialUnitSurfaceBasisVectors3[j][1] +
                           initialSurfaceBasisVectorDerivative12[j][2] * initialUnitSurfaceBasisVectors3[j][2];
 
-                var b11 = surfaceBasisVectorDerivative1[0] * unitVector3[0] +
-                          surfaceBasisVectorDerivative1[1] * unitVector3[1] +
-                          surfaceBasisVectorDerivative1[2] * unitVector3[2];
+                var b11 = surfaceBasisVectorDerivative1[0] * surfaceBasisVector3[0] +
+                          surfaceBasisVectorDerivative1[1] * surfaceBasisVector3[1] +
+                          surfaceBasisVectorDerivative1[2] * surfaceBasisVector3[2];
 
-                var b22 = surfaceBasisVectorDerivative2[0] * unitVector3[0] +
-                          surfaceBasisVectorDerivative2[1] * unitVector3[1] +
-                          surfaceBasisVectorDerivative2[2] * unitVector3[2];
+                var b22 = surfaceBasisVectorDerivative2[0] * surfaceBasisVector3[0] +
+                          surfaceBasisVectorDerivative2[1] * surfaceBasisVector3[1] +
+                          surfaceBasisVectorDerivative2[2] * surfaceBasisVector3[2];
 
-                var b12 = surfaceBasisVectorDerivative12[0] * unitVector3[0] +
-                          surfaceBasisVectorDerivative12[1] * unitVector3[1] +
-                          surfaceBasisVectorDerivative12[2] * unitVector3[2];
+                var b12 = surfaceBasisVectorDerivative12[0] * surfaceBasisVector3[0] +
+                          surfaceBasisVectorDerivative12[1] * surfaceBasisVector3[1] +
+                          surfaceBasisVectorDerivative12[2] * surfaceBasisVector3[2];
 
                 var bendingStrain = new double[] {b11 - B11, b22 - B22, 2 * b12 - 2 * B12};
 
@@ -1047,23 +1047,10 @@ namespace ISAAR.MSolve.IGA.Elements
             var s31 = surfaceBasisVector3[1];
             var s32 = surfaceBasisVector3[2];
 
-            #endregion
-
-            #region Term1
             var aux1Term1 = (dheta_s * dksi_r - dheta_r * dksi_s) * J1;
             var aux2Term1 = dheta_r * dksi_s - dheta_s * dksi_r;
             var aux3Term1 = aux2Term1 * J1;
-            a3rsOut.a3rs01_2 = aux1Term1;
-            a3rsOut.a3rs02_1 = aux3Term1;
 
-            a3rsOut.a3rs10_2 = aux3Term1;
-            a3rsOut.a3rs12_0 = aux1Term1;
-
-            a3rsOut.a3rs20_1 = aux1Term1;
-            a3rsOut.a3rs21_0 = aux3Term1;
-            #endregion
-
-            #region Term2
             var aux1Term2 = dheta_s * s11 - dksi_s * s21;
             var aux2Term2 = dheta_s * s12 - dksi_s * s22;
             var aux3Term2 = dheta_r * s12 - dksi_r * s22;
@@ -1075,170 +1062,102 @@ namespace ISAAR.MSolve.IGA.Elements
             var aux9Term2 = s31 * aux5Term2 - s30 * aux1Term2;
             var J1squared = J1 * J1;
 
-
-            a3rsOut.a3rs00_1 += (aux7Term2 * aux3Term2) / J1squared;
-            a3rsOut.a3rs00_2 += -(aux7Term2 * aux4Term2) / J1squared;
-
-            a3rsOut.a3rs01_1 += -(aux8Term2 * aux3Term2) / J1squared;
-            a3rsOut.a3rs01_2 += (aux8Term2 * aux4Term2) / J1squared;
-
-            a3rsOut.a3rs02_1 += (aux9Term2 * aux3Term2) / J1squared;
-            a3rsOut.a3rs02_2 += -(aux9Term2 * aux4Term2) / J1squared;
-
-            a3rsOut.a3rs10_0 += -(aux7Term2 * aux3Term2) / J1squared;
-            a3rsOut.a3rs10_2 += (aux7Term2 * aux6Term2) / J1squared;
-
-            a3rsOut.a3rs11_0 += (aux8Term2 * aux3Term2) / J1squared;
-            a3rsOut.a3rs11_2 += -(aux8Term2 * aux6Term2) / J1squared;
-
-            a3rsOut.a3rs12_0 += -(aux9Term2 * aux3Term2) / J1squared;
-            a3rsOut.a3rs12_2 += (aux9Term2 * aux6Term2) / J1squared;
-
-            a3rsOut.a3rs20_0 += (aux7Term2 * aux4Term2) / J1squared;
-            a3rsOut.a3rs20_1 += -(aux7Term2 * aux6Term2) / J1squared;
-
-            a3rsOut.a3rs21_0 += -(aux8Term2 * aux4Term2) / J1squared;
-            a3rsOut.a3rs21_1 += (aux8Term2 * aux6Term2) / J1squared;
-
-            a3rsOut.a3rs22_0 += (aux9Term2 * aux4Term2) / J1squared;
-            a3rsOut.a3rs22_1 += -(aux9Term2 * aux6Term2) / J1squared;
-            #endregion
-
-            #region Term3
             var aux1Term3 = s32 * aux4Term2 - s31 * aux3Term2;
             var aux2Term3 = s32 * aux6Term2 - s30 * aux3Term2;
             var aux3Term3 = s31 * aux6Term2 - s30 * aux4Term2;
-
-            a3rsOut.a3rs00_1 += (aux1Term3 * aux2Term2) / J1squared;
-            a3rsOut.a3rs00_2 += -(aux1Term3 * aux1Term2) / J1squared;
-
-            a3rsOut.a3rs01_0 += -(aux1Term3 * aux2Term2) / J1squared;
-            a3rsOut.a3rs01_2 += (aux1Term3 * aux5Term2) / J1squared;
-
-            a3rsOut.a3rs02_0 += (aux1Term3 * aux1Term2) / J1squared;
-            a3rsOut.a3rs02_1 += -(aux1Term3 * aux5Term2) / J1squared;
-
-            a3rsOut.a3rs10_1 += -(aux2Term3 * aux2Term2) / J1squared;
-            a3rsOut.a3rs10_2 += (aux2Term3 * aux1Term2) / J1squared;
-
-            a3rsOut.a3rs11_0 += (aux2Term3 * aux2Term2) / J1squared;
-            a3rsOut.a3rs11_2 += -(aux2Term3 * aux5Term2) / J1squared;
-
-            a3rsOut.a3rs12_0 += -(aux2Term3 * aux1Term2) / J1squared;
-            a3rsOut.a3rs12_1 += (aux2Term3 * aux5Term2) / J1squared;
-
-            a3rsOut.a3rs20_1 += (aux3Term3 * aux2Term2) / J1squared;
-            a3rsOut.a3rs20_2 += -(aux3Term3 * aux1Term2) / J1squared;
-
-            a3rsOut.a3rs21_0 += -(aux3Term3 * aux2Term2) / J1squared;
-            a3rsOut.a3rs21_2 += (aux3Term3 * aux5Term2) / J1squared;
-
-            a3rsOut.a3rs22_0 += (aux3Term3 * aux1Term2) / J1squared;
-            a3rsOut.a3rs22_1 += -(aux3Term3 * aux5Term2) / J1squared;
             #endregion
 
-            #region Term4
-            a3rsOut.a3rs00_0 += -(s30 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
-                                      (aux1Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut.a3rs00_1 += -(s31 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
-                                      (aux1Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut.a3rs00_2 += -(s32 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 -
-                                      (aux1Term3 * aux7Term2) / J1)) / J1;
+            #region Term1
+            a3rsOut.a3rs00_0 = 
+                -(s30 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 - (aux1Term3 * aux7Term2) / J1)) / J1+
+                (2 * s30 * aux1Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs00_1 =
+                (aux7Term2 * aux3Term2 + aux1Term3 * aux2Term2 + 2 * s31 * aux1Term3 * aux7Term2) / J1squared -
+                (s31 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 - (aux1Term3 * aux7Term2) / J1)) / J1;
+            a3rsOut.a3rs00_2 =
+                -(aux7Term2 * aux4Term2 + aux1Term3 * aux1Term2 - 2 * s32 * aux1Term3 * aux7Term2) / J1squared -
+                (s32 * ((aux4Term2 * aux1Term2 + aux3Term2 * aux2Term2) / J1 - (aux1Term3 * aux7Term2) / J1)) / J1;
 
-            a3rsOut.a3rs01_0 += (s30 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
-                                     (aux1Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut.a3rs01_1 += (s31 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
-                                     (aux1Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut.a3rs01_2 += (s32 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -
-                                     (aux1Term3 * aux8Term2) / J1)) / J1;
+            a3rsOut.a3rs01_0 = 
+                -(aux1Term3 * aux2Term2 + 2 * s30 * aux1Term3 * aux8Term2) / J1squared +
+                (s30 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 -(aux1Term3 * aux8Term2) / J1)) / J1;
+            a3rsOut.a3rs01_1 = 
+                -(aux8Term2 * aux3Term2 + 2 * s31 * aux1Term3 * aux8Term2) / J1squared +
+                (s31 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 - (aux1Term3 * aux8Term2) / J1)) / J1;
+            a3rsOut.a3rs01_2 =
+                aux1Term1 + (aux8Term2 * aux4Term2 + aux1Term3 * aux5Term2 - 2 * s32 * aux1Term3 * aux8Term2) / J1squared +
+                (s32 * ((aux4Term2 * aux5Term2 + J1 * s32 * J1 * aux2Term1) / J1 - (aux1Term3 * aux8Term2) / J1)) / J1;
 
-            a3rsOut.a3rs02_0 += (s30 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
-                                     (aux9Term2 * aux1Term3) / J1)) / J1;
-            a3rsOut.a3rs02_1 += (s31 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
-                                     (aux9Term2 * aux1Term3) / J1)) / J1;
-            a3rsOut.a3rs02_2 += (s32 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 +
-                                     (aux9Term2 * aux1Term3) / J1)) / J1;
+            a3rsOut.a3rs02_0 = 
+                (aux1Term3 * aux1Term2 + 2 * s30 * aux9Term2 * aux1Term3) / J1squared +
+                (s30 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 + (aux9Term2 * aux1Term3) / J1)) / J1;
+            a3rsOut.a3rs02_1 = 
+                aux3Term1+ (aux9Term2 * aux3Term2- aux1Term3 * aux5Term2+ 2 * s31 * aux9Term2 * aux1Term3) / J1squared+
+                (s31 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 + (aux9Term2 * aux1Term3) / J1)) / J1;
+            a3rsOut.a3rs02_2 = 
+                -(aux9Term2 * aux4Term2- 2 * s32 * aux9Term2 * aux1Term3) / J1squared+
+                (s32 * ((aux3Term2 * aux5Term2 - J1 * s31 * J1 * aux2Term1) / J1 + (aux9Term2 * aux1Term3) / J1)) / J1;
 
-            a3rsOut.a3rs10_0 += (s30 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
-                                     (aux2Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut.a3rs10_1 += (s31 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
-                                     (aux2Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut.a3rs10_2 += (s32 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 -
-                                     (aux2Term3 * aux7Term2) / J1)) / J1;
+            a3rsOut.a3rs10_0 =
+                -(aux7Term2 * aux3Term2+ 2 * s30 * aux2Term3 * aux7Term2) / J1squared +
+                (s30 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 - (aux2Term3 * aux7Term2) / J1)) / J1;
+            a3rsOut.a3rs10_1 = 
+                -(aux2Term3 * aux2Term2+ 2 * s31 * aux2Term3 * aux7Term2) / J1squared + 
+                (s31 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 - (aux2Term3 * aux7Term2) / J1)) / J1;
+            a3rsOut.a3rs10_2 =
+                aux3Term1 + (aux7Term2 * aux6Term2 + aux2Term3 * aux1Term2 - 2 * s32 * aux2Term3 * aux7Term2) / J1squared +
+                (s32 * ((aux6Term2 * aux1Term2 - J1 * s32 * J1 * aux2Term1) / J1 - (aux2Term3 * aux7Term2) / J1)) / J1;
 
-            a3rsOut.a3rs11_0 += -(s30 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
-                                      (aux2Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut.a3rs11_1 += -(s31 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
-                                      (aux2Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut.a3rs11_2 += -(s32 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
-                                      (aux2Term3 * aux8Term2) / J1)) / J1;
-
-            a3rsOut.a3rs12_0 += (s30 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
-                                     (aux2Term3 * aux9Term2) / J1)) / J1;
-            a3rsOut.a3rs12_1 += (s31 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
-                                     (aux2Term3 * aux9Term2) / J1)) / J1;
-            a3rsOut.a3rs12_2 += (s32 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 -
-                                     (aux2Term3 * aux9Term2) / J1)) / J1;
-
-            a3rsOut.a3rs20_0 += (s30 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
-                                     (aux3Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut.a3rs20_1 += (s31 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
-                                     (aux3Term3 * aux7Term2) / J1)) / J1;
-            a3rsOut.a3rs20_2 += (s32 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
-                                     (aux3Term3 * aux7Term2) / J1)) / J1;
-
-            a3rsOut.a3rs21_0 += (s30 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
-                                     (aux3Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut.a3rs21_1 += (s31 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
-                                     (aux3Term3 * aux8Term2) / J1)) / J1;
-            a3rsOut.a3rs21_2 += (s32 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 -
-                                     (aux3Term3 * aux8Term2) / J1)) / J1;
-
-            a3rsOut.a3rs22_0 += -(s30 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
-                                      (aux3Term3 * aux9Term2) / J1)) / J1;
-            a3rsOut.a3rs22_1 += -(s31 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
-                                      (aux3Term3 * aux9Term2) / J1)) / J1;
-            a3rsOut.a3rs22_2 += -(s32 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
-                                      (aux3Term3 * aux9Term2) / J1)) / J1;
-            #endregion
-
-            #region Term5
-
-            a3rsOut.a3rs00_0 += (2 * s30 * aux1Term3 * aux7Term2) / J1squared;
-            a3rsOut.a3rs00_1 += (2 * s31 * aux1Term3 * aux7Term2) / J1squared;
-            a3rsOut.a3rs00_2 += (2 * s32 * aux1Term3 * aux7Term2) / J1squared;
-
-            a3rsOut.a3rs01_0 += -(2 * s30 * aux1Term3 * aux8Term2) / J1squared;
-            a3rsOut.a3rs01_1 += -(2 * s31 * aux1Term3 * aux8Term2) / J1squared;
-            a3rsOut.a3rs01_2 += -(2 * s32 * aux1Term3 * aux8Term2) / J1squared;
-
-            a3rsOut.a3rs02_0 += (2 * s30 * aux9Term2 * aux1Term3) / J1squared;
-            a3rsOut.a3rs02_1 += (2 * s31 * aux9Term2 * aux1Term3) / J1squared;
-            a3rsOut.a3rs02_2 += (2 * s32 * aux9Term2 * aux1Term3) / J1squared;
-
-            a3rsOut.a3rs10_0 += -(2 * s30 * aux2Term3 * aux7Term2) / J1squared;
-            a3rsOut.a3rs10_1 += -(2 * s31 * aux2Term3 * aux7Term2) / J1squared;
-            a3rsOut.a3rs10_2 += -(2 * s32 * aux2Term3 * aux7Term2) / J1squared;
-
-            a3rsOut.a3rs11_0 += (2 * s30 * aux2Term3 * aux8Term2) / J1squared;
-            a3rsOut.a3rs11_1 += (2 * s31 * aux2Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs11_0 =
+                (aux8Term2 * aux3Term2 + aux2Term3 * aux2Term2 + 2 * s30 * aux2Term3 * aux8Term2) / J1squared
+                - (s30 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 - (aux2Term3 * aux8Term2) / J1)) / J1;
+            a3rsOut.a3rs11_1 =
+                -(s31 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 - (aux2Term3 * aux8Term2) / J1)) / J1 +
+                (2 * s31 * aux2Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs11_2 = -(aux8Term2 * aux6Term2+ aux2Term3 * aux5Term2) / J1squared
+                               -(s32 * ((aux6Term2 * aux5Term2 + aux3Term2 * aux2Term2) / J1 -
+                                         (aux2Term3 * aux8Term2) / J1)) / J1;
             a3rsOut.a3rs11_2 += (2 * s32 * aux2Term3 * aux8Term2) / J1squared;
 
-            a3rsOut.a3rs12_0 += -(2 * s30 * aux2Term3 * aux9Term2) / J1squared;
-            a3rsOut.a3rs12_1 += -(2 * s31 * aux2Term3 * aux9Term2) / J1squared;
-            a3rsOut.a3rs12_2 += -(2 * s32 * aux2Term3 * aux9Term2) / J1squared;
+            a3rsOut.a3rs12_0 =
+                aux1Term1 - (aux9Term2 * aux3Term2 + aux2Term3 * aux1Term2 + 2 * s30 * aux2Term3 * aux9Term2) / J1squared +
+                (s30 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 - (aux2Term3 * aux9Term2) / J1)) / J1;
+            a3rsOut.a3rs12_1 = 
+                (aux2Term3 * aux5Term2- 2 * s31 * aux2Term3 * aux9Term2) / J1squared+
+                (s31 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 - (aux2Term3 * aux9Term2) / J1)) / J1;
+            a3rsOut.a3rs12_2 = 
+                (aux9Term2 * aux6Term2- 2 * s32 * aux2Term3 * aux9Term2) / J1squared+
+                (s32 * ((aux3Term2 * aux1Term2 + J1 * s30 * J1 * aux2Term1) / J1 - (aux2Term3 * aux9Term2) / J1)) / J1;
 
-            a3rsOut.a3rs20_0 += (2 * s30 * aux3Term3 * aux7Term2) / J1squared;
-            a3rsOut.a3rs20_1 += (2 * s31 * aux3Term3 * aux7Term2) / J1squared;
-            a3rsOut.a3rs20_2 += (2 * s32 * aux3Term3 * aux7Term2) / J1squared;
+            a3rsOut.a3rs20_0 = 
+                (aux7Term2 * aux4Term2+ 2 * s30 * aux3Term3 * aux7Term2) / J1squared+
+                (s30 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 + (aux3Term3 * aux7Term2) / J1)) / J1;
+            a3rsOut.a3rs20_1 = 
+                aux1Term1 - (aux7Term2 * aux6Term2- aux3Term3 * aux2Term2- 2 * s31 * aux3Term3 * aux7Term2) / J1squared+
+                (s31 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 + (aux3Term3 * aux7Term2) / J1)) / J1;
+            a3rsOut.a3rs20_2 = -(aux3Term3 * aux1Term2- 2 * s32 * aux3Term3 * aux7Term2) / J1squared+
+                                (s32 * ((aux6Term2 * aux2Term2 + J1 * s31 * J1 * aux2Term1) / J1 +
+                                        (aux3Term3 * aux7Term2) / J1)) / J1;
 
-            a3rsOut.a3rs21_0 += -(2 * s30 * aux3Term3 * aux8Term2) / J1squared;
-            a3rsOut.a3rs21_1 += -(2 * s31 * aux3Term3 * aux8Term2) / J1squared;
-            a3rsOut.a3rs21_2 += -(2 * s32 * aux3Term3 * aux8Term2) / J1squared;
+            a3rsOut.a3rs21_0 = 
+                aux3Term1 -(aux8Term2 * aux4Term2+ aux3Term3 * aux2Term2+ 2 * s30 * aux3Term3 * aux8Term2) / J1squared+
+                (s30 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 - (aux3Term3 * aux8Term2) / J1)) / J1;
+            a3rsOut.a3rs21_1 = 
+                (aux8Term2 * aux6Term2- 2 * s31 * aux3Term3 * aux8Term2) / J1squared+
+                (s31 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 - (aux3Term3 * aux8Term2) / J1)) / J1;
+            a3rsOut.a3rs21_2 = 
+                (aux3Term3 * aux5Term2- 2 * s32 * aux3Term3 * aux8Term2) / J1squared+
+                (s32 * ((aux4Term2 * aux2Term2 - J1 * s30 * J1 * aux2Term1) / J1 - (aux3Term3 * aux8Term2) / J1)) / J1;
 
-            a3rsOut.a3rs22_0 += (2 * s30 * aux3Term3 * aux9Term2) / J1squared;
-            a3rsOut.a3rs22_1 += (2 * s31 * aux3Term3 * aux9Term2) / J1squared;
-            a3rsOut.a3rs22_2 += (2 * s32 * aux3Term3 * aux9Term2) / J1squared;
+            a3rsOut.a3rs22_0 = 
+                (aux9Term2 * aux4Term2+ aux3Term3 * aux1Term2+ 2 * s30 * aux3Term3 * aux9Term2) / J1squared
+                -(s30 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 - (aux3Term3 * aux9Term2) / J1)) / J1;
+            a3rsOut.a3rs22_1 =
+                -(aux9Term2 * aux6Term2+ aux3Term3 * aux5Term2- 2 * s31 * aux3Term3 * aux9Term2) / J1squared
+                -(s31 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 - (aux3Term3 * aux9Term2) / J1)) / J1;
+            a3rsOut.a3rs22_2 = -(s32 * ((aux6Term2 * aux5Term2 + aux4Term2 * aux1Term2) / J1 -
+                                         (aux3Term3 * aux9Term2) / J1)) / J1
+                               +(2 * s32 * aux3Term3 * aux9Term2) / J1squared;
             #endregion
         }
 

@@ -453,7 +453,7 @@ namespace ISAAR.MSolve.IGA.Tests
             var filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt")
                 .ToString(CultureInfo.InvariantCulture);
             var modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.SectionNonLinear);
+            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
 
             model.SurfaceLoads.Add(new SurfaceDistributedLoad(-90, StructuralDof.TranslationY));
 

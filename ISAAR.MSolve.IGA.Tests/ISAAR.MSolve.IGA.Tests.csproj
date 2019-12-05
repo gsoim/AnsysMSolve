@@ -63,6 +63,9 @@
     <None Update="InputFiles\CantileverShell6x10.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="InputFiles\CantileverShellBenchmark16x1Test.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="InputFiles\CantileverShellBenchmark16x1.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

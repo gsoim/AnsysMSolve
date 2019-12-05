@@ -142,7 +142,7 @@ namespace ISAAR.MSolve.IGA.Tests
             var filename = "CantileverShellBenchmark16x1";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt");
             IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.SectionNonLinear);
+            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
 
             Value verticalDistributedLoad = delegate (double x, double y, double z)
             {
@@ -158,7 +158,7 @@ namespace ISAAR.MSolve.IGA.Tests
             }
 
             // Solvers
-            var solverBuilder = new DenseMatrixSolver.Builder();
+            var solverBuilder = new SuiteSparseSolver.Builder();
             ISolver solver = solverBuilder.BuildSolver(model);
 
             // Structural problem provider
@@ -178,7 +178,7 @@ namespace ISAAR.MSolve.IGA.Tests
             parentAnalyzer.Solve();
         }
 
-        [Fact]
+        //[Fact]
         public void SlitAnnularPlate()
         {
             Model model = new Model();
@@ -231,7 +231,8 @@ namespace ISAAR.MSolve.IGA.Tests
             var shellElement = Element;
             var nurbs = new Nurbs2D(shellElement, controlPoints);
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
-            var jacobianMatrix = shellElement.CalculateJacobian(elementControlPoints, nurbs, 0);
+            var jacobianMatrix = new double[2, 3];
+            shellElement.CalculateJacobian(elementControlPoints, nurbs, 0, jacobianMatrix);
 
             var expectedJacobian = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "jacobian");
             
@@ -273,7 +274,10 @@ namespace ISAAR.MSolve.IGA.Tests
             var shellElement = Element;
             var nurbs = new Nurbs2D(shellElement, controlPoints);
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
-            var jacobianMatrix = shellElement.CalculateJacobian(elementControlPoints, nurbs, 0);
+
+            var jacobianMatrix = new double[3, 3];
+            shellElement.CalculateJacobian(elementControlPoints, nurbs, 0, jacobianMatrix);
+
             var hessian = shellElement.CalculateHessian(elementControlPoints, nurbs, 0);
 
             var surfaceBasisVector1 = shellElement.CalculateSurfaceBasisVector1(jacobianMatrix, 0);
@@ -289,8 +293,8 @@ namespace ISAAR.MSolve.IGA.Tests
 
             for (int i = 0; i < surfaceBasisVector3.Length; i++)
                 surfaceBasisVector3[i] = surfaceBasisVector3[i] / J1;
-
-            var Bmembrane = shellElement.CalculateMembraneDeformationMatrix(elementControlPoints, nurbs, 0, surfaceBasisVector1, surfaceBasisVector2);
+            var Bmembrane = new double[3, controlPoints.Length * 3];
+            shellElement.CalculateMembraneDeformationMatrix(elementControlPoints.Length, nurbs, 0, surfaceBasisVector1, surfaceBasisVector2, Bmembrane);
 
             var expectedBmembrane = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "Bmembrane");
 
@@ -311,7 +315,9 @@ namespace ISAAR.MSolve.IGA.Tests
             var shellElement = Element;
             var nurbs = new Nurbs2D(shellElement, controlPoints);
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
-            var jacobianMatrix = shellElement.CalculateJacobian(elementControlPoints, nurbs, 0);
+            var jacobianMatrix = new double[3, 3];
+            shellElement.CalculateJacobian(elementControlPoints, nurbs, 0, jacobianMatrix);
+
             var hessian = shellElement.CalculateHessian(elementControlPoints, nurbs, 0);
 
             var surfaceBasisVector1 = shellElement.CalculateSurfaceBasisVector1(jacobianMatrix, 0);
@@ -331,10 +337,10 @@ namespace ISAAR.MSolve.IGA.Tests
             var surfaceBasisVectorDerivative1 = shellElement.CalculateSurfaceBasisVector1(hessian, 0);
             var surfaceBasisVectorDerivative2 = shellElement.CalculateSurfaceBasisVector1(hessian, 1);
             var surfaceBasisVectorDerivative12 = shellElement.CalculateSurfaceBasisVector1(hessian, 2);
-
-            var Bbending = shellElement.CalculateBendingDeformationMatrix(elementControlPoints, surfaceBasisVector3, nurbs, 0, surfaceBasisVector2,
+            var Bbending = new double[3, controlPoints.Length * 3];
+            shellElement.CalculateBendingDeformationMatrix(elementControlPoints.Length, surfaceBasisVector3, nurbs, 0, surfaceBasisVector2,
                 surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
-                surfaceBasisVectorDerivative12);
+                surfaceBasisVectorDerivative12, Bbending);
 
             var expectedBbending = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "Bbending");
 
@@ -356,8 +362,8 @@ namespace ISAAR.MSolve.IGA.Tests
             var shellElement = Element;
             var nurbs = new Nurbs2D(shellElement, controlPoints);
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
-
-            var KmembraneNL = shellElement.CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, 0);
+            var KmembraneNL = new double[elementControlPoints.Length * 3, elementControlPoints.Length * 3];
+            shellElement.CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, 0, KmembraneNL);
 
             var expectedKmembraneNL = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "KmembraneNL");
 
@@ -378,7 +384,8 @@ namespace ISAAR.MSolve.IGA.Tests
             var nurbs = new Nurbs2D(shellElement, controlPoints);
             shellElement._solution = localSolution;
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
-            var jacobianMatrix = shellElement.CalculateJacobian(elementControlPoints, nurbs, 0);
+            var jacobianMatrix = new double[3, 3];
+            shellElement.CalculateJacobian(elementControlPoints, nurbs, 0, jacobianMatrix);
             var hessian = shellElement.CalculateHessian(elementControlPoints, nurbs, 0);
 
             var surfaceBasisVector1 = shellElement.CalculateSurfaceBasisVector1(jacobianMatrix, 0);
@@ -399,11 +406,11 @@ namespace ISAAR.MSolve.IGA.Tests
             var surfaceBasisVectorDerivative2 = shellElement.CalculateSurfaceBasisVector1(hessian, 1);
             var surfaceBasisVectorDerivative12 = shellElement.CalculateSurfaceBasisVector1(hessian, 2);
 
-
-            var KbendingNL = shellElement.CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
+            var KbendingNL = new double[elementControlPoints.Length * 3, elementControlPoints.Length * 3];
+            shellElement.CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
                 surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3,
                 surfaceBasisVectorDerivative1, surfaceBasisVectorDerivative2,
-                surfaceBasisVectorDerivative12, J1, 0);
+                surfaceBasisVectorDerivative12, J1, 0, KbendingNL);
 
             var expectedKbendingNL = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "KbendingNL");
 
