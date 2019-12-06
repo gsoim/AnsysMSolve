@@ -119,18 +119,18 @@ namespace ISAAR.MSolve.IGA.Tests
             0.001664779366416050000000000000000000000
         };
 
-        private double[] MembraneForces => new double[]
+        private Forces MembraneForces => new Forces()
         {
-            -0.0327209647710278000000000000000000000000000000000,
-            -0.0000000000000000000000000000193609885449360000000,
-            0.0000000000001690940892323080000000000000000000000,
+            v0 = -0.0327209647710278000000000000000000000000000000000,
+            v1 = -0.0000000000000000000000000000193609885449360000000,
+            v2 = 0.0000000000001690940892323080000000000000000000000
         };
 
-        private double[] BendingMoments => new double[]
+        private Forces BendingMoments => new Forces()
         {
-            -0.42618363401210900000000000000000000000000000000000,
-            -0.00000000000000000075669834331405100000000000000000,
-            0.00000000000000683985998006887000000000000000000000,
+            v0 = -0.42618363401210900000000000000000000000000000000000,
+            v1 = -0.00000000000000000075669834331405100000000000000000,
+            v2 = 0.00000000000000683985998006887000000000000000000000,
         };
 
             #endregion
@@ -363,7 +363,15 @@ namespace ISAAR.MSolve.IGA.Tests
             var nurbs = new Nurbs2D(shellElement, controlPoints);
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
             var KmembraneNL = new double[elementControlPoints.Length * 3, elementControlPoints.Length * 3];
-            shellElement.CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, 0, KmembraneNL);
+
+            var membraneForces = new Forces()
+            {
+                v0 = -0.0327209647710278000000000000000000000000000000000,
+                v1 = -0.0000000000000000000000000000193609885449360000000,
+                v2 = 0.0000000000001690940892323080000000000000000000000
+            };
+
+            shellElement.CalculateKmembraneNL(elementControlPoints, ref membraneForces, nurbs, 0, KmembraneNL);
 
             var expectedKmembraneNL = MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "NurbsNonLinearThicknessShell.mat"), "KmembraneNL");
 
@@ -407,7 +415,15 @@ namespace ISAAR.MSolve.IGA.Tests
             var surfaceBasisVectorDerivative12 = shellElement.CalculateSurfaceBasisVector1(hessian, 2);
 
             var KbendingNL = new double[elementControlPoints.Length * 3, elementControlPoints.Length * 3];
-            shellElement.CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
+
+            var BendingMoments = new Forces()
+            {
+                v0 = -0.42618363401210900000000000000000000000000000000000,
+                v1 = -0.00000000000000000075669834331405100000000000000000,
+                v2 = 0.00000000000000683985998006887000000000000000000000,
+            };
+
+            shellElement.CalculateKbendingNL(elementControlPoints, ref BendingMoments, nurbs,
                 surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3,
                 surfaceBasisVectorDerivative1, surfaceBasisVectorDerivative2,
                 surfaceBasisVectorDerivative12, J1, 0, KbendingNL);
@@ -459,9 +475,9 @@ namespace ISAAR.MSolve.IGA.Tests
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
 
             shellElement.CalculateStresses(shellElement, localSolution, new double[27]);
-            var MembraneForces = new double[3];
-            var BendingMoments = new double[3];
-            shellElement.IntegratedStressesOverThickness(gaussPoints[0], MembraneForces, BendingMoments);
+            var MembraneForces = new Forces();
+            var BendingMoments = new Forces();
+            shellElement.IntegratedStressesOverThickness(gaussPoints[0], ref MembraneForces, ref BendingMoments);
 
             var expectedMembraneForces = new double[3]
             {
@@ -478,11 +494,14 @@ namespace ISAAR.MSolve.IGA.Tests
 
             };
 
-            for (int i = 0; i < 3; i++)
-            {
-                Assert.True(Utilities.AreValuesEqual(expectedMembraneForces[i], MembraneForces[i], Tolerance));
-                Assert.True(Utilities.AreValuesEqual(expectedBendingMoments[i], BendingMoments[i], Tolerance));
-            }
+            Assert.True(Utilities.AreValuesEqual(expectedMembraneForces[0], MembraneForces.v0, Tolerance));
+            Assert.True(Utilities.AreValuesEqual(expectedBendingMoments[0], BendingMoments.v0, Tolerance));
+
+            Assert.True(Utilities.AreValuesEqual(expectedMembraneForces[1], MembraneForces.v1, Tolerance));
+            Assert.True(Utilities.AreValuesEqual(expectedBendingMoments[1], BendingMoments.v1, Tolerance));
+
+            Assert.True(Utilities.AreValuesEqual(expectedMembraneForces[2], MembraneForces.v2, Tolerance));
+            Assert.True(Utilities.AreValuesEqual(expectedBendingMoments[2], BendingMoments.v2, Tolerance));
         }
 
         [Fact]

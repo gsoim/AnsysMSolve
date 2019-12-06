@@ -125,8 +125,8 @@ namespace ISAAR.MSolve.IGA.Elements
             var Bmembrane = new double[3, _controlPoints.Length * 3];
             var Bbending = new double[3, _controlPoints.Length * 3];
             var numberOfControlPoints = _controlPoints.Length;
-            var MembraneForces = new double[3];
-            var BendingMoments = new double[3];
+            var MembraneForces = new Forces();
+            var BendingMoments = new Forces();
 
             for (int j = 0; j < gaussPoints.Length; j++)
             {
@@ -144,13 +144,15 @@ namespace ISAAR.MSolve.IGA.Elements
                     surfaceBasisVector1[2] * surfaceBasisVector2[0] - surfaceBasisVector1[0] * surfaceBasisVector2[2],
                     surfaceBasisVector1[0] * surfaceBasisVector2[1] - surfaceBasisVector1[1] * surfaceBasisVector2[0],
                 };
+                
+                var J1 = Math.Sqrt(surfaceBasisVector3[0] * surfaceBasisVector3[0] +
+                                   surfaceBasisVector3[1] * surfaceBasisVector3[1] +
+                                   surfaceBasisVector3[2] * surfaceBasisVector3[2]);
 
-                double norm = surfaceBasisVector3.Sum(t => t * t);
+                surfaceBasisVector3[0] /= J1;
+                surfaceBasisVector3[1] /= J1;
+                surfaceBasisVector3[2] /= J1;
 
-                var J1 = Math.Sqrt(norm);
-
-                for (int i = 0; i < surfaceBasisVector3.Length; i++)
-                    surfaceBasisVector3[i] = surfaceBasisVector3[i] / J1;
 
                 var surfaceBasisVectorDerivative1 = CalculateSurfaceBasisVector1(hessianMatrix, 0);
                 var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
@@ -163,18 +165,16 @@ namespace ISAAR.MSolve.IGA.Elements
                     surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
                     surfaceBasisVectorDerivative12, Bbending);
 
-                IntegratedStressesOverThickness(gaussPoints[j], MembraneForces, BendingMoments);
+                IntegratedStressesOverThickness(gaussPoints[j], ref MembraneForces, ref BendingMoments);
 
                 var wfactor = InitialJ1[j] * gaussPoints[j].WeightFactor;
 
-
                 for (int i = 0; i < Bmembrane.GetLength(1); i++)
                 {
-                    for (int k = 0; k < Bmembrane.GetLength(0); k++)
-                    {
-                        elementNodalForces[i] += (Bmembrane[k, i] * MembraneForces[k] * wfactor +
-                                                  Bbending[k, i] * BendingMoments[k] * wfactor);
-                    }
+                    elementNodalForces[i] +=
+                        (Bmembrane[0, i] * MembraneForces.v0 * wfactor + Bbending[0, i] * BendingMoments.v0 * wfactor)+
+                        (Bmembrane[1, i] * MembraneForces.v1 * wfactor + Bbending[1, i] * BendingMoments.v1 * wfactor)+
+                        (Bmembrane[2, i] * MembraneForces.v2 * wfactor + Bbending[2, i] * BendingMoments.v2 * wfactor);
                 }
             }
 
@@ -209,8 +209,8 @@ namespace ISAAR.MSolve.IGA.Elements
             _solution = localDisplacements;
 
             var newControlPoints = CurrentControlPoint(elementControlPoints);
-            
             var midsurfaceGP = materialsAtThicknessGP.Keys.ToArray();
+
             for (var j = 0; j < midsurfaceGP.Length; j++)
             {
                 CalculateJacobian(newControlPoints, nurbs, j, jacobianMatrix);
@@ -263,6 +263,7 @@ namespace ISAAR.MSolve.IGA.Elements
                 var a12 = surfaceBasisVector1[0] * surfaceBasisVector2[0] +
                           surfaceBasisVector1[1] * surfaceBasisVector2[1] +
                           surfaceBasisVector1[2] * surfaceBasisVector2[2];
+
 
                 var membraneStrain = new double[] {0.5 * (a11 - A11), 0.5 * (a22 - A22), a12 - A12};
 
@@ -445,10 +446,10 @@ namespace ISAAR.MSolve.IGA.Elements
         }
 
         internal void IntegratedStressesOverThickness(
-            GaussLegendrePoint3D midSurfaceGaussPoint, double[] MembraneForces, double[] BendingMoments)
+            GaussLegendrePoint3D midSurfaceGaussPoint, ref Forces MembraneForces, ref Forces BendingMoments)
         {
-            Array.Clear(MembraneForces, 0, 3);
-            Array.Clear(BendingMoments, 0, 3);
+            MembraneForces= new Forces();
+            BendingMoments= new Forces();
             var thicknessPoints = thicknessIntegrationPoints[midSurfaceGaussPoint];
 
             for (int i = 0; i < thicknessPoints.Count; i++)
@@ -457,11 +458,13 @@ namespace ISAAR.MSolve.IGA.Elements
                 var material = materialsAtThicknessGP[midSurfaceGaussPoint][thicknessPoints[i]];
                 var w = thicknessPoint.WeightFactor;
                 var z = thicknessPoint.Zeta;
-                for (int j = 0; j < 3; j++)
-                {
-                    MembraneForces[j] += material.Stresses[j] * w;
-                    BendingMoments[j] -= material.Stresses[j] * w * z;
-                }
+                MembraneForces.v0+= material.Stresses[0] * w;
+                MembraneForces.v1 += material.Stresses[1] * w;
+                MembraneForces.v2 += material.Stresses[2] * w;
+
+                BendingMoments.v0 -= material.Stresses[0] * w * z;
+                BendingMoments.v1 -= material.Stresses[1] * w * z;
+                BendingMoments.v2 -= material.Stresses[2] * w * z;
             }
         }
 
@@ -511,8 +514,8 @@ namespace ISAAR.MSolve.IGA.Elements
             var BbTransposeMultStiffness = new double[bCols, bRows];
             var BmbTransposeMultStiffness = new double[bCols, bRows];
             var BbmTransposeMultStiffness = new double[bCols, bRows];
-            var MembraneForces = new double[3];
-            var BendingMoments = new double[3];
+            var MembraneForces = new Forces();
+            var BendingMoments = new Forces();
 
             for (int j = 0; j < gaussPoints.Length; j++)
             {
@@ -552,7 +555,7 @@ namespace ISAAR.MSolve.IGA.Elements
                 CalculateNonLinearStiffness(gaussPoints, j, KmembraneNL, bCols, KbendingNL, elementControlPoints, nurbs,
                     surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, surfaceBasisVectorDerivative1,
                     surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, J1, stiffnessMatrix, wFactor,
-                    MembraneForces, BendingMoments);
+                    ref MembraneForces, ref BendingMoments);
             }
 
             return Matrix.CreateFromArray(stiffnessMatrix);
@@ -562,15 +565,15 @@ namespace ISAAR.MSolve.IGA.Elements
             double[,] KbendingNL, ControlPoint[] elementControlPoints, Nurbs2D nurbs, double[] surfaceBasisVector1,
             double[] surfaceBasisVector2, double[] surfaceBasisVector3, double[] surfaceBasisVectorDerivative1,
             double[] surfaceBasisVectorDerivative2, double[] surfaceBasisVectorDerivative12, double J1,
-            double[,] stiffnessMatrix, double wFactor, double[] MembraneForces, double[] BendingMoments)
+            double[,] stiffnessMatrix, double wFactor, ref Forces MembraneForces, ref Forces BendingMoments)
         {
-            IntegratedStressesOverThickness(gaussPoints[j], MembraneForces, BendingMoments);
+            IntegratedStressesOverThickness(gaussPoints[j], ref MembraneForces, ref BendingMoments);
 
             Array.Clear(KmembraneNL, 0, bCols * bCols);
             Array.Clear(KbendingNL, 0, bCols * bCols);
 
-            CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j, KmembraneNL);
-            CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
+            CalculateKmembraneNL(elementControlPoints, ref MembraneForces, nurbs, j, KmembraneNL);
+            CalculateKbendingNL(elementControlPoints, ref BendingMoments, nurbs,
                 surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3,
                 surfaceBasisVectorDerivative1,
                 surfaceBasisVectorDerivative2,
@@ -580,8 +583,7 @@ namespace ISAAR.MSolve.IGA.Elements
             {
                 for (var k = 0; k < stiffnessMatrix.GetLength(1); k++)
                 {
-                    stiffnessMatrix[i, k] += KmembraneNL[i, k] * wFactor;
-                    stiffnessMatrix[i, k] += KbendingNL[i, k] * wFactor;
+                    stiffnessMatrix[i, k] += (KmembraneNL[i, k] + KbendingNL[i, k]) * wFactor;
                 }
             }
         }
@@ -868,7 +870,7 @@ namespace ISAAR.MSolve.IGA.Elements
         private ControlPoint[] _controlPoints;
 
         internal void CalculateKbendingNL(ControlPoint[] controlPoints,
-            double[] bendingMoments, Nurbs2D nurbs, double[] surfaceBasisVector1,
+            ref Forces bendingMoments, Nurbs2D nurbs, double[] surfaceBasisVector1,
             double[] surfaceBasisVector2, double[] surfaceBasisVector3,
             double[] surfaceBasisVectorDerivative1, double[] surfaceBasisVectorDerivative2,
             double[] surfaceBasisVectorDerivative12, double J1, int j, double[,] KbendingNLOut)
@@ -904,17 +906,17 @@ namespace ISAAR.MSolve.IGA.Elements
                         d2Heta_ds2, d2KsiHeta_dr2, d2KsiHeta_ds2, ref Bab_rs);
 
 
-                    KbendingNLOut[i * 3 + 0, k * 3 + 0] -= (Bab_rs.Bab_rs00_0 * bendingMoments[0] + Bab_rs.Bab_rs00_1 * bendingMoments[1] + Bab_rs.Bab_rs00_2 * bendingMoments[2]);
-                    KbendingNLOut[i * 3 + 0, k * 3 + 1] -= (Bab_rs.Bab_rs01_0 * bendingMoments[0] + Bab_rs.Bab_rs01_1 * bendingMoments[1] + Bab_rs.Bab_rs01_2 * bendingMoments[2]);
-                    KbendingNLOut[i * 3 + 0, k * 3 + 2] -= (Bab_rs.Bab_rs02_0 * bendingMoments[0] + Bab_rs.Bab_rs02_1 * bendingMoments[1] + Bab_rs.Bab_rs02_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 0, k * 3 + 0] -= (Bab_rs.Bab_rs00_0 * bendingMoments.v0 + Bab_rs.Bab_rs00_1 * bendingMoments.v1 + Bab_rs.Bab_rs00_2 * bendingMoments.v2);
+                    KbendingNLOut[i * 3 + 0, k * 3 + 1] -= (Bab_rs.Bab_rs01_0 * bendingMoments.v0 + Bab_rs.Bab_rs01_1 * bendingMoments.v1 + Bab_rs.Bab_rs01_2 * bendingMoments.v2);
+                    KbendingNLOut[i * 3 + 0, k * 3 + 2] -= (Bab_rs.Bab_rs02_0 * bendingMoments.v0 + Bab_rs.Bab_rs02_1 * bendingMoments.v1 + Bab_rs.Bab_rs02_2 * bendingMoments.v2);
 
-                    KbendingNLOut[i * 3 + 1, k * 3 + 0] -= (Bab_rs.Bab_rs10_0 * bendingMoments[0] + Bab_rs.Bab_rs10_1 * bendingMoments[1] + Bab_rs.Bab_rs10_2 * bendingMoments[2]);
-                    KbendingNLOut[i * 3 + 1, k * 3 + 1] -= (Bab_rs.Bab_rs11_0 * bendingMoments[0] + Bab_rs.Bab_rs11_1 * bendingMoments[1] + Bab_rs.Bab_rs11_2 * bendingMoments[2]);
-                    KbendingNLOut[i * 3 + 1, k * 3 + 2] -= (Bab_rs.Bab_rs12_0 * bendingMoments[0] + Bab_rs.Bab_rs12_1 * bendingMoments[1] + Bab_rs.Bab_rs12_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 1, k * 3 + 0] -= (Bab_rs.Bab_rs10_0 * bendingMoments.v0 + Bab_rs.Bab_rs10_1 * bendingMoments.v1 + Bab_rs.Bab_rs10_2 * bendingMoments.v2);
+                    KbendingNLOut[i * 3 + 1, k * 3 + 1] -= (Bab_rs.Bab_rs11_0 * bendingMoments.v0 + Bab_rs.Bab_rs11_1 * bendingMoments.v1 + Bab_rs.Bab_rs11_2 * bendingMoments.v2);
+                    KbendingNLOut[i * 3 + 1, k * 3 + 2] -= (Bab_rs.Bab_rs12_0 * bendingMoments.v0 + Bab_rs.Bab_rs12_1 * bendingMoments.v1 + Bab_rs.Bab_rs12_2 * bendingMoments.v2);
 
-                    KbendingNLOut[i * 3 + 2, k * 3 + 0] -= (Bab_rs.Bab_rs20_0 * bendingMoments[0] + Bab_rs.Bab_rs20_1 * bendingMoments[1] + Bab_rs.Bab_rs20_2 * bendingMoments[2]);
-                    KbendingNLOut[i * 3 + 2, k * 3 + 1] -= (Bab_rs.Bab_rs21_0 * bendingMoments[0] + Bab_rs.Bab_rs21_1 * bendingMoments[1] + Bab_rs.Bab_rs21_2 * bendingMoments[2]);
-                    KbendingNLOut[i * 3 + 2, k * 3 + 2] -= (Bab_rs.Bab_rs22_0 * bendingMoments[0] + Bab_rs.Bab_rs22_1 * bendingMoments[1] + Bab_rs.Bab_rs22_2 * bendingMoments[2]);
+                    KbendingNLOut[i * 3 + 2, k * 3 + 0] -= (Bab_rs.Bab_rs20_0 * bendingMoments.v0 + Bab_rs.Bab_rs20_1 * bendingMoments.v1 + Bab_rs.Bab_rs20_2 * bendingMoments.v2);
+                    KbendingNLOut[i * 3 + 2, k * 3 + 1] -= (Bab_rs.Bab_rs21_0 * bendingMoments.v0 + Bab_rs.Bab_rs21_1 * bendingMoments.v1 + Bab_rs.Bab_rs21_2 * bendingMoments.v2);
+                    KbendingNLOut[i * 3 + 2, k * 3 + 2] -= (Bab_rs.Bab_rs22_0 * bendingMoments.v0 + Bab_rs.Bab_rs22_1 * bendingMoments.v1 + Bab_rs.Bab_rs22_2 * bendingMoments.v2);
 
                 }
             }
@@ -1091,9 +1093,6 @@ namespace ISAAR.MSolve.IGA.Elements
             var aux1Term3 = s32 * aux4Term2 - s31 * aux3Term2;
             var aux2Term3 = s32 * aux6Term2 - s30 * aux3Term2;
             var aux3Term3 = s31 * aux6Term2 - s30 * aux4Term2;
-            #endregion
-
-            #region Term1
 
             var aux1 = aux4Term2 * aux1Term2;
             var aux2 = aux3Term2 * aux2Term2;
@@ -1143,6 +1142,11 @@ namespace ISAAR.MSolve.IGA.Elements
             var aux46 = (aux44 - aux34 - aux43);
             var aux47 = aux3Term3 * aux9Term2;
             var aux48 = (aux29 + aux1 - aux47);
+            #endregion
+
+            #region Term1
+
+
 
             a3rsOut.a3rs00_0 = (2 * s30 * aux3 - s30 * aux8) / J1squared;
             a3rsOut.a3rs00_1 = (aux4 + aux5 + 2 * s31 * aux3 - s31 * aux8) / J1squared;
@@ -1224,12 +1228,9 @@ namespace ISAAR.MSolve.IGA.Elements
             da3_unit_dr_out.a3r22 = -s32 * dnorma3_dr2;
         }
 
-        internal void CalculateKmembraneNL(ControlPoint[] controlPoints, double[] membraneForces, Nurbs2D nurbs,
+        internal void CalculateKmembraneNL(ControlPoint[] controlPoints, ref Forces membraneForces, Nurbs2D nurbs,
             int j, double[,] KmembraneNLOut)
         {
-            var membraneForce0 = membraneForces[0];
-            var membraneForce1 = membraneForces[1];
-            var membraneForce2 = membraneForces[2];
             for (var i = 0; i < controlPoints.Length; i++)
             {
                 var dksi_r = nurbs.NurbsDerivativeValuesKsi[i, j];
@@ -1241,8 +1242,9 @@ namespace ISAAR.MSolve.IGA.Elements
                     var dheta_s = nurbs.NurbsDerivativeValuesHeta[k, j];
 
                     
-                    var aux = membraneForce0 * dksi_r * dksi_s + membraneForce1 * dheta_r * dheta_s +
-                              membraneForce2 * (dksi_r * dheta_s + dksi_s * dheta_r);
+                    var aux = membraneForces.v0 * dksi_r * dksi_s +
+                              membraneForces.v1 * dheta_r * dheta_s +
+                              membraneForces.v2 * (dksi_r * dheta_s + dksi_s * dheta_r);
 
                     KmembraneNLOut[i * 3, k * 3] += aux;
                     KmembraneNLOut[i * 3 + 1, k * 3 + 1] += aux;
@@ -1399,5 +1401,12 @@ namespace ISAAR.MSolve.IGA.Elements
         public double Bab_rs22_0 ;
         public double Bab_rs22_1 ;
         public double Bab_rs22_2 ;
+    }
+
+    public struct Forces
+    {
+        public double v0;
+        public double v1;
+        public double v2;
     }
 }
