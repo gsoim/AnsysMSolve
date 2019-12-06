@@ -541,104 +541,128 @@ namespace ISAAR.MSolve.IGA.Elements
                 var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
                 var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
 
-                CalculateMembraneDeformationMatrix(elementControlPoints.Length, nurbs, j, surfaceBasisVector1,
-                    surfaceBasisVector2, Bmembrane);
-                CalculateBendingDeformationMatrix(elementControlPoints.Length, surfaceBasisVector3, nurbs, j,
-                    surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
-                    surfaceBasisVectorDerivative12, Bbending);
-
-                var (MembraneConstitutiveMatrix, BendingConstitutiveMatrix, CouplingConstitutiveMatrix) =
-                    IntegratedConstitutiveOverThickness(gaussPoints[j]);
-
                 double wFactor = InitialJ1[j] * gaussPoints[j].WeightFactor;
-                double tempb = 0;
-                double tempm = 0;
-                Array.Clear(BmTranspose, 0, bRows * bCols);
-                Array.Clear(BbTranspose, 0, bRows * bCols);
-                for (int i = 0; i < bRows; i++)
-                {
-                    for (int k = 0; k < bCols; k++)
-                    {
-                        BmTranspose[k, i] = Bmembrane[i, k] * wFactor;
-                        BbTranspose[k, i] = Bbending[i, k] * wFactor;
-                    }
-                }
 
-                double tempcm = 0;
-                double tempcb = 0;
-                double tempcc = 0;
-                Array.Clear(BmTransposeMultStiffness, 0, bRows * bCols);
-                Array.Clear(BbTransposeMultStiffness, 0, bRows * bCols);
-                Array.Clear(BmbTransposeMultStiffness, 0, bRows * bCols);
-                Array.Clear(BbmTransposeMultStiffness, 0, bRows * bCols);
-                for (int i = 0; i < bCols; i++)
-                {
-                    for (int k = 0; k < bRows; k++)
-                    {
-                        tempm = BmTranspose[i, k];
-                        tempb = BbTranspose[i, k];
-                        for (int m = 0; m < bRows; m++)
-                        {
-                            tempcm = MembraneConstitutiveMatrix[k, m];
-                            tempcb = BendingConstitutiveMatrix[k, m];
-                            tempcc = CouplingConstitutiveMatrix[k, m];
-
-                            BmTransposeMultStiffness[i, m] += tempm * tempcm;
-                            BbTransposeMultStiffness[i, m] += tempb * tempcb;
-                            BmbTransposeMultStiffness[i, m] += tempm * tempcc;
-                            BbmTransposeMultStiffness[i, m] += tempb * tempcc;
-                        }
-                    }
-                }
-
-                double tempmb = 0;
-                double tempbm = 0;
-                double mem = 0;
-                double ben = 0;
-                for (int i = 0; i < bCols; i++)
-                {
-                    for (int k = 0; k < bRows; k++)
-                    {
-                        tempm = BmTransposeMultStiffness[i, k];
-                        tempb = BbTransposeMultStiffness[i, k];
-                        tempmb = BmbTransposeMultStiffness[i, k];
-                        tempbm = BbmTransposeMultStiffness[i, k];
-
-                        for (int m = 0; m < bCols; m++)
-                        {
-                            mem = Bmembrane[k, m];
-                            ben = Bbending[k, m];
-                            stiffnessMatrix[i, m] += tempm * mem + tempb * ben + tempmb * ben + tempbm * mem;
-                        }
-                    }
-                }
-
-                var (MembraneForces, BendingMoments) = IntegratedStressesOverThickness(gaussPoints[j]);
-
-                Array.Clear(KmembraneNL, 0, bCols * bCols);
-                Array.Clear(KbendingNL, 0, bCols * bCols);
-
-                CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j, KmembraneNL);
-                CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
-                    surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3,
-                    surfaceBasisVectorDerivative1,
-                    surfaceBasisVectorDerivative2,
-                    surfaceBasisVectorDerivative12, J1, j, KbendingNL);
-
-                for (var i = 0; i < stiffnessMatrix.GetLength(0); i++)
-                {
-                    for (var k = 0; k < stiffnessMatrix.GetLength(1); k++)
-                    {
-                        stiffnessMatrix[i, k] += KmembraneNL[i, k] * wFactor;
-                        stiffnessMatrix[i, k] += KbendingNL[i, k] * wFactor;
-                    }
-                }
-
-
-               
+                CalculateLinearStiffness(elementControlPoints, nurbs, j, surfaceBasisVector1, surfaceBasisVector2,
+                    Bmembrane, surfaceBasisVector3, surfaceBasisVectorDerivative1, J1, surfaceBasisVectorDerivative2,
+                    surfaceBasisVectorDerivative12, Bbending, gaussPoints, BmTranspose, bRows, bCols, BbTranspose,
+                    wFactor, BmTransposeMultStiffness, BbTransposeMultStiffness, BmbTransposeMultStiffness,
+                    BbmTransposeMultStiffness, stiffnessMatrix);
+                CalculateNonLinearStiffness(gaussPoints, j, KmembraneNL, bCols, KbendingNL, elementControlPoints, nurbs,
+                    surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, surfaceBasisVectorDerivative1,
+                    surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, J1, stiffnessMatrix, wFactor);
             }
 
             return Matrix.CreateFromArray(stiffnessMatrix);
+        }
+
+        private void CalculateNonLinearStiffness(GaussLegendrePoint3D[] gaussPoints, int j, double[,] KmembraneNL, int bCols,
+            double[,] KbendingNL, ControlPoint[] elementControlPoints, Nurbs2D nurbs, double[] surfaceBasisVector1,
+            double[] surfaceBasisVector2, double[] surfaceBasisVector3, double[] surfaceBasisVectorDerivative1,
+            double[] surfaceBasisVectorDerivative2, double[] surfaceBasisVectorDerivative12, double J1,
+            double[,] stiffnessMatrix, double wFactor)
+        {
+            var (MembraneForces, BendingMoments) = IntegratedStressesOverThickness(gaussPoints[j]);
+
+            Array.Clear(KmembraneNL, 0, bCols * bCols);
+            Array.Clear(KbendingNL, 0, bCols * bCols);
+
+            CalculateKmembraneNL(elementControlPoints, MembraneForces, nurbs, j, KmembraneNL);
+            CalculateKbendingNL(elementControlPoints, BendingMoments, nurbs,
+                surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3,
+                surfaceBasisVectorDerivative1,
+                surfaceBasisVectorDerivative2,
+                surfaceBasisVectorDerivative12, J1, j, KbendingNL);
+
+            for (var i = 0; i < stiffnessMatrix.GetLength(0); i++)
+            {
+                for (var k = 0; k < stiffnessMatrix.GetLength(1); k++)
+                {
+                    stiffnessMatrix[i, k] += KmembraneNL[i, k] * wFactor;
+                    stiffnessMatrix[i, k] += KbendingNL[i, k] * wFactor;
+                }
+            }
+        }
+
+        private void CalculateLinearStiffness(ControlPoint[] elementControlPoints, Nurbs2D nurbs, int j,
+            double[] surfaceBasisVector1, double[] surfaceBasisVector2, double[,] Bmembrane, double[] surfaceBasisVector3,
+            double[] surfaceBasisVectorDerivative1, double J1, double[] surfaceBasisVectorDerivative2,
+            double[] surfaceBasisVectorDerivative12, double[,] Bbending, GaussLegendrePoint3D[] gaussPoints,
+            double[,] BmTranspose, int bRows, int bCols, double[,] BbTranspose, double wFactor,
+            double[,] BmTransposeMultStiffness, double[,] BbTransposeMultStiffness, double[,] BmbTransposeMultStiffness,
+            double[,] BbmTransposeMultStiffness, double[,] stiffnessMatrix)
+        {
+            CalculateMembraneDeformationMatrix(elementControlPoints.Length, nurbs, j, surfaceBasisVector1,
+                surfaceBasisVector2, Bmembrane);
+            CalculateBendingDeformationMatrix(elementControlPoints.Length, surfaceBasisVector3, nurbs, j,
+                surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
+                surfaceBasisVectorDerivative12, Bbending);
+
+            var (MembraneConstitutiveMatrix, BendingConstitutiveMatrix, CouplingConstitutiveMatrix) =
+                IntegratedConstitutiveOverThickness(gaussPoints[j]);
+
+
+            double tempb = 0;
+            double tempm = 0;
+            Array.Clear(BmTranspose, 0, bRows * bCols);
+            Array.Clear(BbTranspose, 0, bRows * bCols);
+            for (int i = 0; i < bRows; i++)
+            {
+                for (int k = 0; k < bCols; k++)
+                {
+                    BmTranspose[k, i] = Bmembrane[i, k] * wFactor;
+                    BbTranspose[k, i] = Bbending[i, k] * wFactor;
+                }
+            }
+
+            double tempcm = 0;
+            double tempcb = 0;
+            double tempcc = 0;
+            Array.Clear(BmTransposeMultStiffness, 0, bRows * bCols);
+            Array.Clear(BbTransposeMultStiffness, 0, bRows * bCols);
+            Array.Clear(BmbTransposeMultStiffness, 0, bRows * bCols);
+            Array.Clear(BbmTransposeMultStiffness, 0, bRows * bCols);
+            for (int i = 0; i < bCols; i++)
+            {
+                for (int k = 0; k < bRows; k++)
+                {
+                    tempm = BmTranspose[i, k];
+                    tempb = BbTranspose[i, k];
+                    for (int m = 0; m < bRows; m++)
+                    {
+                        tempcm = MembraneConstitutiveMatrix[k, m];
+                        tempcb = BendingConstitutiveMatrix[k, m];
+                        tempcc = CouplingConstitutiveMatrix[k, m];
+
+                        BmTransposeMultStiffness[i, m] += tempm * tempcm;
+                        BbTransposeMultStiffness[i, m] += tempb * tempcb;
+                        BmbTransposeMultStiffness[i, m] += tempm * tempcc;
+                        BbmTransposeMultStiffness[i, m] += tempb * tempcc;
+                    }
+                }
+            }
+
+            double tempmb = 0;
+            double tempbm = 0;
+            double mem = 0;
+            double ben = 0;
+            for (int i = 0; i < bCols; i++)
+            {
+                for (int k = 0; k < bRows; k++)
+                {
+                    tempm = BmTransposeMultStiffness[i, k];
+                    tempb = BbTransposeMultStiffness[i, k];
+                    tempmb = BmbTransposeMultStiffness[i, k];
+                    tempbm = BbmTransposeMultStiffness[i, k];
+
+                    for (int m = 0; m < bCols; m++)
+                    {
+                        mem = Bmembrane[k, m];
+                        ben = Bbending[k, m];
+                        stiffnessMatrix[i, m] += tempm * mem + tempb * ben + tempmb * ben + tempbm * mem;
+                    }
+                }
+            }
         }
 
         private Nurbs2D CalculateShapeFunctions(NurbsKirchhoffLoveShellElementNL shellElement,
