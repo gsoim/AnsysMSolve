@@ -125,6 +125,8 @@ namespace ISAAR.MSolve.IGA.Elements
             var Bmembrane = new double[3, _controlPoints.Length * 3];
             var Bbending = new double[3, _controlPoints.Length * 3];
             var numberOfControlPoints = _controlPoints.Length;
+            var MembraneForces = new double[3];
+            var BendingMoments = new double[3];
 
             for (int j = 0; j < gaussPoints.Length; j++)
             {
@@ -161,8 +163,7 @@ namespace ISAAR.MSolve.IGA.Elements
                     surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
                     surfaceBasisVectorDerivative12, Bbending);
 
-                var (membraneForces, bendingMoments) =
-                    IntegratedStressesOverThickness(gaussPoints[j]);
+                IntegratedStressesOverThickness(gaussPoints[j], MembraneForces, BendingMoments);
 
                 var wfactor = InitialJ1[j] * gaussPoints[j].WeightFactor;
 
@@ -171,8 +172,8 @@ namespace ISAAR.MSolve.IGA.Elements
                 {
                     for (int k = 0; k < Bmembrane.GetLength(0); k++)
                     {
-                        elementNodalForces[i] += (Bmembrane[k, i] * membraneForces[k] * wfactor +
-                                                  Bbending[k, i] * bendingMoments[k] * wfactor);
+                        elementNodalForces[i] += (Bmembrane[k, i] * MembraneForces[k] * wfactor +
+                                                  Bbending[k, i] * BendingMoments[k] * wfactor);
                     }
                 }
             }
@@ -443,11 +444,11 @@ namespace ISAAR.MSolve.IGA.Elements
             return (MembraneConstitutiveMatrix, BendingConstitutiveMatrix, CouplingConstitutiveMatrix);
         }
 
-        internal (double[] MembraneForces, double[] BendingMoments) IntegratedStressesOverThickness(
-            GaussLegendrePoint3D midSurfaceGaussPoint)
+        internal void IntegratedStressesOverThickness(
+            GaussLegendrePoint3D midSurfaceGaussPoint, double[] MembraneForces, double[] BendingMoments)
         {
-            var MembraneForces = new double[3];
-            var BendingMoments = new double[3];
+            Array.Clear(MembraneForces, 0, 3);
+            Array.Clear(BendingMoments, 0, 3);
             var thicknessPoints = thicknessIntegrationPoints[midSurfaceGaussPoint];
 
             for (int i = 0; i < thicknessPoints.Count; i++)
@@ -462,8 +463,6 @@ namespace ISAAR.MSolve.IGA.Elements
                     BendingMoments[j] -= material.Stresses[j] * w * z;
                 }
             }
-
-            return (MembraneForces, BendingMoments);
         }
 
         public IMatrix MassMatrix(IElement element) => throw new NotImplementedException();
@@ -512,6 +511,8 @@ namespace ISAAR.MSolve.IGA.Elements
             var BbTransposeMultStiffness = new double[bCols, bRows];
             var BmbTransposeMultStiffness = new double[bCols, bRows];
             var BbmTransposeMultStiffness = new double[bCols, bRows];
+            var MembraneForces = new double[3];
+            var BendingMoments = new double[3];
 
             for (int j = 0; j < gaussPoints.Length; j++)
             {
@@ -550,7 +551,8 @@ namespace ISAAR.MSolve.IGA.Elements
                     BbmTransposeMultStiffness, stiffnessMatrix);
                 CalculateNonLinearStiffness(gaussPoints, j, KmembraneNL, bCols, KbendingNL, elementControlPoints, nurbs,
                     surfaceBasisVector1, surfaceBasisVector2, surfaceBasisVector3, surfaceBasisVectorDerivative1,
-                    surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, J1, stiffnessMatrix, wFactor);
+                    surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, J1, stiffnessMatrix, wFactor,
+                    MembraneForces, BendingMoments);
             }
 
             return Matrix.CreateFromArray(stiffnessMatrix);
@@ -560,9 +562,9 @@ namespace ISAAR.MSolve.IGA.Elements
             double[,] KbendingNL, ControlPoint[] elementControlPoints, Nurbs2D nurbs, double[] surfaceBasisVector1,
             double[] surfaceBasisVector2, double[] surfaceBasisVector3, double[] surfaceBasisVectorDerivative1,
             double[] surfaceBasisVectorDerivative2, double[] surfaceBasisVectorDerivative12, double J1,
-            double[,] stiffnessMatrix, double wFactor)
+            double[,] stiffnessMatrix, double wFactor, double[] MembraneForces, double[] BendingMoments)
         {
-            var (MembraneForces, BendingMoments) = IntegratedStressesOverThickness(gaussPoints[j]);
+            IntegratedStressesOverThickness(gaussPoints[j], MembraneForces, BendingMoments);
 
             Array.Clear(KmembraneNL, 0, bCols * bCols);
             Array.Clear(KbendingNL, 0, bCols * bCols);

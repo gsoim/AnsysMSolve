@@ -459,7 +459,9 @@ namespace ISAAR.MSolve.IGA.Tests
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
 
             shellElement.CalculateStresses(shellElement, localSolution, new double[27]);
-            var (MembraneForces, BendingMoments) = shellElement.IntegratedStressesOverThickness(gaussPoints[0]);
+            var MembraneForces = new double[3];
+            var BendingMoments = new double[3];
+            shellElement.IntegratedStressesOverThickness(gaussPoints[0], MembraneForces, BendingMoments);
 
             var expectedMembraneForces = new double[3]
             {
