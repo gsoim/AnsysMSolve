@@ -5,6 +5,7 @@ using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.Discretization.Integration.Quadratures;
 using ISAAR.MSolve.Discretization.Interfaces;
+using ISAAR.MSolve.Discretization.Mesh;
 using ISAAR.MSolve.FEM.Elements;
 using ISAAR.MSolve.FEM.Entities;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -14,7 +15,7 @@ using ISAAR.MSolve.Materials.Interfaces;
 using ISAAR.MSolve.MultiscaleAnalysis.Interfaces;
 using ISAAR.MSolve.Solvers.DomainDecomposition.Dual.FetiDP.CornerNodes;
 
-namespace ISAAR.MSolve.Solvers.Tests.DomainDecomposition.Dual.FetiDP3d.Example4x4x4Quads
+namespace ISAAR.MSolve.MultiscaleAnalysis
 {
 
     public class CompositeMaterialModeluilderTet : IdegenerateRVEbuilder
@@ -47,7 +48,7 @@ namespace ISAAR.MSolve.Solvers.Tests.DomainDecomposition.Dual.FetiDP3d.Example4x
             
             model.SubdomainsDictionary[0] = new Subdomain(0);
        
-            var (Tet_Outter_elements_Node_data, Tet_Inner_elements_Node_data, node_coords, NodeIds, boundaryNodesIds) =
+            var (Tet_Outter_elements_Node_data, Tet_Inner_elements_Node_data, node_coords, NodeIds, boundaryNodesIds, rigidNodes) =
                 GetModelCreationData();
 
             for (int i1 = 0; i1 < NodeIds.Count; i1++)
@@ -64,80 +65,99 @@ namespace ISAAR.MSolve.Solvers.Tests.DomainDecomposition.Dual.FetiDP3d.Example4x
             //ElasticMaterial3D .
 
             //define outer elements group
+            int[] ContinuumTet4NodesNumbering = new int[4] { 0, 1, 2, 3 };
+            int subdomainID = 0;
+            var factoryOutter = new ContinuumElement3DFactory(outterMaterial, null);
             for (int i1 = 0; i1 < Tet_Outter_elements_Node_data.GetLength(0); i1++)
             {
+                List<Node> nodeSet = new List<Node>();
+                for (int j = 0; j < 4; j++)
+                {
+                    int ren1 = ContinuumTet4NodesNumbering[j];
+                    int nodeID = Tet_Outter_elements_Node_data[i1, ren1+1];
+                    nodeSet.Add((Node)model.NodesDictionary[nodeID]);
+                }
+
                 Element e1 = new Element()
                 {
                     ID = Tet_Outter_elements_Node_data[i1,0],
-                    ElementType = new Hexa8NonLinear(outterMaterial, GaussLegendre3D.GetQuadratureWithOrder(2,2,2)) // dixws to e. exoume sfalma enw sto beambuilding oxi//edw kaleitai me ena orisma to Hexa8
+                    ElementType = factoryOutter.CreateElement(CellType.Tet4, nodeSet) // dixws to e. exoume sfalma enw sto beambuilding oxi//edw kaleitai me ena orisma to Hexa8
                 };
 
-                for (int j = 0; j < 8; j++)
+                for (int j = 0; j < 4; j++)
                 {
-                    e1.NodesDictionary.Add(Tet_Outter_elements_Node_data[i1, j+1], model.NodesDictionary[Tet_Outter_elements_Node_data[i1, j+1]]);
+                    int ren1 = ContinuumTet4NodesNumbering[j];
+                    int nodeID = Tet_Outter_elements_Node_data[i1, ren1+1];
+                    e1.NodesDictionary.Add(nodeID, model.NodesDictionary[nodeID]);
                 }
                 model.ElementsDictionary.Add(e1.ID, e1);
+                model.SubdomainsDictionary[subdomainID].Elements.Add(e1);
             }
 
-            //define outer elements group
+            //define inner elements group
+            var factoryInner = new ContinuumElement3DFactory(innerMaterial, null);
             for (int i1 = 0; i1 < Tet_Inner_elements_Node_data.GetLength(0); i1++)
             {
+                List<Node> nodeSet = new List<Node>();
+                for (int j = 0; j < 4; j++)
+                {
+                    int ren1 = ContinuumTet4NodesNumbering[j];
+                    int nodeID = Tet_Inner_elements_Node_data[i1, ren1 + 1];
+                    nodeSet.Add((Node)model.NodesDictionary[nodeID]);
+                }
+
                 Element e1 = new Element()
                 {
                     ID = Tet_Inner_elements_Node_data[i1, 0],
-                    ElementType = new Hexa8NonLinear(outterMaterial, GaussLegendre3D.GetQuadratureWithOrder(2, 2, 2)) // dixws to e. exoume sfalma enw sto beambuilding oxi//edw kaleitai me ena orisma to Hexa8
+                    ElementType = factoryInner.CreateElement(CellType.Tet4, nodeSet) // dixws to e. exoume sfalma enw sto beambuilding oxi//edw kaleitai me ena orisma to Hexa8
                 };
 
-                for (int j = 0; j < 8; j++)
+                for (int j = 0; j < 4; j++)
                 {
-                    e1.NodesDictionary.Add(Tet_Inner_elements_Node_data[i1, j + 1], model.NodesDictionary[Tet_Inner_elements_Node_data[i1, j + 1]]);
+                    int ren1 = ContinuumTet4NodesNumbering[j];
+                    int nodeID = Tet_Inner_elements_Node_data[i1, ren1 + 1];
+                    e1.NodesDictionary.Add(nodeID, model.NodesDictionary[nodeID]);
                 }
                 model.ElementsDictionary.Add(e1.ID, e1);
+                model.SubdomainsDictionary[subdomainID].Elements.Add(e1);
             }
 
+            Dictionary<int, Node> boundaryNodes = new Dictionary<int, Node>();
 
-            for (int i2 = 0; i2 < Tet_Outter_elements_Node_data.GetLength(0); i2++)
+            for (int i = 0; i < boundaryNodesIds.Count; i++)
             {
-                int subdomainID = 0;
-                Element element = model.ElementsDictionary[Tet_Outter_elements_Node_data[i2, 0]];
-                model.SubdomainsDictionary[subdomainID].Elements.Add(element);
+                boundaryNodes.Add(boundaryNodesIds[i], model.NodesDictionary[boundaryNodesIds[i]]);
             }
 
-            for (int i2 = 0; i2 < Tet_Inner_elements_Node_data.GetLength(0); i2++)
-            {
-                int subdomainID = 0;
-                Element element = model.ElementsDictionary[Tet_Inner_elements_Node_data[i2, 0]];
-                model.SubdomainsDictionary[subdomainID].Elements.Add(element);
-            }
-
-                       
-            //for (int i1 = 0; i1 < constraintIds.GetLength(0); i1++)
-            //{
-            //    model.NodesDictionary[constraintIds[i1]].Constraints.Add(new Constraint { DOF = StructuralDof.TranslationX });
-            //    model.NodesDictionary[constraintIds[i1]].Constraints.Add(new Constraint { DOF = StructuralDof.TranslationY });
-            //    model.NodesDictionary[constraintIds[i1]].Constraints.Add(new Constraint { DOF = StructuralDof.TranslationZ });
-
-            //}
-            //// Load
-            //model.Loads.Add(new Load() { Node = model.NodesDictionary[63], DOF = StructuralDof.TranslationZ, Amount = 1.0 });
 
 
 
-
-            return  new Tuple<Model, Dictionary<int, Node>, double>(model, new Dictionary<int, Node>(), L01*L02*L03); 
+            return  new Tuple<Model, Dictionary<int, Node>, double>(model, boundaryNodes, L01*L02*L03); 
         }
 
         public Dictionary<Node, IList<IDofType>> GetModelRigidBodyNodeConstraints(Model model)
         {
-            throw new NotImplementedException();
-            // ulopoihsh omoiws me return FEMMeshBuilder.GetConstraintsOfDegenerateRVEForNonSingularStiffnessMatrix_withRenumbering(model, mp.hexa1, mp.hexa2, mp.hexa3, renumbering_vector_path);
+            
+            Dictionary<Node, IList<IDofType>> RigidBodyNodeConstraints = new Dictionary<Node, IList<IDofType>>();
+            var rigidNodes = RigidNodes;
+
+            RigidBodyNodeConstraints.Add(model.NodesDictionary[rigidNodes[0]], new List<IDofType>() { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ });
+            RigidBodyNodeConstraints.Add(model.NodesDictionary[rigidNodes[1]], new List<IDofType>() { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ });
+            RigidBodyNodeConstraints.Add(model.NodesDictionary[rigidNodes[2]], new List<IDofType>() { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ });
+
+            return RigidBodyNodeConstraints;
         }
 
 
 
+        private List<int> RigidNodes => new List<int>
+        {
+            { 1},
+                {101 },
+                {21 }
+        };
 
-
-        private static (int[,], int[,], double[,], List<int>, List<int>) GetModelCreationData()
+        private static (int[,], int[,], double[,], List<int>, List<int>, List<int>) GetModelCreationData()
         {
             var Tet_Outter_elements_Node_data = new int[,] {
             {1,1,2,26,6},
@@ -864,7 +884,14 @@ namespace ISAAR.MSolve.Solvers.Tests.DomainDecomposition.Dual.FetiDP3d.Example4x
 {124},
 {125}};
 
-            return (Tet_Outter_elements_Node_data, Tet_Inner_elements_Node_data, node_coords, NodeIds, boundaryNodesIds);
+            List<int> rigidNodes = new List<int>
+            {
+                { 1},
+                {101 },
+                {21 }
+            };
+
+            return (Tet_Outter_elements_Node_data, Tet_Inner_elements_Node_data, node_coords, NodeIds, boundaryNodesIds, rigidNodes);
         }
 
              
