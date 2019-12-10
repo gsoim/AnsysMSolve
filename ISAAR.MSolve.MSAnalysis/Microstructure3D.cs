@@ -104,7 +104,8 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
             }            
         }
 
-        public object Clone()
+        object ICloneable.Clone() => Clone();
+        public IContinuumMaterial3D Clone()
         {
             int new_rve_id = rnd1.Next(1, database_size + 1);
             return new Microstructure3D(rveBuilder.Clone(new_rve_id), createSolver, EstimateOnlyLinearResponse, database_size);

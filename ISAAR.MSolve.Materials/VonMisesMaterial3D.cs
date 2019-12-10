@@ -278,13 +278,15 @@ namespace ISAAR.MSolve.Materials
             set => this.youngModulus = value;
         }
 
+        object ICloneable.Clone() => Clone();
+
         /// <summary>
         ///   Creates a new object that is a copy of the current instance.
         /// </summary>
         /// <returns>
         ///   A new object that is a copy of this instance.
         /// </returns>
-        public object Clone()
+        public IContinuumMaterial3D Clone()
         {
             return new VonMisesMaterial3D(this.youngModulus, this.poissonRatio, this.yieldStress, this.hardeningRatio)
             {

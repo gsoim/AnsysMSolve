@@ -106,7 +106,9 @@ namespace ISAAR.MSolve.Materials
         public double Friction { get { return friction; } }
         public double Dilation { get { return dilation; } }
 
-        public object Clone()
+        object ICloneable.Clone() => Clone();
+
+        public IContinuumMaterial3D Clone()
         {
             var constitutiveMatrixCopy = new double[6, 6];
             Array.Copy(constitutiveMatrix, constitutiveMatrixCopy, 36);

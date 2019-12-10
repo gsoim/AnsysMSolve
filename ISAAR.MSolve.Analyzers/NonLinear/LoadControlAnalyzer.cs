@@ -17,7 +17,9 @@ namespace ISAAR.MSolve.Analyzers.NonLinear
             base(model, solver, provider, subdomainUpdaters, numIncrements, maxIterationsPerIncrement, 
                 numIterationsForMatrixRebuild, residualTolerance)
         { }
-        
+
+        public IncrementalDisplacementsLog IncrementalDisplacementsLog { get; set; }
+
         public override void Solve()
         {
             InitializeLogs();
@@ -45,6 +47,8 @@ namespace ISAAR.MSolve.Analyzers.NonLinear
                     //Console.WriteLine($"Increment {increment}, iteration {iteration}: norm2(error) = {errorNorm}");
 
                     if (iteration == 0) firstError = errorNorm;
+
+                    if (IncrementalDisplacementsLog != null) IncrementalDisplacementsLog.StoreDisplacements(uPlusdu); // Logging should be done before exiting the last iteration.
 
                     if (TotalDisplacementsPerIterationLog != null) TotalDisplacementsPerIterationLog.StoreDisplacements(uPlusdu);
 

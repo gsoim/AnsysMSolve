@@ -7,5 +7,6 @@ namespace ISAAR.MSolve.Materials.Interfaces
         double[] Stresses { get; }
         IMatrixView ConstitutiveMatrix { get; }
         void UpdateMaterial(double[] strains);
+        IContinuumMaterial3D Clone();
     }
 }
