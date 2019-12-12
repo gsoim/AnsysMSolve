@@ -56,23 +56,23 @@ namespace ISAAR.MSolve.IGA.Tests
             };
         }
 
-        private Vector KnotValueVectorKsi()
+        private double[] KnotValueVectorKsi()
         {
-            return Vector.CreateFromArray(new double[]
+            return new double[]
             {
                 0.0000000000000, 0.0000000000000, 0.0000000000000, 0.6250000000000, 1.2500000000000, 1.8750000000000,
                 2.5000000000000, 3.1250000000000, 3.7500000000000, 4.3750000000000, 5.0000000000000, 5.6250000000000,
                 6.2500000000000, 6.8750000000000, 7.5000000000000, 8.1250000000000, 8.7500000000000, 9.3750000000000,
                 10.0000000000000, 10.0000000000000, 10.0000000000000,
-            });
+            };
         }
 
-        private Vector KnotValueVectorHeta()
+        private double[] KnotValueVectorHeta()
         {
-            return Vector.CreateFromArray(new double[]
+            return new double[]
             {
                 0.0, 0.0, 0.0, 1.0, 1.0, 1.0
-            });
+            };
         }
 
         private ShellElasticMaterial2D Material => new ShellElasticMaterial2D()
@@ -89,13 +89,29 @@ namespace ISAAR.MSolve.IGA.Tests
             get
             {
                 var patch = new Patch();
-                patch.DegreeKsi = 2;
-                patch.DegreeHeta = 2;
-                patch.NumberOfControlPointsHeta = 3;
-                patch.KnotValueVectorKsi = KnotValueVectorKsi();
-                patch.KnotValueVectorHeta = KnotValueVectorHeta();
+                var degreeKsi = 2;
+                var degreeHeta = 2;
+                var numberOfControlPointsHeta = 3;
+                var knotValueVectorKsi = KnotValueVectorKsi();
+                var knotValueVectorHeta = KnotValueVectorHeta();
+
+                var gauss = new GaussQuadrature();
+                var parametricPointsKsi = gauss.CalculateElementGaussPoints(degreeKsi, new List<Knot>()
+                {
+                    ElementKnots()[0],
+                    ElementKnots()[2]
+                }).Select(p => p.Ksi).ToArray();
+                var parametricPointsHeta = gauss.CalculateElementGaussPoints(degreeKsi, new List<Knot>()
+                {
+                    ElementKnots()[0],
+                    ElementKnots()[1]
+                }).Select(p => p.Ksi).ToArray();
+                var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
+                    ElementControlPoints().ToArray(), parametricPointsKsi, parametricPointsHeta);
+
                 var element =
-                    new NurbsKirchhoffLoveShellElementNL(Material, ElementKnots(), ElementControlPoints(), patch, 0.1);
+                    new NurbsKirchhoffLoveShellElementNL(Material, ElementKnots().ToArray(),nurbs,
+                        ElementControlPoints(), patch, 0.1, degreeKsi, degreeHeta);
                 element._solution= localSolution;
                 return element;
             }
@@ -138,11 +154,15 @@ namespace ISAAR.MSolve.IGA.Tests
         [Fact]
         public void IsogeometricCantileverShell()
         {
-            Model model = new Model();
             var filename = "CantileverShellBenchmark16x1";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt");
-            IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
+            var material = new ShellElasticMaterial2Dtransformationb()
+            {
+                YoungModulus = 1.2e06,
+                PoissonRatio = 0.0
+            };
+            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath,material);
+            var model = modelReader.GenerateModelFromFile();
 
             Value verticalDistributedLoad = delegate (double x, double y, double z)
             {
@@ -181,11 +201,15 @@ namespace ISAAR.MSolve.IGA.Tests
         //[Fact]
         public void SlitAnnularPlate()
         {
-            Model model = new Model();
             var filename = "SplitAnnularPlate";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
-            IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
+            var material= new ShellElasticMaterial2Dtransformationb()
+            {
+                YoungModulus = 21000000,
+                PoissonRatio = 0.0
+            };
+            IsogeometricShellReader modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath,material);
+            var model=modelReader.GenerateModelFromFile();
 
             Value verticalDistributedLoad = delegate (double x, double y, double z)
             {
@@ -229,7 +253,7 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
             var jacobianMatrix = new double[2, 3];
             shellElement.CalculateJacobian(elementControlPoints, nurbs, 0, jacobianMatrix);
@@ -251,7 +275,7 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
             var hessian = shellElement.CalculateHessian(elementControlPoints, nurbs, 0);
 
@@ -272,7 +296,7 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
 
             var jacobianMatrix = new double[3, 3];
@@ -313,7 +337,7 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
             var jacobianMatrix = new double[3, 3];
             shellElement.CalculateJacobian(elementControlPoints, nurbs, 0, jacobianMatrix);
@@ -360,7 +384,7 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
             var KmembraneNL = new double[elementControlPoints.Length * 3, elementControlPoints.Length * 3];
 
@@ -389,7 +413,7 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             shellElement._solution = localSolution;
             var elementControlPoints = shellElement.CurrentControlPoint(controlPoints);
             var jacobianMatrix = new double[3, 3];
@@ -447,7 +471,7 @@ namespace ISAAR.MSolve.IGA.Tests
             var shellElement = Element;
             var gaussPoints = shellElement.materialsAtThicknessGP.Keys.ToArray();
 
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
             var (MembraneConstitutiveMatrix, BendingConstitutiveMatrix, CouplingConstitutiveMatrix) =
                 shellElement.IntegratedConstitutiveOverThickness(gaussPoints[0]);
@@ -471,7 +495,7 @@ namespace ISAAR.MSolve.IGA.Tests
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
             var gaussPoints = shellElement.materialsAtThicknessGP.Keys.ToArray();
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
 
             shellElement.CalculateStresses(shellElement, localSolution, new double[27]);
@@ -509,8 +533,8 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
-            
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+
+            var nurbs = shellElement._nurbs;
             var gaussPoints = shellElement.materialsAtThicknessGP.Keys.ToArray();
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
             shellElement.CalculateStresses(shellElement, localSolution, new double[27]);
@@ -534,7 +558,7 @@ namespace ISAAR.MSolve.IGA.Tests
             var controlPoints = ElementControlPoints().ToArray();
             var shellElement = Element;
 
-            var nurbs = new Nurbs2D(shellElement, controlPoints);
+            var nurbs = shellElement._nurbs;
             var gaussPoints = shellElement.materialsAtThicknessGP.Keys.ToArray();
             shellElement.CalculateInitialConfigurationData(controlPoints, nurbs, gaussPoints);
             shellElement.CalculateStresses(shellElement, localSolution, new double[27]);

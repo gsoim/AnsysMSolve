@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Materials;
@@ -111,48 +112,56 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private Vector KnotValueVectorKsi()
+		private double[] KnotValueVectorKsi()
 		{
-			return Vector.CreateFromArray(new double[] { 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0 });
+			return new double[] { 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0 };
 		}
 
-		private Vector KnotValueVectorHeta()
+		private double[] KnotValueVectorHeta()
 		{
-			return Vector.CreateFromArray(new double[] { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 });
+			return new double[] { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 };
 		}
 
-		private Vector KnotValueVectorZeta()
+		private double[] KnotValueVectorZeta()
 		{
-			return Vector.CreateFromArray(new double[]
+			return new double[]
 			{
 				0.0, 0.0, 0.0, 0.0, 0.166666666666667, 0.166666666666667, 0.333333333333333, 0.333333333333333, 0.5,
 				0.5, 0.5, 0.666666666666667, 0.666666666666667, 0.833333333333333, 0.833333333333333, 1.0, 1.0, 1.0, 1.0
-			});
+			};
 		}
 
 		private NurbsElement3D Element
 		{
 			get
 			{
-				var element = new NurbsElement3D();
+                var degreeKsi = 3;
+                var degreeHeta = 3;
+                var degreeZeta = 3;
+                var numberOfControlPointsKsi = KnotValueVectorKsi().Length - degreeKsi - 1;
+                var numberOfControlPointsHeta = 4;
+                var numberOfControlPointsZeta = 15;
+                var knotValueVectorKsi = KnotValueVectorKsi();
+                var knotValueVectorHeta = KnotValueVectorHeta();
+                var knotValueVectorZeta = KnotValueVectorZeta();
+				var material = new ElasticMaterial3D()
+                {
+                    YoungModulus = 1,
+                    PoissonRatio = 0.3
+                };
+				var gauss = new GaussQuadrature();
+                var gaussPoints = gauss.CalculateElementGaussPoints(degreeKsi, degreeHeta, degreeZeta, ElementKnot());
+
+                var nurbs = new Nurbs3D(numberOfControlPointsKsi, numberOfControlPointsHeta, numberOfControlPointsZeta,
+                    degreeKsi, degreeHeta, degreeZeta, knotValueVectorKsi, knotValueVectorHeta, knotValueVectorZeta,
+                    ElementControlPoints().ToArray(), gaussPoints);
+                var element = new NurbsElement3D(material, nurbs, gaussPoints);
 				var patch = new Patch();
-				patch.Material= new ElasticMaterial3D()
-				{
-					YoungModulus = 1,
-					PoissonRatio = 0.3
-				};
+				
 				foreach (var controlPoint in ElementControlPoints())
 					element.ControlPointsDictionary.Add(controlPoint.ID, controlPoint);
 				foreach (var knot in ElementKnot())
 					element.KnotsDictionary.Add(knot.ID, knot);
-				patch.DegreeKsi = 3;
-				patch.DegreeHeta = 3;
-				patch.DegreeZeta = 3;
-				patch.NumberOfControlPointsHeta = 4;
-				patch.NumberOfControlPointsZeta = 15;
-				patch.KnotValueVectorKsi = KnotValueVectorKsi();
-				patch.KnotValueVectorHeta = KnotValueVectorHeta();
-				patch.KnotValueVectorZeta = KnotValueVectorZeta();
 				element.Patch = patch;
 				return element;
 			}

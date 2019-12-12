@@ -24,8 +24,19 @@ namespace ISAAR.MSolve.IGA.Elements
 	/// </summary>
 	public class TSplineKirchhoffLoveShellElement : Element, IStructuralIsogeometricElement
 	{
+        public TSplineKirchhoffLoveShellElement(IShellMaterial material,
+            ShapeTSplines2DFromBezierExtraction tsplines,
+            double thickness)
+        {
+            _material = material;
+            _tsplines = tsplines;
+            _thickness = thickness;
+        }
 		protected static readonly IDofType[] ControlPointDofTypes = new IDofType[] { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
-		private IDofType[][] _dofTypes;
+        private readonly IShellMaterial _material;
+        private readonly ShapeTSplines2DFromBezierExtraction _tsplines;
+        private readonly double _thickness;
+        private IDofType[][] _dofTypes;
 
 		/// <summary>
 		/// Retrieves the type of Finite Element used. Since the element is Isogeometric its type is defined as unknown.
@@ -80,25 +91,25 @@ namespace ISAAR.MSolve.IGA.Elements
 		/// The rows of the matrix denote the knot numbering while the columns the displacements for each degree of freedom.</returns>
 		public double[,] CalculateDisplacementsForPostProcessing(Element element, Matrix localDisplacements)
 		{
-			var tsplineElement = (TSplineKirchhoffLoveShellElement)element;
-			var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { -1, 1 });
-			var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { -1, 1 });
-			var elementControlPoints = tsplineElement.ControlPoints.ToArray();
-			var tsplines = new ShapeTSplines2DFromBezierExtraction(tsplineElement, elementControlPoints, knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
+            throw new NotImplementedException();
+			//var tsplineElement = (TSplineKirchhoffLoveShellElement)element;
+			//var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { -1, 1 });
+			//var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { -1, 1 });
+			//var elementControlPoints = tsplineElement.ControlPoints.ToArray();
+			
+			//var knotDisplacements = new double[4, 3];
+			//var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
+			//for (int j = 0; j < knotDisplacements.GetLength(0); j++)
+			//{
+			//	for (int i = 0; i < elementControlPoints.Length; i++)
+			//	{
+			//		knotDisplacements[paraviewKnotRenumbering[j], 0] += tsplines.TSplineValues[i, j] * localDisplacements[i, 0];
+			//		knotDisplacements[paraviewKnotRenumbering[j], 1] += tsplines.TSplineValues[i, j] * localDisplacements[i, 1];
+			//		knotDisplacements[paraviewKnotRenumbering[j], 2] += tsplines.TSplineValues[i, j] * localDisplacements[i, 2];
+			//	}
+			//}
 
-			var knotDisplacements = new double[4, 3];
-			var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
-			for (int j = 0; j < knotDisplacements.GetLength(0); j++)
-			{
-				for (int i = 0; i < elementControlPoints.Length; i++)
-				{
-					knotDisplacements[paraviewKnotRenumbering[j], 0] += tsplines.TSplineValues[i, j] * localDisplacements[i, 0];
-					knotDisplacements[paraviewKnotRenumbering[j], 1] += tsplines.TSplineValues[i, j] * localDisplacements[i, 1];
-					knotDisplacements[paraviewKnotRenumbering[j], 2] += tsplines.TSplineValues[i, j] * localDisplacements[i, 2];
-				}
-			}
-
-			return knotDisplacements;
+			//return knotDisplacements;
 		}
 
 		/// <summary>
@@ -173,17 +184,16 @@ namespace ISAAR.MSolve.IGA.Elements
 			var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { -1, 1 });
 			var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { -1, 1 });
 			var elementControlPoints = element.ControlPoints.ToArray();
-			var tsplines = new ShapeTSplines2DFromBezierExtraction(element, elementControlPoints, knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
-
+			
 			var knotDisplacements = new double[4, 3];
 			var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
 			for (int j = 0; j < localCoordinates.GetLength(0); j++)
 			{
 				for (int i = 0; i < elementControlPoints.Length; i++)
 				{
-					knotDisplacements[paraviewKnotRenumbering[j], 0] += tsplines.TSplineValues[i, j] * elementControlPoints[i].X;
-					knotDisplacements[paraviewKnotRenumbering[j], 1] += tsplines.TSplineValues[i, j] * elementControlPoints[i].Y;
-					knotDisplacements[paraviewKnotRenumbering[j], 2] += tsplines.TSplineValues[i, j] * elementControlPoints[i].Z;
+					knotDisplacements[paraviewKnotRenumbering[j], 0] += _tsplines.TSplineValues[i, j] * elementControlPoints[i].X;
+					knotDisplacements[paraviewKnotRenumbering[j], 1] += _tsplines.TSplineValues[i, j] * elementControlPoints[i].Y;
+					knotDisplacements[paraviewKnotRenumbering[j], 2] += _tsplines.TSplineValues[i, j] * elementControlPoints[i].Z;
 				}
 			}
 
@@ -262,13 +272,12 @@ namespace ISAAR.MSolve.IGA.Elements
 			var stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3,
 				shellElement.ControlPointsDictionary.Count * 3);
 			var elementControlPoints = shellElement.ControlPoints.ToArray();
-			var tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, elementControlPoints);
 
 			for (var j = 0; j < gaussPoints.Count; j++)
 			{
-				var jacobianMatrix = CalculateJacobian(elementControlPoints, tsplines, j);
+				var jacobianMatrix = CalculateJacobian(elementControlPoints, _tsplines, j);
 
-				var hessianMatrix = CalculateHessian(elementControlPoints, tsplines, j);
+				var hessianMatrix = CalculateHessian(elementControlPoints, _tsplines, j);
 
 				var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
 
@@ -284,21 +293,21 @@ namespace ISAAR.MSolve.IGA.Elements
 
 				var constitutiveMatrix = CalculateConstitutiveMatrix(shellElement, surfaceBasisVector1, surfaceBasisVector2);
 
-				var Bmembrane = CalculateMembraneDeformationMatrix(tsplines, j, surfaceBasisVector1,
+				var Bmembrane = CalculateMembraneDeformationMatrix(_tsplines, j, surfaceBasisVector1,
 					surfaceBasisVector2, elementControlPoints);
 
-				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, tsplines, j, surfaceBasisVector2,
+				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, _tsplines, j, surfaceBasisVector2,
 					surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
 					surfaceBasisVectorDerivative12, elementControlPoints);
 
-				var membraneStiffness = ((IIsotropicContinuumMaterial2D)shellElement.Patch.Material).YoungModulus * shellElement.Patch.Thickness /
-										   (1 - Math.Pow(((IIsotropicContinuumMaterial2D)shellElement.Patch.Material).PoissonRatio, 2));
+				var membraneStiffness = _material.YoungModulus * _thickness /
+										   (1 - Math.Pow(_material.PoissonRatio, 2));
 
 				var Kmembrane = Bmembrane.Transpose() * constitutiveMatrix * Bmembrane * membraneStiffness * J1 *
 								gaussPoints[j].WeightFactor;
 
-				var bendingStiffness = ((IIsotropicContinuumMaterial2D)shellElement.Patch.Material).YoungModulus * Math.Pow(shellElement.Patch.Thickness, 3) /
-										  12 / (1 - Math.Pow(((IIsotropicContinuumMaterial2D)shellElement.Patch.Material).PoissonRatio, 2));
+				var bendingStiffness = _material.YoungModulus * Math.Pow(_thickness, 3) /
+										  12 / (1 - Math.Pow(_material.PoissonRatio, 2));
 
 				var Kbending = Bbending.Transpose() * constitutiveMatrix * Bbending * bendingStiffness * J1 *
 							   gaussPoints[j].WeightFactor;
@@ -451,7 +460,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			auxMatrix1[1, 1] = surfaceBasisVector2.DotProduct(surfaceBasisVector2);
 			(Matrix inverse, double det) = auxMatrix1.InvertAndDeterminant();
 
-			var material = ((IContinuumMaterial2D)element.Patch.Material);
+			var material = _material;
 			var constitutiveMatrix = Matrix.CreateFromArray(new double[3, 3]
 			{
 				{

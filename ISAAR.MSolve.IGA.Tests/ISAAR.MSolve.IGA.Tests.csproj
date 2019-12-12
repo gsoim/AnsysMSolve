@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="IGAVisualizationTests.cs" />
     <Compile Remove="NURBSElement2DCollocation.cs" />
     <Compile Remove="NurbsElementCollocation3D.cs" />
   </ItemGroup> 

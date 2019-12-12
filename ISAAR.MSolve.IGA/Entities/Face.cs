@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Interfaces;
+using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 
 namespace ISAAR.MSolve.IGA.Entities
@@ -192,10 +194,27 @@ namespace ISAAR.MSolve.IGA.Entities
 						}
 					}
 					int elementID = i * numberOfElementsHeta + j;
-					Element element = new NURBSElement2D()
+
+                    var gauss= new GaussQuadrature();
+					var parametricPointKsi = gauss.CalculateElementGaussPoints(Degrees[0], new List<Knot>()
+                    {
+                        new Knot(){Ksi = knotsOfElement[0].Ksi},
+                        new Knot(){Ksi = knotsOfElement[2].Ksi},
+                    }).Select(x => x.Ksi).ToArray();
+                    var parametricPointHeta = gauss.CalculateElementGaussPoints(Degrees[1], new List<Knot>()
+                    {
+                        new Knot(){Ksi = knotsOfElement[0].Heta},
+                        new Knot(){Ksi = knotsOfElement[1].Heta},
+                    }).Select(x => x.Ksi).ToArray();
+					var gaussPoints = gauss.CalculateElementGaussPoints(Degrees[0], Degrees[1], knotsOfElement).ToArray();
+                    var nurbs = new Nurbs2D(Degrees[0], KnotValueVectors[0].CopyToArray(),
+                        Degrees[1], KnotValueVectors[1].CopyToArray(), elementControlPoints.ToArray(),
+                        parametricPointKsi, parametricPointHeta);
+
+					Element element = new NURBSElement2D(null, nurbs, gaussPoints, 0)
 					{
 						ID = elementID,
-						ElementType = new NURBSElement2D(),
+						ElementType = new NURBSElement2D(null, nurbs, gaussPoints, 0),
 						Patch = Patch,
 						Model = Patch.Elements[0].Model
 					};

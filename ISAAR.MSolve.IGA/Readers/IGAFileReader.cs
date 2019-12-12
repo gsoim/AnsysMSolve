@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
-using ISAAR.MSolve.IGA.Postprocessing;
+using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.Materials;
+using ISAAR.MSolve.Materials.Interfaces;
 
 namespace ISAAR.MSolve.IGA.Readers
 {
@@ -45,13 +47,18 @@ namespace ISAAR.MSolve.IGA.Readers
 			plane, surface
 		}
 
-		/// <summary>
-		/// Create Model from reading an .iga file.
-		/// </summary>
-		/// <param name="shellType"><see cref="Enum"/> that specifies the type of the shells that will be generated.</param>
-		/// <param name="shellMaterial">The material of the shell.</param>
-		/// <param name="thickness">The tchickness of the shell.</param>
-		public void CreateTSplineShellsModelFromFile(TSplineShellType shellType = TSplineShellType.Linear, ShellElasticMaterial2D shellMaterial = null, double thickness = 1)
+        public enum TSplineShellType
+        {
+            Linear, Section, Thickness
+        }
+
+        /// <summary>
+        /// Create Model from reading an .iga file.
+        /// </summary>
+        /// <param name="shellType"><see cref="Enum"/> that specifies the type of the shells that will be generated.</param>
+        /// <param name="shellMaterial">The material of the shell.</param>
+        /// <param name="thickness">The thickness of the shell.</param>
+        public void CreateTSplineShellsModelFromFile(TSplineShellType shellType = TSplineShellType.Linear, IShellMaterial shellMaterial = null, double thickness = 1)
 		{
 			char[] delimeters = { ' ', '=', '\t' };
 			Attributes? name = null;
@@ -137,7 +144,7 @@ namespace ISAAR.MSolve.IGA.Readers
 							switch (shellType)
 							{
 								case TSplineShellType.Linear:
-									CreateLinearShell(elementDegreeKsi, elementDegreeHeta, extractionOperator, connectivity);
+									CreateLinearShell(elementDegreeKsi, elementDegreeHeta, extractionOperator, connectivity, shellMaterial, thickness);
 									break;
 
 								case TSplineShellType.Thickness:
@@ -154,41 +161,41 @@ namespace ISAAR.MSolve.IGA.Readers
 		}
 
 		private void CreateLinearShell(int elementDegreeKsi, int elementDegreeHeta, Matrix extractionOperator,
-			int[] connectivity)
+			int[] connectivity, IShellMaterial material, double thickness)
 		{
-			Element element = new TSplineKirchhoffLoveShellElement()
+            var elementControlPoints= connectivity.Select(t => _model.ControlPointsDictionary[t]).ToArray();
+            var tsplines = new ShapeTSplines2DFromBezierExtraction(elementDegreeKsi, elementDegreeHeta,
+                extractionOperator, elementControlPoints);
+
+			Element element = new TSplineKirchhoffLoveShellElement(
+                material, tsplines, thickness)
 			{
 				ID = elementIDCounter,
 				Patch = _model.PatchesDictionary[0],
-				ElementType = new TSplineKirchhoffLoveShellElement(),
+				ElementType = new TSplineKirchhoffLoveShellElement(material, tsplines, thickness),
 				DegreeKsi = elementDegreeKsi,
 				DegreeHeta = elementDegreeHeta,
 				ExtractionOperator = extractionOperator
 			};
-			for (int cp = 0; cp < connectivity.Length; cp++)
-			{
-				element.AddControlPoint(_model.ControlPointsDictionary[connectivity[cp]]);
-			}
-
+            element.AddControlPoints(elementControlPoints);
 			_model.ElementsDictionary.Add(elementIDCounter++, element);
 			_model.PatchesDictionary[0].Elements.Add(element);
 		}
 
 		private void CreateThicknessShell(int elementDegreeKsi, int elementDegreeHeta, Matrix extractionOperator,
-			int[] connectivity, ShellElasticMaterial2D shellMaterial, double thickness)
+			int[] connectivity, IShellMaterial shellMaterial, double thickness)
 		{
-			Element element = new TSplineKirchhoffLoveShellElementMaterial(elementIDCounter, null,
-					elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial)
+            var elementControlPoints = connectivity.Select(t => _model.ControlPointsDictionary[t]).ToArray();
+            var tsplines = new ShapeTSplines2DFromBezierExtraction(elementDegreeKsi, elementDegreeHeta,
+                extractionOperator, elementControlPoints);
+            Element element = new TSplineKirchhoffLoveShellElementMaterial(elementIDCounter, null,
+					elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial,
+                    tsplines)
 			{
 				ElementType = new TSplineKirchhoffLoveShellElementMaterial(elementIDCounter, null,
-					elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial)
+					elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial, tsplines)
 			};
-
-			foreach (var t in connectivity)
-			{
-				element.AddControlPoint(_model.ControlPointsDictionary[t]);
-			}
-
+            element.AddControlPoints(elementControlPoints);
 			_model.ElementsDictionary.Add(elementIDCounter++, element);
 			_model.PatchesDictionary[0].Elements.Add(element);
 		}

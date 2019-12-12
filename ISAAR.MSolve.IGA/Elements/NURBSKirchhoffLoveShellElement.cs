@@ -13,6 +13,7 @@ using ISAAR.MSolve.IGA.Interfaces;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
+using ISAAR.MSolve.Materials;
 using ISAAR.MSolve.Materials.Interfaces;
 using Element = ISAAR.MSolve.IGA.Entities.Element;
 
@@ -26,8 +27,22 @@ namespace ISAAR.MSolve.IGA.Elements
 	/// </summary>
 	public class NurbsKirchhoffLoveShellElement : Element, IStructuralIsogeometricElement, ISurfaceLoadedElement
 	{
+        public NurbsKirchhoffLoveShellElement(IShellMaterial material,
+            Nurbs2D nurbs, GaussLegendrePoint3D[] gaussPoints, 
+            double thickness )
+        {
+            _material = material;
+            _nurbs = nurbs;
+            _gaussPoints = gaussPoints;
+            _thickness = thickness;
+        }
+
 		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
-		private IDofType[][] dofTypes;
+        private readonly IShellMaterial _material;
+        internal readonly Nurbs2D _nurbs;
+        private readonly GaussLegendrePoint3D[] _gaussPoints;
+        private readonly double _thickness;
+        private IDofType[][] dofTypes;
 
 		/// <summary>
 		/// Retrieves the type of Finite Element used. Since the element is Isogeometric its type is defined as unknown.
@@ -66,26 +81,26 @@ namespace ISAAR.MSolve.IGA.Elements
 		/// <returns>A <see cref="double"/> array calculating the displacement of the element Knots'.
 		/// The rows of the matrix denote the knot numbering while the columns the displacements for each degree of freedom.</returns>
 		public double[,] CalculateDisplacementsForPostProcessing(Element element, Matrix localDisplacements)
-		{
-			var nurbsElement = (NurbsKirchhoffLoveShellElement)element;
-			var elementControlPoints = nurbsElement.ControlPoints.ToArray();
-			var elementKnots = nurbsElement.Knots.ToArray();
-			var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { elementKnots[0].Ksi, elementKnots[2].Ksi });
-			var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { elementKnots[0].Heta, elementKnots[1].Heta });
-			Nurbs2D nurbs = new Nurbs2D(nurbsElement, elementControlPoints, knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
-			var knotDisplacements = new double[4, 3];
-			var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
-			for (int j = 0; j < elementKnots.Length; j++)
-			{
-				for (int i = 0; i < elementControlPoints.Length; i++)
-				{
-					knotDisplacements[paraviewKnotRenumbering[j], 0] += nurbs.NurbsValues[i, j] * localDisplacements[i, 0];
-					knotDisplacements[paraviewKnotRenumbering[j], 1] += nurbs.NurbsValues[i, j] * localDisplacements[i, 1];
-					knotDisplacements[paraviewKnotRenumbering[j], 2] += nurbs.NurbsValues[i, j] * localDisplacements[i, 2];
-				}
-			}
+        {
+            throw new NotImplementedException();
+			//var nurbsElement = (NurbsKirchhoffLoveShellElement)element;
+			//var elementControlPoints = nurbsElement.ControlPoints.ToArray();
+			//var elementKnots = nurbsElement.Knots.ToArray();
+			//var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { elementKnots[0].Ksi, elementKnots[2].Ksi });
+			//var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { elementKnots[0].Heta, elementKnots[1].Heta });
+			//var knotDisplacements = new double[4, 3];
+			//var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
+			//for (int j = 0; j < elementKnots.Length; j++)
+			//{
+			//	for (int i = 0; i < elementControlPoints.Length; i++)
+			//	{
+			//		knotDisplacements[paraviewKnotRenumbering[j], 0] += nurbs.NurbsValues[i, j] * localDisplacements[i, 0];
+			//		knotDisplacements[paraviewKnotRenumbering[j], 1] += nurbs.NurbsValues[i, j] * localDisplacements[i, 1];
+			//		knotDisplacements[paraviewKnotRenumbering[j], 2] += nurbs.NurbsValues[i, j] * localDisplacements[i, 2];
+			//	}
+			//}
 
-			return knotDisplacements;
+			//return knotDisplacements;
 		}
 
 		/// <summary>
@@ -210,16 +225,14 @@ namespace ISAAR.MSolve.IGA.Elements
 		{
 			var shellElement = (NurbsKirchhoffLoveShellElement)element;
 			var elementControlPoints = shellElement.ControlPoints.ToArray();
-			IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
-			Nurbs2D nurbs = new Nurbs2D(shellElement, elementControlPoints);
 
-			for (int j = 0; j < gaussPoints.Count; j++)
+			for (int j = 0; j < _gaussPoints.Length; j++)
 			{
-				var jacobianMatrix = CalculateJacobian(shellElement, nurbs, j);
+				var jacobianMatrix = CalculateJacobian(shellElement, _nurbs, j);
 
-				var hessianMatrix = CalculateHessian(shellElement, nurbs, j);
+				var hessianMatrix = CalculateHessian(shellElement, _nurbs, j);
 
 				var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
 
@@ -235,21 +248,21 @@ namespace ISAAR.MSolve.IGA.Elements
 
 				Matrix constitutiveMatrix = CalculateConstitutiveMatrix(shellElement, surfaceBasisVector1, surfaceBasisVector2);
 
-				var Bmembrane = CalculateMembraneDeformationMatrix(nurbs, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
+				var Bmembrane = CalculateMembraneDeformationMatrix(_nurbs, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
 
-				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, nurbs, j, surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, shellElement);
+				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, _nurbs, j, surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, shellElement);
 
-				double membraneStiffness = ((IIsotropicContinuumMaterial2D)shellElement.Patch.Material).YoungModulus * shellElement.Patch.Thickness /
-										   (1 - Math.Pow(((IIsotropicContinuumMaterial2D)shellElement.Patch.Material).PoissonRatio, 2));
+				double membraneStiffness = _material.YoungModulus * _thickness /
+										   (1 - Math.Pow(_material.PoissonRatio, 2));
 
 				var Kmembrane = Bmembrane.Transpose() * constitutiveMatrix * Bmembrane * membraneStiffness * J1 *
-								gaussPoints[j].WeightFactor;
+								_gaussPoints[j].WeightFactor;
 
-				double bendingStiffness = ((IIsotropicContinuumMaterial2D)shellElement.Patch.Material).YoungModulus * Math.Pow(shellElement.Patch.Thickness, 3) /
-										  12 / (1 - Math.Pow(((IIsotropicContinuumMaterial2D)shellElement.Patch.Material).PoissonRatio, 2));
+				double bendingStiffness = _material.YoungModulus * Math.Pow(_thickness, 3) /
+										  12 / (1 - Math.Pow(_material.PoissonRatio, 2));
 
 				var Kbending = Bbending.Transpose() * constitutiveMatrix * Bbending * bendingStiffness * J1 *
-							   gaussPoints[j].WeightFactor;
+							   _gaussPoints[j].WeightFactor;
 
 				stiffnessMatrixElement.AddIntoThis(Kmembrane);
 				stiffnessMatrixElement.AddIntoThis(Kbending);
@@ -408,7 +421,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			auxMatrix1[1, 1] = surfaceBasisVector2.DotProduct(surfaceBasisVector2);
 			(Matrix inverse, double det) = auxMatrix1.InvertAndDeterminant();
 
-			var material = ((IContinuumMaterial2D)element.Patch.Material);
+			var material = _material;
 			var constitutiveMatrix = Matrix.CreateFromArray(new double[3, 3]
 			{
 				{
@@ -463,23 +476,15 @@ namespace ISAAR.MSolve.IGA.Elements
 			return Bmembrane;
 		}
 
-		private IList<GaussLegendrePoint3D> CreateElementGaussPoints(Element element)
-		{
-			GaussQuadrature gauss = new GaussQuadrature();
-			return gauss.CalculateElementGaussPoints(element.Patch.DegreeKsi, element.Patch.DegreeHeta, element.Knots.ToArray());
-		}
-
 		public Dictionary<int, double> CalculateSurfacePressure(Element element, double pressureMagnitude)
 		{
 			var shellElement = (NurbsKirchhoffLoveShellElement)element;
 			var elementControlPoints = shellElement.ControlPoints.ToArray();
-			var gaussPoints = CreateElementGaussPoints(shellElement);
 			var pressureLoad = new Dictionary<int, double>();
-			var nurbs = new Nurbs2D(shellElement, elementControlPoints);
 
-			for (var j = 0; j < gaussPoints.Count; j++)
+			for (var j = 0; j < _gaussPoints.Length; j++)
 			{
-				var jacobianMatrix = CalculateJacobian(shellElement, nurbs, j);
+				var jacobianMatrix = CalculateJacobian(shellElement, _nurbs, j);
 				var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
 				var surfaceBasisVector2 = CalculateSurfaceBasisVector1(jacobianMatrix, 1);
 				var surfaceBasisVector3 = surfaceBasisVector1.CrossProduct(surfaceBasisVector2);
@@ -495,11 +500,11 @@ namespace ISAAR.MSolve.IGA.Elements
 						if (pressureLoad.ContainsKey(dofId))
 						{
 							pressureLoad[dofId] += pressureMagnitude * surfaceBasisVector3[k] *
-												   nurbs.NurbsValues[i, j] * gaussPoints[j].WeightFactor;
+                                                   _nurbs.NurbsValues[i, j] * _gaussPoints[j].WeightFactor;
 						}
 						else
 						{
-							pressureLoad.Add(dofId, pressureMagnitude * surfaceBasisVector3[k] * nurbs.NurbsValues[i, j] * gaussPoints[j].WeightFactor);
+							pressureLoad.Add(dofId, pressureMagnitude * surfaceBasisVector3[k] * _nurbs.NurbsValues[i, j] * _gaussPoints[j].WeightFactor);
 						}
 					}
 				}
@@ -512,13 +517,11 @@ namespace ISAAR.MSolve.IGA.Elements
 		{
 			var shellElement = (NurbsKirchhoffLoveShellElement)element;
 			var elementControlPoints = shellElement.ControlPoints.ToArray();
-			var gaussPoints = CreateElementGaussPoints(shellElement);
 			var distributedLoad = new Dictionary<int, double>();
-			var nurbs = new Nurbs2D(shellElement, elementControlPoints);
 
-			for (var j = 0; j < gaussPoints.Count; j++)
+			for (var j = 0; j < _gaussPoints.Length; j++)
 			{
-				var jacobianMatrix = CalculateJacobian(shellElement, nurbs, j);
+				var jacobianMatrix = CalculateJacobian(shellElement, _nurbs, j);
 				var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
 				var surfaceBasisVector2 = CalculateSurfaceBasisVector1(jacobianMatrix, 1);
 				var surfaceBasisVector3 = surfaceBasisVector1.CrossProduct(surfaceBasisVector2);
@@ -535,11 +538,11 @@ namespace ISAAR.MSolve.IGA.Elements
 					if (distributedLoad.ContainsKey(dofId))
 					{
 						distributedLoad[dofId] += loadMagnitude * J1 *
-												  nurbs.NurbsValues[i, j] * gaussPoints[j].WeightFactor;
+                                                  _nurbs.NurbsValues[i, j] * _gaussPoints[j].WeightFactor;
 					}
 					else
 					{
-						distributedLoad.Add(dofId, loadMagnitude * nurbs.NurbsValues[i, j] * J1 * gaussPoints[j].WeightFactor);
+						distributedLoad.Add(dofId, loadMagnitude * _nurbs.NurbsValues[i, j] * J1 * _gaussPoints[j].WeightFactor);
 					}
 				}
 			}

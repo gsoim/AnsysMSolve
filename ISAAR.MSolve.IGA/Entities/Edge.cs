@@ -1,15 +1,25 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Interfaces;
+using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 
 namespace ISAAR.MSolve.IGA.Entities
 {
     public class Edge : Boundary
 	{
+        private readonly int _numberOfCpHeta;
+        private readonly int _numberOfCpZeta;
+
+        public Edge(int numberOfCpHeta, int NumberOfCpZeta)
+        {
+            _numberOfCpHeta = numberOfCpHeta;
+            _numberOfCpZeta = NumberOfCpZeta;
+        }
 		/// <summary>
 		/// List of BoundaryCondition applied to the edge.
 		/// </summary>
@@ -193,21 +203,106 @@ namespace ISAAR.MSolve.IGA.Entities
 				}
 
 				int elementID = i;
-				Element element = new NurbsElement1D()
+                var gaussQuadrature= new GaussQuadrature();
+				var edgeCP=CalculateEdgeControlPoints(this, elementControlPoints, _numberOfCpHeta, _numberOfCpZeta);
+				var nurbs = new Nurbs1D(Degree, KnotValueVector.CopyToArray(), edgeCP.ToArray(), 
+                    gaussQuadrature.CalculateElementGaussPoints(
+                        Degree, knotsOfElement).ToArray());
+                Element element = new NurbsElement1D(nurbs, _numberOfCpHeta, _numberOfCpZeta)
 				{
 					ID = elementID,
-					ElementType = new NurbsElement1D(),
+					ElementType = new NurbsElement1D(nurbs,_numberOfCpHeta, _numberOfCpZeta),
 					Patch = this.Patch,
 					Degree = this.Degree,
 					Model = Patch.Elements[0].Model
 				};
 
 				element.AddKnots(knotsOfElement);
-				element.AddControlPoints(elementControlPoints);
+				element.AddControlPoints(edgeCP);
 				this.ElementsDictionary.Add(elementID, element);
 			}
 
 			#endregion Elements
 		}
+
+
+        public List<ControlPoint> CalculateEdgeControlPoints(Edge edge, IList<ControlPoint> controlPoints,
+            int numberOfCPHeta, int numberOfCPZeta)
+        {
+            var edgeCP = new List<ControlPoint>();
+
+            foreach (var controlPoint in controlPoints)
+            {
+                if (edge.Patch.NumberOfDimensions == 2)
+                {
+                    edgeCP.Add(new ControlPoint()
+                    {
+                        ID = (edge.ID < 2)
+                            ? controlPoint.ID % numberOfCPHeta
+							: controlPoint.ID / numberOfCPHeta,
+                        Ksi = controlPoint.Ksi,
+                        Heta = controlPoint.Heta,
+                        Zeta = controlPoint.Zeta,
+                        X = controlPoint.X,
+                        Y = controlPoint.Y,
+                        Z = controlPoint.Z,
+                        WeightFactor = controlPoint.WeightFactor,
+                    });
+                }
+                else
+                {
+                    var id = FindAxisControlPointId3D(edge, controlPoint, numberOfCPHeta, numberOfCPZeta);
+                    edgeCP.Add(new ControlPoint()
+                    {
+                        ID = id,
+                        Ksi = controlPoint.Ksi,
+                        Heta = controlPoint.Heta,
+                        Zeta = controlPoint.Zeta,
+                        X = controlPoint.X,
+                        Y = controlPoint.Y,
+                        Z = controlPoint.Z,
+                        WeightFactor = controlPoint.WeightFactor,
+                    });
+                }
+            }
+
+            return edgeCP;
+        }
+
+
+        private int FindAxisControlPointId3D(Edge edge, ControlPoint controlPoint,
+            int numberOfCPHeta, int numberOfCPZeta)
+        {
+            int ID = -1;
+            switch (edge.ID)
+            {
+                case 1:
+                case 2:
+                case 5:
+                case 6:
+                    ID = controlPoint.ID % (numberOfCPHeta * numberOfCPZeta) %
+                         numberOfCPZeta;
+                    break;
+
+                case 3:
+                case 4:
+                case 7:
+                case 8:
+                    ID = controlPoint.ID % (numberOfCPHeta * numberOfCPZeta) /
+                         numberOfCPZeta;
+                    break;
+
+                case 9:
+                case 10:
+                case 11:
+                case 12:
+                    ID = controlPoint.ID / (numberOfCPHeta * numberOfCPZeta);
+                    break;
+            }
+
+            return ID;
+        }
+
+
 	}
 }

@@ -8,8 +8,8 @@ using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
-using ISAAR.MSolve.IGA.Postprocessing;
 using ISAAR.MSolve.IGA.Readers;
+using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
@@ -56,43 +56,59 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private Vector KnotValueVectorKsi()
+		private double[] KnotValueVectorKsi()
 		{
-			return Vector.CreateFromArray(new double[8]
+			return new double[8]
 			{
 				0, 0, 0, 0, 1, 1, 1, 1
-			});
+			};
 		}
 
-		private Vector KnotValueVectorHeta()
+		private double[] KnotValueVectorHeta()
 		{
-			return Vector.CreateFromArray(new double[6]
+			return new double[6]
 			{
 				0, 0, 0, 1, 1, 1
-			});
+			};
 		}
 
 		private NurbsKirchhoffLoveShellElement Element
 		{
 			get
 			{
-				var element = new NurbsKirchhoffLoveShellElement();
+                var thickness = 1;
+                var degreeKsi = 3;
+                var degreeHeta = 2;
+                var numberOfControlPointsHeta = 3;
+                var knotValueVectorKsi = KnotValueVectorKsi();
+                var knotValueVectorHeta = KnotValueVectorHeta();
+
+				var gauss = new GaussQuadrature();
+                var parametricPointKsi = gauss.CalculateElementGaussPoints(degreeKsi, new List<Knot>()
+                {
+                    ElementKnot()[0], ElementKnot()[2]
+                }).Select(x => x.Ksi).ToArray();
+                var parametricPointHeta = gauss.CalculateElementGaussPoints(degreeHeta, new List<Knot>()
+                {
+                    ElementKnot()[0], ElementKnot()[1]
+                }).Select(x => x.Ksi).ToArray();
+                var gaussPoints = gauss.CalculateElementGaussPoints(degreeKsi, degreeHeta, ElementKnot()).ToArray();
+				
+				var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
+                    ElementControlPoints().ToArray(), parametricPointKsi, parametricPointHeta);
+                var material = new ShellElasticMaterial2Dtransformationb()
+                {
+                    YoungModulus = 100,
+                    PoissonRatio = 0.0
+                };
+                var element = new NurbsKirchhoffLoveShellElement(material, nurbs, gaussPoints, thickness);
 				var patch = new Patch();
-				patch.Material = new ElasticMaterial2D(StressState2D.PlaneStrain)
-				{
-					YoungModulus = 100,
-					PoissonRatio = 0.0
-				};
+				
 				foreach (var controlPoint in ElementControlPoints())
 					element.ControlPointsDictionary.Add(controlPoint.ID, controlPoint);
 				foreach (var knot in ElementKnot())
 					element.KnotsDictionary.Add(knot.ID, knot);
-				patch.Thickness = 1;
-				patch.DegreeKsi = 3;
-				patch.DegreeHeta = 2;
-				patch.NumberOfControlPointsHeta = 3;
-				patch.KnotValueVectorKsi = KnotValueVectorKsi();
-				patch.KnotValueVectorHeta = KnotValueVectorHeta();
+				
 				element.Patch = patch;
 				return element;
 			}
@@ -390,10 +406,14 @@ namespace ISAAR.MSolve.IGA.Tests
 		[Fact]
 		public void IsogeometricCantileverShell()
 		{
-			Model model = new Model();
-			string filename = "..\\..\\..\\InputFiles\\CantileverShell.txt";
-			IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filename);
-			modelReader.CreateShellModelFromFile(GeometricalFormulation.Linear);
+			string filename = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "CantileverShell.txt");
+            var material = new ShellElasticMaterial2Dtransformationb()
+            {
+                YoungModulus = 100,
+                PoissonRatio = 0
+            };
+			var modelReader = new IsogeometricShellReader(GeometricalFormulation.Linear,filename, material);
+			var model=modelReader.GenerateModelFromFile();
 
 			model.Loads.Add(new Load()
 			{
@@ -448,14 +468,18 @@ namespace ISAAR.MSolve.IGA.Tests
         [Fact]
         public static void ScordelisLoShell()
         {
-            var model = new Model();
             var filename = "ScordelisLoShell";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt")
                 .ToString(CultureInfo.InvariantCulture);
-            var modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
+			var material = new ShellElasticMaterial2Dtransformationb()
+            {
+                YoungModulus = 43200000000,
+                PoissonRatio = 0.0
+            };
+            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filename, material);
+            var model = modelReader.GenerateModelFromFile();
 
-            model.SurfaceLoads.Add(new SurfaceDistributedLoad(-90, StructuralDof.TranslationY));
+			model.SurfaceLoads.Add(new SurfaceDistributedLoad(-90, StructuralDof.TranslationY));
 
             // Rigid diaphragm for AB
             for (var i = 0; i < 19; i++)
@@ -514,15 +538,19 @@ namespace ISAAR.MSolve.IGA.Tests
         [Fact]
 		public void IsogeometricSquareShell()
 		{
-			Model model = new Model();
 			var filename = "SquareShell";
-			string filepath = $"..\\..\\..\\InputFiles\\{filename}.txt";
-			IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-			modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
+			string filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles",$"{filename}.txt");
+            var material = new ShellElasticMaterial2Dtransformationb()
+            {
+                YoungModulus = 10000000,
+                PoissonRatio = 0.0
+            };
+            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filename, material);
+            var model = modelReader.GenerateModelFromFile();
 
 
 			Matrix<double> loadVector =
-				MatlabReader.Read<double>("..\\..\\..\\InputFiles\\SquareShell.mat", "LoadVector");
+				MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "SquareShell.mat"), "LoadVector");
 
 
 			for (int i = 0; i < loadVector.ColumnCount; i += 3)
@@ -573,11 +601,11 @@ namespace ISAAR.MSolve.IGA.Tests
 			parentAnalyzer.Initialize();
 			parentAnalyzer.Solve();
 
-            var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
-            paraview.CreateParaview2DFile();
+            //var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
+            //paraview.CreateParaview2DFile();
 
             Matrix<double> solutionVectorExpected =
-				MatlabReader.Read<double>("..\\..\\..\\InputFiles\\SquareShell.mat", "SolutionVector");
+				MatlabReader.Read<double>(Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "SquareShell.mat"), "SolutionVector");
 
 			for (int i = 0; i < solutionVectorExpected.ColumnCount; i++)
 				Assert.True(Utilities.AreValuesEqual(solutionVectorExpected.At(0, i), solver.LinearSystems[0].Solution[i],
@@ -585,96 +613,5 @@ namespace ISAAR.MSolve.IGA.Tests
 		}
 
 
-        [Fact]
-        public void IsogeometricSquareShell10x10Deformed()
-        {
-            Model model = new Model();
-            var filename = "SquareShell10x10Deformed";
-            string filepath = Path.Combine(Directory.GetCurrentDirectory(),"InputFiles", $"{filename}.txt");
-            IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
-
-            for (int i = 0; i < 20; i++)
-            {
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
-            }
-
-            Value verticalDistributedLoad = delegate (double x, double y, double z)
-            {
-                return new double[] { 0, 0, 1 };
-            };
-            model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
-
-
-            // Solvers
-            var solverBuilder = new SkylineSolver.Builder();
-            ISolver solver = solverBuilder.BuildSolver(model);
-
-            // Structural problem provider
-            var provider = new ProblemStructural(model, solver);
-
-            // Linear static analysis
-            var childAnalyzer = new LinearAnalyzer(model, solver, provider);
-            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
-
-            // Run the analysis
-            parentAnalyzer.Initialize();
-            parentAnalyzer.Solve();
-
-            //var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
-            //paraview.CreateParaview2DFile();
-
-            var a = solver.LinearSystems[0].Solution;
-        }
-
-        [Fact]
-        public void IsogeometricSquareShell10x10Straight()
-        {
-            Model model = new Model();
-            var filename = "SquareShell10x10Straight";
-            string filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
-            IsogeometricShellReader modelReader = new IsogeometricShellReader(model, filepath);
-            modelReader.CreateShellModelFromFile(GeometricalFormulation.NonLinear);
-
-            for (int i = 0; i < 20; i++)
-            {
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
-            }
-
-            Value verticalDistributedLoad = delegate (double x, double y, double z)
-            {
-                return new double[] { 0, 0, 1 };
-            };
-            model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
-
-
-            // Solvers
-            var solverBuilder = new SkylineSolver.Builder();
-            ISolver solver = solverBuilder.BuildSolver(model);
-
-            // Structural problem provider
-            var provider = new ProblemStructural(model, solver);
-
-            // Linear static analysis
-            var childAnalyzer = new LinearAnalyzer(model, solver, provider);
-            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
-
-            // Run the analysis
-            parentAnalyzer.Initialize();
-
-            MatlabWriter writer = new MatlabWriter();
-            writer.WriteToFile((ISparseMatrix)solver.LinearSystems[0].Matrix,Path.Combine(Directory.GetCurrentDirectory(),"Kff.mat"));
-
-            parentAnalyzer.Solve();
-
-            //var paraview = new ParaviewNurbsShells(model, solver.LinearSystems[0].Solution, filename);
-            //paraview.CreateParaview2DFile();
-
-            var a = solver.LinearSystems[0].Solution;
-        }
     }
 }

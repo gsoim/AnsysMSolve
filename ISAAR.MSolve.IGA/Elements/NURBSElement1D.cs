@@ -22,13 +22,24 @@ namespace ISAAR.MSolve.IGA.Elements
 	/// </summary>
 	public class NurbsElement1D : Element, IStructuralIsogeometricElement
 	{
-		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
-		private IDofType[][] _dofTypes;
 
-		/// <summary>
-		/// Retrieves the type of Finite Element used. Since the element is Isogeometric its type is defined as unknown.
-		/// </summary>
-		public CellType CellType { get; } = CellType.Unknown;
+        public NurbsElement1D(Nurbs1D nurbs,int numberOfCPHeta, int numberOfCpZeta)
+        {
+            _numberOfCPHeta = numberOfCPHeta;
+            _numberOfCPZeta = numberOfCpZeta;
+            _nurbs = nurbs;
+        }
+
+		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
+        private readonly Nurbs1D _nurbs;
+        private IDofType[][] _dofTypes;
+        private int _numberOfCPHeta;
+        private int _numberOfCPZeta;
+
+        /// <summary>
+        /// Retrieves the type of Finite Element used. Since the element is Isogeometric its type is defined as unknown.
+        /// </summary>
+        public CellType CellType { get; } = CellType.Unknown;
 
 		/// <summary>
 		/// Property that Polynomial degree of the NURBS shape functions.
@@ -220,7 +231,9 @@ namespace ISAAR.MSolve.IGA.Elements
 		/// <returns>An <see cref="IMatrix"/> containing the stiffness matrix of an <see cref="NurbsElement1D"/>.</returns>
 		public IMatrix StiffnessMatrix(IElement element) => throw new NotImplementedException();
 
-		private static void CalculateEdgeControlPoints(Element element, Edge edge, IList<ControlPoint> controlPoints)
+        
+
+		public void CalculateEdgeControlPoints(Element element, Edge edge, IList<ControlPoint> controlPoints)
 		{
 			foreach (var controlPoint in element.ControlPoints)
 			{
@@ -229,8 +242,8 @@ namespace ISAAR.MSolve.IGA.Elements
 					controlPoints.Add(new ControlPoint()
 					{
 						ID = (edge.ID < 2)
-							? controlPoint.ID % element.Patch.NumberOfControlPointsHeta
-							: controlPoint.ID / element.Patch.NumberOfControlPointsHeta,
+							? controlPoint.ID % _numberOfCPHeta
+                            : controlPoint.ID / _numberOfCPHeta,
 						Ksi = controlPoint.Ksi,
 						Heta = controlPoint.Heta,
 						Zeta = controlPoint.Zeta,
@@ -242,7 +255,7 @@ namespace ISAAR.MSolve.IGA.Elements
 				}
 				else
 				{
-					var id = FindAxisControlPointId3D(element, edge, controlPoint);
+					var id = FindAxisControlPointId3D(edge, controlPoint);
 					controlPoints.Add(new ControlPoint()
 					{
 						ID = id,
@@ -258,7 +271,40 @@ namespace ISAAR.MSolve.IGA.Elements
 			}
 		}
 
-		private static void CalculatePressure1D(
+        private int FindAxisControlPointId3D(Edge edge, ControlPoint controlPoint)
+        {
+            int ID = -1;
+            switch (edge.ID)
+            {
+                case 1:
+                case 2:
+                case 5:
+                case 6:
+                    ID = controlPoint.ID % (_numberOfCPHeta * _numberOfCPZeta) %
+                         _numberOfCPZeta;
+                    break;
+
+                case 3:
+                case 4:
+                case 7:
+                case 8:
+                    ID = controlPoint.ID % (_numberOfCPHeta * _numberOfCPZeta) /
+                         _numberOfCPZeta;
+                    break;
+
+                case 9:
+                case 10:
+                case 11:
+                case 12:
+                    ID = controlPoint.ID / (_numberOfCPHeta * _numberOfCPZeta);
+                    break;
+            }
+
+            return ID;
+        }
+
+
+		private void CalculatePressure1D(
 			Element element,
 			Edge edge,
 			NeumannBoundaryCondition neumann,
@@ -266,8 +312,6 @@ namespace ISAAR.MSolve.IGA.Elements
 			IList<GaussLegendrePoint3D> gaussPoints,
 			IDictionary<int, double> neumannLoad)
 		{
-			var nurbs = new Nurbs1D(element, controlPoints, edge);
-
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
 				double xGaussPoint = 0;
@@ -278,11 +322,11 @@ namespace ISAAR.MSolve.IGA.Elements
 				var elementControlPoints = element.ControlPointsDictionary.Values.ToArray();
 				for (int k = 0; k < elementControlPoints.Length; k++)
 				{
-					xGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
-					yGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
-					zGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].Z;
-					jacobian1 += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-					jacobian2 += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+					xGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
+					yGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
+					zGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Z;
+					jacobian1 += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+					jacobian2 += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
 				}
 
 				double jacdet = Math.Sqrt(Math.Pow(jacobian1, 2) + Math.Pow(jacobian2, 2));
@@ -298,14 +342,14 @@ namespace ISAAR.MSolve.IGA.Elements
 								StructuralDof.TranslationX];
 						if (neumannLoad.ContainsKey(dofIDX))
 						{
-							neumannLoad[dofIDX] += jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] *
+							neumannLoad[dofIDX] += jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] *
 												   loadGaussPoint[0];
 						}
 						else
 						{
 							neumannLoad.Add(
 								dofIDX,
-								jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] * loadGaussPoint[0]);
+								jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPoint[0]);
 						}
 
 					}
@@ -320,13 +364,13 @@ namespace ISAAR.MSolve.IGA.Elements
 								StructuralDof.TranslationY];
 						if (neumannLoad.ContainsKey(dofIDY))
 						{
-							neumannLoad[dofIDY] += jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] *
+							neumannLoad[dofIDY] += jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] *
 							                       loadGaussPoint[1];
 						}
 						else
 						{
 							neumannLoad.Add(dofIDY,
-								jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] * loadGaussPoint[1]);
+								jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPoint[1]);
 						}
 					}
 
@@ -341,13 +385,13 @@ namespace ISAAR.MSolve.IGA.Elements
 								StructuralDof.TranslationZ];
 						if (neumannLoad.ContainsKey(dofIDZ))
 						{
-							neumannLoad[dofIDZ] += jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] *
+							neumannLoad[dofIDZ] += jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] *
 							                       loadGaussPoint[2];
 						}
 						else
 						{
 							neumannLoad.Add(dofIDZ,
-								jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] * loadGaussPoint[2]);
+								jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPoint[2]);
 						}
 					}
 
@@ -356,7 +400,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			}
 		}
 
-		private static void CalculatePressure1D(
+		private void CalculatePressure1D(
 			Element element,
 			Edge edge,
 			PressureBoundaryCondition pressure,
@@ -364,7 +408,6 @@ namespace ISAAR.MSolve.IGA.Elements
 			IList<GaussLegendrePoint3D> gaussPoints,
 			IDictionary<int, double> pressureLoad)
 		{
-			var nurbs = new Nurbs1D(element, controlPoints, edge);
 
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
@@ -375,10 +418,10 @@ namespace ISAAR.MSolve.IGA.Elements
 				var elementControlPoints = element.ControlPointsDictionary.Values.ToArray();
 				for (int k = 0; k < elementControlPoints.Length; k++)
 				{
-					xGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
-					yGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
-					jacobian1 += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-					jacobian2 += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+					xGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
+					yGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
+					jacobian1 += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+					jacobian2 += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
 				}
 
 				double jacdet = Math.Sqrt(Math.Pow(jacobian1, 2) + Math.Pow(jacobian2, 2));
@@ -396,58 +439,27 @@ namespace ISAAR.MSolve.IGA.Elements
 					if (pressureLoad.ContainsKey(dofIDX))
 					{
 						pressureLoad[dofIDX] +=
-							jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] * loadGaussPointX;
+							jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPointX;
 					}
 					else
 					{
-						pressureLoad.Add(dofIDX, jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] * loadGaussPointX);
+						pressureLoad.Add(dofIDX, jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPointX);
 					}
 
 					if (pressureLoad.ContainsKey(dofIDY))
 					{
 						pressureLoad[dofIDY] +=
-							jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] * loadGaussPointY;
+							jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPointY;
 					}
 					else
 					{
-						pressureLoad.Add(dofIDY, jacdet * gaussPoints[j].WeightFactor * nurbs.NurbsValues[k, j] * loadGaussPointY);
+						pressureLoad.Add(dofIDY, jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPointY);
 					}
 				}
 			}
 		}
 
-		private static int FindAxisControlPointId3D(Element element, Edge edge, ControlPoint controlPoint)
-		{
-			int ID = -1;
-			switch (edge.ID)
-			{
-				case 1:
-				case 2:
-				case 5:
-				case 6:
-					ID = controlPoint.ID % (element.Patch.NumberOfControlPointsHeta * element.Patch.NumberOfControlPointsZeta) %
-						 element.Patch.NumberOfControlPointsZeta;
-					break;
-
-				case 3:
-				case 4:
-				case 7:
-				case 8:
-					ID = controlPoint.ID % (element.Patch.NumberOfControlPointsHeta * element.Patch.NumberOfControlPointsZeta) /
-						 element.Patch.NumberOfControlPointsZeta;
-					break;
-
-				case 9:
-				case 10:
-				case 11:
-				case 12:
-					ID = controlPoint.ID / (element.Patch.NumberOfControlPointsHeta * element.Patch.NumberOfControlPointsZeta);
-					break;
-			}
-
-			return ID;
-		}
-
+		
 		private IList<GaussLegendrePoint3D> CreateElementGaussPoints(Element element)
 		{
 			GaussQuadrature gauss = new GaussQuadrature();

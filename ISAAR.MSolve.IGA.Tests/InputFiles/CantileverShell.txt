@@ -34,7 +34,4 @@ cpcoord = 12
 10	50	0.5	0	1
 11	50	1	0	1
 
-
-material = steel 100 0.0
-
 end

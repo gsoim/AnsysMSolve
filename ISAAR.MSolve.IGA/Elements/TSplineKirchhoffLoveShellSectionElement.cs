@@ -19,11 +19,20 @@ namespace ISAAR.MSolve.IGA.Elements
 {
     public class TSplineKirchhoffLoveShellSectionElement: Element, IStructuralIsogeometricElement
 	{
+        public TSplineKirchhoffLoveShellSectionElement(IShellSectionMaterial material,
+            ShapeTSplines2DFromBezierExtraction tsplines)
+        {
+            _material = material;
+            _tsplines = tsplines;
+        }
+
 	    public Matrix ExtractionOperator { get; set; } 
 		public int DegreeKsi { get; set; }
 		public int DegreeHeta { get; set; }
 		protected readonly static IDofType[] controlPointDOFTypes = new IDofType[] { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
-		protected IDofType[][] dofTypes;
+        private readonly IShellSectionMaterial _material;
+        private readonly ShapeTSplines2DFromBezierExtraction _tsplines;
+        protected IDofType[][] dofTypes;
 		protected IElementDofEnumerator dofEnumerator = new GenericDofEnumerator();
 		private DynamicMaterial dynamicProperties;
 		private IReadOnlyList<IShellSectionMaterial> materialsAtGaussPoints;
@@ -57,13 +66,12 @@ namespace ISAAR.MSolve.IGA.Elements
 			var shellElement = (TSplineKirchhoffLoveShellElement)element;
 			IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			var ElementNodalForces = new double[shellElement.ControlPointsDictionary.Count * 3];
-			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints.ToArray());
 			
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
-				var jacobianMatrix = CalculateJacobian(shellElement, tsplines, j);
+				var jacobianMatrix = CalculateJacobian(shellElement, _tsplines, j);
 
-				var hessianMatrix = CalculateHessian(shellElement, tsplines, j);
+				var hessianMatrix = CalculateHessian(shellElement, _tsplines, j);
 
 				var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
 
@@ -77,8 +85,8 @@ namespace ISAAR.MSolve.IGA.Elements
 				var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
 				var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
 
-				var Bmembrane = CalculateMembraneDeformationMatrix(tsplines, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
-				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, tsplines, j, surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, shellElement);
+				var Bmembrane = CalculateMembraneDeformationMatrix(_tsplines, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
+				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, _tsplines, j, surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, shellElement);
 
 				
 				var MembraneForces = materialsAtGaussPoints[j].MembraneForces;
@@ -135,13 +143,11 @@ namespace ISAAR.MSolve.IGA.Elements
 			IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			//Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
-			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints.ToArray());
-
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
-				var jacobianMatrix = CalculateJacobian(shellElement, tsplines, j);
+				var jacobianMatrix = CalculateJacobian(shellElement, _tsplines, j);
 
-				var hessianMatrix = CalculateHessian(shellElement, tsplines, j);
+				var hessianMatrix = CalculateHessian(shellElement, _tsplines, j);
 
 				var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
 
@@ -155,8 +161,8 @@ namespace ISAAR.MSolve.IGA.Elements
 				var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
 				var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
 
-				var Bmembrane = CalculateMembraneDeformationMatrix(tsplines, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
-				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, tsplines, j, surfaceBasisVector2,
+				var Bmembrane = CalculateMembraneDeformationMatrix(_tsplines, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
+				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, _tsplines, j, surfaceBasisVector2,
 					surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
 					surfaceBasisVectorDerivative12, shellElement);
 
@@ -213,13 +219,11 @@ namespace ISAAR.MSolve.IGA.Elements
             IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
-			ShapeTSplines2DFromBezierExtraction tsplines = new ShapeTSplines2DFromBezierExtraction(shellElement, shellElement.ControlPoints.ToArray());
-
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
-				var jacobianMatrix = CalculateJacobian(shellElement, tsplines, j);
+				var jacobianMatrix = CalculateJacobian(shellElement, _tsplines, j);
 
-				var hessianMatrix = CalculateHessian(shellElement, tsplines, j);
+				var hessianMatrix = CalculateHessian(shellElement, _tsplines, j);
 
 				var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
 
@@ -233,9 +237,9 @@ namespace ISAAR.MSolve.IGA.Elements
 				var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
 				var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
 				
-				var Bmembrane = CalculateMembraneDeformationMatrix(tsplines, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
+				var Bmembrane = CalculateMembraneDeformationMatrix(_tsplines, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
 
-				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, tsplines, j, surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, shellElement);
+				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, _tsplines, j, surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, shellElement);
 
 				
 
@@ -270,7 +274,7 @@ namespace ISAAR.MSolve.IGA.Elements
             auxMatrix1[1, 1] = surfaceBasisVector2.DotProduct(surfaceBasisVector2);
             (Matrix inverse, double det) = auxMatrix1.InvertAndDeterminant();
 
-			var material = ((IContinuumMaterial2D)element.Patch.Material);
+			var material = _material;
 			var constitutiveMatrix = Matrix.CreateFromArray(new double[3, 3]
 			{
 				{

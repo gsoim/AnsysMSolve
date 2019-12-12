@@ -4,7 +4,6 @@ using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
-using ISAAR.MSolve.IGA.Postprocessing;
 using ISAAR.MSolve.IGA.Readers;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Materials;
@@ -26,14 +25,12 @@ namespace ISAAR.MSolve.IGA.Tests
 			var filename = "CantileverShell";
 			string filepath = $"..\\..\\..\\InputFiles\\{filename}.iga";
 			var modelReader = new IgaFileReader(model, filepath);
-			modelReader.CreateTSplineShellsModelFromFile();
-
-			model.PatchesDictionary[0].Material = new ElasticMaterial2D(StressState2D.PlaneStress)
-			{
-				PoissonRatio = 0.0,
-				YoungModulus = 100
-			};
-			model.PatchesDictionary[0].Thickness = 1;
+			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Linear,
+                new ShellElasticMaterial2Dtransformationb()
+                {
+					YoungModulus = 100,
+					PoissonRatio = 0.0
+                });
 
 			foreach (var controlPoint in model.ControlPointsDictionary.Values.Where(cp=>cp.X<3))
 			{
@@ -101,7 +98,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			
 			var thickness = 1.0;
 
-			modelReader.CreateTSplineShellsModelFromFile(TSplineShellType.Thickness, new ShellElasticMaterial2D
+			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness, new ShellElasticMaterial2D
 			{
 				PoissonRatio = 0.0,
 				YoungModulus = 100,
@@ -172,14 +169,11 @@ namespace ISAAR.MSolve.IGA.Tests
 			//	PoissonRatio = 0.3,
 			//	YoungModulus = 1e5,
 			//}, thickness);
-			modelReader.CreateTSplineShellsModelFromFile();
-
-			model.PatchesDictionary[0].Material = new ElasticMaterial2D(StressState2D.PlaneStress)
-			{
-				PoissonRatio = 0.3,
-				YoungModulus = 10000
-			};
-			model.PatchesDictionary[0].Thickness = 1;
+			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Linear,new ShellElasticMaterial2Dtransformationb()
+            {
+                PoissonRatio = 0.3,
+                YoungModulus = 10000
+			});
 
 			for (int i = 0; i < 100; i++)
 			{
@@ -214,8 +208,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			parentAnalyzer.Initialize();
 			parentAnalyzer.Solve();
 
-			var paraview= new ParaviewTsplineShells(model, solver.LinearSystems[0].Solution,filename);
-			paraview.CreateParaviewFile();
+			//var paraview= new ParaviewTsplineShells(model, solver.LinearSystems[0].Solution,filename);
+			//paraview.CreateParaviewFile();
 		}
 
 		//[Fact]
@@ -228,7 +222,7 @@ namespace ISAAR.MSolve.IGA.Tests
 
 			var thickness = 1.0;
 			
-			modelReader.CreateTSplineShellsModelFromFile(TSplineShellType.Thickness ,new ShellElasticMaterial2D()
+			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness ,new ShellElasticMaterial2D()
 			{
 				PoissonRatio = 0.3,
 				YoungModulus = 10000

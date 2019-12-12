@@ -76,6 +76,6 @@ cpcoord = 54
 52	10	0.5	0	1
 53	10	1	0	1
 
-material = steel 1.2e06 0.0
+
 
 end

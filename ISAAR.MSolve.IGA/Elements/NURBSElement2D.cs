@@ -24,13 +24,29 @@ namespace ISAAR.MSolve.IGA.Elements
 	/// </summary>
 	public class NURBSElement2D : Element, IStructuralIsogeometricElement
 	{
+
+        public NURBSElement2D(IContinuumMaterial2D material, 
+            Nurbs2D nurbs, GaussLegendrePoint3D[] gaussPoints,
+            double thickness)
+        {
+            _material = material;
+            _nurbs = nurbs;
+            _gaussPoints = gaussPoints;
+            _thickness = thickness;
+        }
+
+
 		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY };
 		private IDofType[][] _dofTypes;
+        private readonly IContinuumMaterial2D _material;
+        internal readonly Nurbs2D _nurbs;
+        private readonly GaussLegendrePoint3D[] _gaussPoints;
+        private readonly double _thickness;
 
-		/// <summary>
-		/// Retrieves the type of Finite Element used. Since the element is Isogeometric its type is defined as unknown.
-		/// </summary>
-		public CellType CellType { get; } = CellType.Unknown;
+        /// <summary>
+        /// Retrieves the type of Finite Element used. Since the element is Isogeometric its type is defined as unknown.
+        /// </summary>
+        public CellType CellType { get; } = CellType.Unknown;
 
 		#region IStructuralIsogeometricElement
 
@@ -59,25 +75,26 @@ namespace ISAAR.MSolve.IGA.Elements
 		/// The rows of the matrix denote the knot numbering while the columns the displacements for each degree of freedom.</returns>
 		public double[,] CalculateDisplacementsForPostProcessing(Element element, Matrix localDisplacements)
 		{
-			Contract.Requires(element != null, "The element cannot be null");
-			var nurbsElement = (NURBSElement2D)element;
-			var elementControlPoints = nurbsElement.ControlPoints.ToArray();
-			var elemenetKnots = nurbsElement.Knots.ToArray();
-			var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { elemenetKnots[0].Ksi, elemenetKnots[2].Ksi });
-			var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { elemenetKnots[0].Heta, elemenetKnots[1].Heta });
-			Nurbs2D nurbs = new Nurbs2D(nurbsElement, elementControlPoints, knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
-			var knotDisplacements = new double[4, 2];
-			var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
-			for (int j = 0; j < elemenetKnots.Length; j++)
-			{
-				for (int i = 0; i < elementControlPoints.Length; i++)
-				{
-					knotDisplacements[paraviewKnotRenumbering[j], 0] += nurbs.NurbsValues[i, j] * localDisplacements[i, 0];
-					knotDisplacements[paraviewKnotRenumbering[j], 1] += nurbs.NurbsValues[i, j] * localDisplacements[i, 1];
-				}
-			}
+            throw new NotImplementedException();
+			//Contract.Requires(element != null, "The element cannot be null");
+   //         var nurbsElement = (NURBSElement2D)element;
+			//var elementControlPoints = nurbsElement.ControlPoints.ToArray();
+			//var elemenetKnots = nurbsElement.Knots.ToArray();
+			//var knotParametricCoordinatesKsi = Vector.CreateFromArray(new double[] { elemenetKnots[0].Ksi, elemenetKnots[2].Ksi });
+			//var knotParametricCoordinatesHeta = Vector.CreateFromArray(new double[] { elemenetKnots[0].Heta, elemenetKnots[1].Heta });
+			//Nurbs2D nurbs = new Nurbs2D(nurbsElement, elementControlPoints, knotParametricCoordinatesKsi, knotParametricCoordinatesHeta);
+			//var knotDisplacements = new double[4, 2];
+			//var paraviewKnotRenumbering = new int[] { 0, 3, 1, 2 };
+			//for (int j = 0; j < elemenetKnots.Length; j++)
+			//{
+			//	for (int i = 0; i < elementControlPoints.Length; i++)
+			//	{
+			//		knotDisplacements[paraviewKnotRenumbering[j], 0] += nurbs.NurbsValues[i, j] * localDisplacements[i, 0];
+			//		knotDisplacements[paraviewKnotRenumbering[j], 1] += nurbs.NurbsValues[i, j] * localDisplacements[i, 1];
+			//	}
+			//}
 
-			return knotDisplacements;
+			//return knotDisplacements;
 		}
 
 		/// <summary>
@@ -123,11 +140,9 @@ namespace ISAAR.MSolve.IGA.Elements
 				CreateElementGaussPoints(element, face.Degrees[0], face.Degrees[1]);
 			Dictionary<int, double> neumannLoad = new Dictionary<int, double>();
 			var elementControlPoints = element.ControlPoints.ToArray();
-			Nurbs2D nurbs = new Nurbs2D(element, elementControlPoints, face);
-
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
-				var jacobianMatrix = JacobianMatrixForLoadCalculation(element, nurbs, j, out var xGaussPoint, out var yGaussPoint, out var zGaussPoint);
+				var jacobianMatrix = JacobianMatrixForLoadCalculation(element, _nurbs, j, out var xGaussPoint, out var yGaussPoint, out var zGaussPoint);
 
 				Vector surfaceBasisVector1 = Vector.CreateZero(3);
 				surfaceBasisVector1[0] = jacobianMatrix[0, 0];
@@ -144,7 +159,7 @@ namespace ISAAR.MSolve.IGA.Elements
 				double jacdet = jacobianMatrix[0, 0] * jacobianMatrix[1, 1]
 								- jacobianMatrix[1, 0] * jacobianMatrix[0, 1];
 
-				CalculateNeumannLoad2D(element, neumann, neumannLoad, nurbs, j, jacdet, gaussPoints, xGaussPoint, yGaussPoint, zGaussPoint, surfaceBasisVector3);
+				CalculateNeumannLoad2D(element, neumann, neumannLoad, _nurbs, j, jacdet, gaussPoints, xGaussPoint, yGaussPoint, zGaussPoint, surfaceBasisVector3);
 			}
 
 			return neumannLoad;
@@ -205,23 +220,21 @@ namespace ISAAR.MSolve.IGA.Elements
 		{
 			Contract.Requires(element != null, "The element cannot be null");
 			var nurbsElement = (NURBSElement2D)element;
-			var gaussPoints = CreateElementGaussPoints(nurbsElement);
 			var stiffnessMatrixElement = Matrix.CreateZero(
 				nurbsElement.ControlPointsDictionary.Count * 2,
 				nurbsElement.ControlPointsDictionary.Count * 2);
 			var elementControlPoints = nurbsElement.ControlPoints.ToArray();
-			var nurbs = new Nurbs2D(nurbsElement, elementControlPoints);
 
-			for (var j = 0; j < gaussPoints.Count; j++)
+			for (var j = 0; j < _gaussPoints.Length; j++)
 			{
 				var jacobianMatrix = Matrix.CreateZero(2, 2);
 
 				for (int k = 0; k < elementControlPoints.Length; k++)
 				{
-					jacobianMatrix[0, 0] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-					jacobianMatrix[0, 1] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
-					jacobianMatrix[1, 0] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
-					jacobianMatrix[1, 1] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
+					jacobianMatrix[0, 0] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+					jacobianMatrix[0, 1] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+					jacobianMatrix[1, 0] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
+					jacobianMatrix[1, 1] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
 				}
 
 				double jacdet = (jacobianMatrix[0, 0] * jacobianMatrix[1, 1])
@@ -241,16 +254,16 @@ namespace ISAAR.MSolve.IGA.Elements
 				Matrix B2 = Matrix.CreateZero(4, 2 * elementControlPoints.Length);
 				for (int column = 0; column < 2 * elementControlPoints.Length; column += 2)
 				{
-					B2[0, column] += nurbs.NurbsDerivativeValuesKsi[column / 2, j];
-					B2[1, column] += nurbs.NurbsDerivativeValuesHeta[column / 2, j];
-					B2[2, column + 1] += nurbs.NurbsDerivativeValuesKsi[column / 2, j];
-					B2[3, column + 1] += nurbs.NurbsDerivativeValuesHeta[column / 2, j];
+					B2[0, column] += _nurbs.NurbsDerivativeValuesKsi[column / 2, j];
+					B2[1, column] += _nurbs.NurbsDerivativeValuesHeta[column / 2, j];
+					B2[2, column + 1] += _nurbs.NurbsDerivativeValuesKsi[column / 2, j];
+					B2[3, column + 1] += _nurbs.NurbsDerivativeValuesHeta[column / 2, j];
 				}
 
 				Matrix B = B1 * B2;
-				IMatrixView elasticityMatrix = ((IContinuumMaterial2D)nurbsElement.Patch.Material).ConstitutiveMatrix;
+				IMatrixView elasticityMatrix = _material.ConstitutiveMatrix;
 				Matrix stiffnessMatrixGaussPoint = B.ThisTransposeTimesOtherTimesThis(elasticityMatrix);
-				stiffnessMatrixGaussPoint *= jacdet * gaussPoints[j].WeightFactor * nurbsElement.Patch.Thickness;
+				stiffnessMatrixGaussPoint *= jacdet * _gaussPoints[j].WeightFactor * _thickness;
 
 				for (int m = 0; m < elementControlPoints.Length * 2; m++)
 				{
@@ -370,7 +383,6 @@ namespace ISAAR.MSolve.IGA.Elements
 				CreateElementGaussPoints(element, face.Degrees[0], face.Degrees[1]);
 			Dictionary<int, double> pressureLoad = new Dictionary<int, double>();
 			var elementControlPoints = element.ControlPoints.ToArray();
-			Nurbs2D nurbs = new Nurbs2D(element, elementControlPoints, face);
 
 			for (int j = 0; j < gaussPoints.Count; j++)
 			{
@@ -380,15 +392,15 @@ namespace ISAAR.MSolve.IGA.Elements
 				double zGaussPoint = 0;
 				for (int k = 0; k < elementControlPoints.Length; k++)
 				{
-					xGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
-					yGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
-					zGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].Z;
-					jacobianMatrix[0, 0] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-					jacobianMatrix[0, 1] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
-					jacobianMatrix[0, 2] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
-					jacobianMatrix[1, 0] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
-					jacobianMatrix[1, 1] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
-					jacobianMatrix[1, 2] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
+					xGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
+					yGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
+					zGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Z;
+					jacobianMatrix[0, 0] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+					jacobianMatrix[0, 1] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+					jacobianMatrix[0, 2] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
+					jacobianMatrix[1, 0] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
+					jacobianMatrix[1, 1] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
+					jacobianMatrix[1, 2] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
 				}
 
 				Vector surfaceBasisVector1 = Vector.CreateZero(3);
@@ -413,13 +425,13 @@ namespace ISAAR.MSolve.IGA.Elements
 						int dofID = element.Model.GlobalDofOrdering.GlobalFreeDofs[elementControlPoints[k], dofs[m]];
 						if (pressureLoad.ContainsKey(dofID))
 						{
-							pressureLoad[dofID] += nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor *
+							pressureLoad[dofID] += _nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor *
 												   pressure.Value * surfaceBasisVector3[m];
 						}
 						else
 						{
 							pressureLoad.Add(dofID,
-								nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor * pressure.Value * surfaceBasisVector3[m]);
+                                _nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor * pressure.Value * surfaceBasisVector3[m]);
 						}
 					}
 				}
@@ -451,13 +463,7 @@ namespace ISAAR.MSolve.IGA.Elements
 		/// Save the current material state of the element.
 		/// </summary>
 		public void SaveMaterialState() => throw new NotImplementedException();
-
-		private IList<GaussLegendrePoint3D> CreateElementGaussPoints(Element element)
-		{
-			GaussQuadrature gauss = new GaussQuadrature();
-			return gauss.CalculateElementGaussPoints(element.Patch.DegreeKsi, element.Patch.DegreeHeta, element.Knots.ToArray());
-		}
-
+        
 		private IList<GaussLegendrePoint3D> CreateElementGaussPoints(Element element, int degreeKsi, int degreeHeta)
 		{
 			GaussQuadrature gauss = new GaussQuadrature();
