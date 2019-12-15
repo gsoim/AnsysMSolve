@@ -218,7 +218,7 @@ namespace ISAAR.MSolve.IGA.Entities
 				};
 
 				element.AddKnots(knotsOfElement);
-				element.AddControlPoints(edgeCP);
+				element.AddControlPoints(elementControlPoints);
 				this.ElementsDictionary.Add(elementID, element);
 			}
 

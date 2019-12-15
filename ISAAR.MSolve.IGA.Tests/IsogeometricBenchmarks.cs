@@ -214,7 +214,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void IsogeometricPlateTension()
 		{
             string filename = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "PlateTension.txt");
-            var material = new ElasticMaterial2D(StressState2D.PlaneStress)
+            var material = new ElasticMaterial2D(StressState2D.PlaneStrain)
             {
                 YoungModulus = 10000,
                 PoissonRatio = 0.3
@@ -316,7 +316,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void IsogeometricPlaneStrainMixedBC()
 		{
             string filename = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", "SquareMixedBC.txt");
-            var material = new ElasticMaterial2D(StressState2D.PlaneStress)
+            var material = new ElasticMaterial2D(StressState2D.PlaneStrain)
             {
                 YoungModulus = 1,
                 PoissonRatio = 0.3
@@ -614,6 +614,7 @@ namespace ISAAR.MSolve.IGA.Tests
 				-0.00833333333333334,
 				-0.00833333333333334,
 			};
+
 
 			for (int i = 0; i < forceVectorExpected.Length; i++)
 				Assert.Equal(forceVectorExpected[i], model.PatchesDictionary[0].Forces[i], 7);
@@ -931,19 +932,20 @@ namespace ISAAR.MSolve.IGA.Tests
                 var knotValueVectorHeta = KnotValueVectorHeta();
 
                 var gauss = new GaussQuadrature();
-                var parametricPointsKsi=gauss.CalculateElementGaussPoints(degreeKsi, new List<Knot>()
-                {
-                    ElementKnot()[0], ElementKnot()[2]
-                }).Select(x=>x.Ksi).ToArray();
-
-                var parametricPointsHeta = gauss.CalculateElementGaussPoints(degreeHeta, new List<Knot>()
-                {
-                    ElementKnot()[0], ElementKnot()[1]
-                }).Select(x => x.Ksi).ToArray();
-
                 var gaussPoints = gauss.CalculateElementGaussPoints(degreeKsi, degreeHeta, ElementKnot()).ToArray();
-                var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
-                    ElementControlPoints().ToArray(), parametricPointsKsi, parametricPointsHeta);
+				var parametricGaussPointKsi = new double[degreeKsi + 1];
+                for (int i = 0; i < degreeKsi + 1; i++)
+                {
+                    parametricGaussPointKsi[i] = gaussPoints[i * (degreeHeta + 1)].Ksi;
+                }
+
+                var parametricGaussPointHeta = new double[degreeHeta + 1];
+                for (int i = 0; i < degreeHeta + 1; i++)
+                {
+                    parametricGaussPointHeta[i] = gaussPoints[i].Heta;
+                }
+				var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
+                    ElementControlPoints().ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
 				var material= new ShellElasticMaterial2Dtransformationb()
                 {
                     YoungModulus = 100,

@@ -297,20 +297,21 @@ namespace ISAAR.MSolve.IGA.Readers
                     Element element = null;
 
                     var gauss= new GaussQuadrature();
-                    var parametricPointKsi = gauss.CalculateElementGaussPoints(DegreeKsi, new List<Knot>()
-                    {
-                        new Knot(){Ksi = knotsOfElement[0].Ksi},
-                        new Knot(){Ksi = knotsOfElement[2].Ksi},
-                    }).Select(x => x.Ksi).ToArray();
-                    var parametricPointHeta = gauss.CalculateElementGaussPoints(DegreeHeta, new List<Knot>()
-                    {
-                        new Knot(){Ksi = knotsOfElement[0].Heta},
-                        new Knot(){Ksi = knotsOfElement[1].Heta},
-                    }).Select(x => x.Ksi).ToArray(); 
                     var gaussPoints = gauss.CalculateElementGaussPoints(DegreeKsi, DegreeHeta, knotsOfElement).ToArray();
+                    var parametricGaussPointKsi = new double[DegreeKsi + 1];
+                    for (int m = 0; m < DegreeKsi + 1; m++)
+                    {
+                        parametricGaussPointKsi[m] = gaussPoints[m * (DegreeHeta + 1)].Ksi;
+                    }
+
+                    var parametricGaussPointHeta = new double[DegreeHeta + 1];
+                    for (int m = 0; m < DegreeHeta + 1; m++)
+                    {
+                        parametricGaussPointHeta[m] = gaussPoints[m].Heta;
+                    }
                     var nurbs = new Nurbs2D(DegreeKsi, KnotValueVectorKsi.CopyToArray(),
                         DegreeHeta, KnotValueVectorHeta.CopyToArray(),
-                        elementControlPoints.ToArray(), parametricPointKsi, parametricPointHeta);
+                        elementControlPoints.ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
                     switch (formulation)
                     {
                         case GeometricalFormulation.Linear:

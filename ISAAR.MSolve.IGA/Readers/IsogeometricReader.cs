@@ -722,21 +722,22 @@ namespace ISAAR.MSolve.IGA.Readers
 
 
                     var gauss = new GaussQuadrature();
-                    var parametricPointsKsi = gauss.CalculateElementGaussPoints(DegreeKsiDictionary[0], new List<Knot>()
+                    var gaussPoints = gauss.CalculateElementGaussPoints(DegreeKsiDictionary[0], 
+                        DegreeHetaDictionary[0], knotsOfElement).ToArray();
+                    var parametricGaussPointKsi = new double[DegreeKsiDictionary[0] + 1];
+                    for (int m = 0; m < DegreeKsiDictionary[0] + 1;m++)
                     {
-                        new Knot(){Ksi = knotsOfElement[0].Ksi},
-                        new Knot(){Ksi = knotsOfElement[2].Ksi},
-                    }).Select(x => x.Ksi).ToArray();
-                    var parametricPointsHeta = gauss.CalculateElementGaussPoints(DegreeHetaDictionary[0], new List<Knot>()
+                        parametricGaussPointKsi[m] = gaussPoints[m * (DegreeHetaDictionary[0] + 1)].Ksi;
+                    }
+
+                    var parametricGaussPointHeta = new double[DegreeHetaDictionary[0] + 1];
+                    for (int m = 0; m < DegreeHetaDictionary[0] + 1; m++)
                     {
-                        new Knot(){Ksi = knotsOfElement[0].Heta},
-                        new Knot(){Ksi = knotsOfElement[1].Heta},
-                    }).Select(x => x.Ksi).ToArray(); 
-                    var gaussPoints = gauss.CalculateElementGaussPoints(DegreeKsiDictionary[0], DegreeHetaDictionary[0],
-                        knotsOfElement).ToArray();
+                        parametricGaussPointHeta[m] = gaussPoints[m].Heta;
+                    }
                     var nurbs = new Nurbs2D(DegreeKsiDictionary[0], KnotValueVectorsKsiDictionary[0],
                         DegreeHetaDictionary[0], KnotValueVectorsHetaDictionary[0],
-                        elementControlPoints.ToArray(), parametricPointsKsi, parametricPointsHeta);
+                        elementControlPoints.ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
                     Element element = new NURBSElement2D(_material2D,nurbs,gaussPoints,Thickness)
                     {
                         ID = elementID,

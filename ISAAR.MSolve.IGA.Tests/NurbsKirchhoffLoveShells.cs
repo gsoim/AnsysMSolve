@@ -84,18 +84,20 @@ namespace ISAAR.MSolve.IGA.Tests
                 var knotValueVectorHeta = KnotValueVectorHeta();
 
 				var gauss = new GaussQuadrature();
-                var parametricPointKsi = gauss.CalculateElementGaussPoints(degreeKsi, new List<Knot>()
-                {
-                    ElementKnot()[0], ElementKnot()[2]
-                }).Select(x => x.Ksi).ToArray();
-                var parametricPointHeta = gauss.CalculateElementGaussPoints(degreeHeta, new List<Knot>()
-                {
-                    ElementKnot()[0], ElementKnot()[1]
-                }).Select(x => x.Ksi).ToArray();
                 var gaussPoints = gauss.CalculateElementGaussPoints(degreeKsi, degreeHeta, ElementKnot()).ToArray();
-				
+                var parametricGaussPointKsi = new double[degreeKsi + 1];
+                for (int i = 0; i < degreeKsi + 1; i++)
+                {
+                    parametricGaussPointKsi[i] = gaussPoints[i * (degreeHeta + 1)].Ksi;
+                }
+
+                var parametricGaussPointHeta = new double[degreeHeta + 1];
+                for (int i = 0; i < degreeHeta + 1; i++)
+                {
+                    parametricGaussPointHeta[i] = gaussPoints[i].Heta;
+                }
 				var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
-                    ElementControlPoints().ToArray(), parametricPointKsi, parametricPointHeta);
+                    ElementControlPoints().ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
                 var material = new ShellElasticMaterial2Dtransformationb()
                 {
                     YoungModulus = 100,
@@ -476,7 +478,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 YoungModulus = 43200000000,
                 PoissonRatio = 0.0
             };
-            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filename, material);
+            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath, material);
             var model = modelReader.GenerateModelFromFile();
 
 			model.SurfaceLoads.Add(new SurfaceDistributedLoad(-90, StructuralDof.TranslationY));
@@ -545,7 +547,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 YoungModulus = 10000000,
                 PoissonRatio = 0.0
             };
-            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filename, material);
+            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath, material);
             var model = modelReader.GenerateModelFromFile();
 
 

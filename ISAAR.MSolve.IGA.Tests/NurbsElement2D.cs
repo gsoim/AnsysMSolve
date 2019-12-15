@@ -72,18 +72,22 @@ namespace ISAAR.MSolve.IGA.Tests
                     PoissonRatio = 0.3
                 };
 				var gauss = new GaussQuadrature();
-                var parametricPointKsi = gauss.CalculateElementGaussPoints(degreeKsi, new List<Knot>()
+				var gaussPoints = gauss.CalculateElementGaussPoints(degreeKsi, degreeHeta, ElementKnot()).ToArray();
+                var parametricGaussPointKsi = new double[degreeKsi + 1];
+                for (int i = 0; i < degreeKsi + 1; i++)
                 {
-                    ElementKnot()[0], ElementKnot()[2]
-                }).Select(x => x.Ksi).ToArray();
-                var parametricPointHeta = gauss.CalculateElementGaussPoints(degreeHeta, new List<Knot>()
-                {
-                    ElementKnot()[0], ElementKnot()[1]
-                }).Select(x => x.Ksi).ToArray();
-                var gaussPoints = gauss.CalculateElementGaussPoints(degreeKsi, degreeHeta, ElementKnot()).ToArray();
+                    parametricGaussPointKsi[i] = gaussPoints[i * (degreeHeta + 1)].Ksi;
+                }
 
-                var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
-                    ElementControlPoints().ToArray(), parametricPointKsi, parametricPointHeta);
+                var parametricGaussPointHeta = new double[degreeHeta + 1];
+                for (int i = 0; i < degreeHeta + 1; i++)
+                {
+                    parametricGaussPointHeta[i] = gaussPoints[i].Heta;
+                }
+
+
+				var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
+                    ElementControlPoints().ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
 
 				var element = new NURBSElement2D(material,nurbs, gaussPoints, thickness);
 				var patch = new Patch();

@@ -96,18 +96,20 @@ namespace ISAAR.MSolve.IGA.Tests
                 var knotValueVectorHeta = KnotValueVectorHeta();
 
                 var gauss = new GaussQuadrature();
-                var parametricPointsKsi = gauss.CalculateElementGaussPoints(degreeKsi, new List<Knot>()
+                var gaussPoints = gauss.CalculateElementGaussPoints(degreeKsi, degreeHeta, ElementKnots());
+                var parametricGaussPointKsi = new double[degreeKsi + 1];
+                for (int i = 0; i < degreeKsi + 1; i++)
                 {
-                    ElementKnots()[0],
-                    ElementKnots()[2]
-                }).Select(p => p.Ksi).ToArray();
-                var parametricPointsHeta = gauss.CalculateElementGaussPoints(degreeKsi, new List<Knot>()
+                    parametricGaussPointKsi[i] = gaussPoints[i * (degreeHeta + 1)].Ksi;
+                }
+
+                var parametricGaussPointHeta = new double[degreeHeta + 1];
+                for (int i = 0; i < degreeHeta + 1; i++)
                 {
-                    ElementKnots()[0],
-                    ElementKnots()[1]
-                }).Select(p => p.Ksi).ToArray();
+                    parametricGaussPointHeta[i] = gaussPoints[i].Heta;
+                }
                 var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
-                    ElementControlPoints().ToArray(), parametricPointsKsi, parametricPointsHeta);
+                    ElementControlPoints().ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
 
                 var element =
                     new NurbsKirchhoffLoveShellElementNL(Material, ElementKnots().ToArray(),nurbs,

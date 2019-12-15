@@ -196,20 +196,21 @@ namespace ISAAR.MSolve.IGA.Entities
 					int elementID = i * numberOfElementsHeta + j;
 
                     var gauss= new GaussQuadrature();
-					var parametricPointKsi = gauss.CalculateElementGaussPoints(Degrees[0], new List<Knot>()
-                    {
-                        new Knot(){Ksi = knotsOfElement[0].Ksi},
-                        new Knot(){Ksi = knotsOfElement[2].Ksi},
-                    }).Select(x => x.Ksi).ToArray();
-                    var parametricPointHeta = gauss.CalculateElementGaussPoints(Degrees[1], new List<Knot>()
-                    {
-                        new Knot(){Ksi = knotsOfElement[0].Heta},
-                        new Knot(){Ksi = knotsOfElement[1].Heta},
-                    }).Select(x => x.Ksi).ToArray();
 					var gaussPoints = gauss.CalculateElementGaussPoints(Degrees[0], Degrees[1], knotsOfElement).ToArray();
-                    var nurbs = new Nurbs2D(Degrees[0], KnotValueVectors[0].CopyToArray(),
+                    var parametricGaussPointKsi = new double[Degrees[0] + 1];
+                    for (int m = 0; m < Degrees[0] + 1; m++)
+                    {
+                        parametricGaussPointKsi[m] = gaussPoints[m * (Degrees[1] + 1)].Ksi;
+                    }
+
+                    var parametricGaussPointHeta = new double[Degrees[1] + 1];
+                    for (int m = 0; i < Degrees[1] + 1; m++)
+                    {
+                        parametricGaussPointHeta[m] = gaussPoints[m].Heta;
+                    }
+					var nurbs = new Nurbs2D(Degrees[0], KnotValueVectors[0].CopyToArray(),
                         Degrees[1], KnotValueVectors[1].CopyToArray(), elementControlPoints.ToArray(),
-                        parametricPointKsi, parametricPointHeta);
+                        parametricGaussPointKsi, parametricGaussPointHeta);
 
 					Element element = new NURBSElement2D(null, nurbs, gaussPoints, 0)
 					{
