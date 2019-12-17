@@ -35,7 +35,7 @@ namespace ISAAR.MSolve.Tests.FEMpartB
             for (int i1 = 0; i1 < 3; i1++) { for (int i2 = 0; i2 < 3; i2++) { consCheck1[i1, i2] = material3.ConstitutiveMatrix[i1, i2]; } }
 
 
-            IdegenerateRVEbuilder homogeneousRveBuilder1 = new CompositeMaterialModeluilderTet(outterMaterial,innerMaterial,100,100,100);
+            IdegenerateRVEbuilder homogeneousRveBuilder1 = new CompositeMaterialModeluilderTet2(outterMaterial,innerMaterial,100,100,100);
             var material4 = new MicrostructureShell2D(homogeneousRveBuilder1, 
                 model => (new SkylineSolver.Builder()).BuildSolver(model), false, 1)
             {
@@ -54,11 +54,25 @@ namespace ISAAR.MSolve.Tests.FEMpartB
             double[] stressesCheck5 = new double[3] { material4.Stresses[0], material4.Stresses[1], material4.Stresses[2] };
 
 
-            Assert.True(NRNLAnalyzerDevelopTest.AreDisplacementsSame(stressesCheck3, stressesCheck4));
-            Assert.True(NRNLAnalyzerDevelopTest.AreDisplacementsSame(new double[3] { 2 * stressesCheck3[0], 2 * stressesCheck3[1], 2 * stressesCheck3[2] },
+            Assert.True(AreDisplacementsSame(stressesCheck3, stressesCheck4));
+            Assert.True(AreDisplacementsSame(new double[3] { 2 * stressesCheck3[0], 2 * stressesCheck3[1], 2 * stressesCheck3[2] },
                                                                             stressesCheck5));
             Assert.True(BondSlipTest.AreDisplacementsSame(Matrix1.CopyToArray2D(), consCheck1));
             Assert.True(BondSlipTest.AreDisplacementsSame(Matrix1.CopyToArray2D(), material4.ConstitutiveMatrix.CopytoArray2D()));
+        }
+
+        public static bool AreDisplacementsSame(double[] expectedValues,
+            double[] computedValues)
+        {
+            var comparer = new ValueComparer(1E-12);
+            for (int i1 = 0; i1 < expectedValues.GetLength(0); i1++)
+            {
+                if (!comparer.AreEqual(expectedValues[i1], computedValues[i1]))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
 
