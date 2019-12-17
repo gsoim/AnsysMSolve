@@ -1,28 +1,31 @@
-﻿using System;
-using ISAAR.MSolve.LinearAlgebra;
+﻿using ISAAR.MSolve.Materials.Interfaces;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
-using ISAAR.MSolve.Materials.Interfaces;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
+using System;
 
-namespace ISAAR.MSolve.Materials
+namespace ISAAR.MSolve.FEM.Materials
 {
-    public class ElasticMaterial3D : IIsotropicContinuumMaterial3D
+    public class ElasticMaterial3DtotalStrain : IIsotropicContinuumMaterial3D
     {
+        //proelefsi: ElasticMaterial3D
+        //allages: tropopoiithile wste na doulevei me to total strain (TODO: na diorthothei to constitutive)
+
         //private readonly double[] strains = new double[6];
-        private readonly double[] stresses = new double[6];
-        private Matrix constitutiveMatrix = null;
+        //private readonly double[] stresses = new double[6];
+        private double[,] constitutiveMatrix = null;
         public double YoungModulus { get; set; }
         public double PoissonRatio { get; set; }
         public double[] Coordinates { get; set; }
         private readonly double[] incrementalStrains = new double[6];
         private double[] stressesNew = new double[6];
 
-        private Matrix GetConstitutiveMatrix()
+        private double[,] GetConstitutiveMatrix()
         {
             double fE1 = YoungModulus / (double)(1 + PoissonRatio);
             double fE2 = fE1 * PoissonRatio / (double)(1 - 2 * PoissonRatio);
             double fE3 = fE1 + fE2;
             double fE4 = fE1 * 0.5;
-            var afE = Matrix.CreateZero(6, 6);
+            double[,] afE = new double[6, 6];
             afE[0, 0] = fE3;
             afE[0, 1] = fE2;
             afE[0, 2] = fE2;
@@ -36,6 +39,9 @@ namespace ISAAR.MSolve.Materials
             afE[4, 4] = fE4;
             afE[5, 5] = fE4;
 
+            //Vector<double> s = (new Matrix2D<double>(afE)) * (new Vector<double>(incrementalStrains));
+            //s.Data.CopyTo(stresses, 0);
+
             return afE;
         }
 
@@ -44,7 +50,7 @@ namespace ISAAR.MSolve.Materials
             var stressesElastic = new double[6];
             for (int i = 0; i < 6; i++)
             {
-                stressesElastic[i] = this.stresses[i];
+                //stressesElastic[i] = this.stresses[i];
                 for (int j = 0; j < 6; j++)
                     stressesElastic[i] += this.constitutiveMatrix[i, j] * this.incrementalStrains[j];
             }
@@ -54,31 +60,39 @@ namespace ISAAR.MSolve.Materials
 
         #region IFiniteElementMaterial Members
 
-        public int ID => 1;
+        public int ID
+        {
+            get { return 1; }
+        }
 
-        public bool Modified => false;
+        public bool Modified
+        {
+            get { return false; }
+        }
 
-        public void ResetModified() { }
+        public void ResetModified()
+        {
+        }
 
         #endregion
 
         #region IFiniteElementMaterial3D Members
 
-        public double[] Stresses => stressesNew;
+        public double[] Stresses { get { return stressesNew; } }
 
         public IMatrixView ConstitutiveMatrix
         {
             get
             {
-                if (constitutiveMatrix == null) UpdateMaterial(new double[6]);
-                return constitutiveMatrix;
+                if (constitutiveMatrix == null) UpdateMaterial( new double[6]);
+                return Matrix.CreateFromArray(constitutiveMatrix);
             }
         }
 
         public void UpdateMaterial(double[] strainsIncrement)
         {
             //throw new NotImplementedException();
-            this.incrementalStrains.CopyFrom(strainsIncrement);
+            Array.Copy(strainsIncrement, this.incrementalStrains, 6);
             constitutiveMatrix = GetConstitutiveMatrix();
             this.CalculateNextStressStrainPoint();
 
@@ -86,30 +100,36 @@ namespace ISAAR.MSolve.Materials
 
         public void ClearState()
         {
-            //constitutiveMatrix.Clear();
-            incrementalStrains.Clear();
-            stresses.Clear();
-            stressesNew.Clear();
+            Array.Clear(incrementalStrains, 0, incrementalStrains.Length);
+            //Array.Clear(stresses, 0, stresses.Length);
+            Array.Clear(stressesNew, 0, stressesNew.Length);
         }
 
-        public void SaveState() => stresses.CopyFrom(stressesNew);
+        public void SaveState()
+        {
+            //Array.Copy(this.stressesNew, this.stresses, 6);
+        }
 
         public void ClearStresses()
         {
-            stresses.Clear();
-            stressesNew.Clear();
+            //Array.Clear(this.stresses, 0, 6);
+            Array.Clear(this.stressesNew, 0, 6);
         }
 
         #endregion
 
         #region ICloneable Members
 
-        object ICloneable.Clone() => Clone();
-        
+        object ICloneable.Clone()
+        {
+            return Clone();
+        }
+
         public IContinuumMaterial3D Clone()
         {
-            return new ElasticMaterial3D() { YoungModulus = this.YoungModulus, PoissonRatio = this.PoissonRatio };
+            return new ElasticMaterial3DtotalStrain() { YoungModulus = this.YoungModulus, PoissonRatio = this.PoissonRatio };
         }
+
         #endregion
 
     }

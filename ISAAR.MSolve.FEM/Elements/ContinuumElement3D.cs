@@ -13,7 +13,9 @@ using ISAAR.MSolve.FEM.Interpolation.Jacobians;
 using ISAAR.MSolve.Geometry.Coordinates;
 using ISAAR.MSolve.LinearAlgebra;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
+using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Materials;
+using ISAAR.MSolve.Materials.Interfaces;
 
 namespace ISAAR.MSolve.FEM.Elements
 {
@@ -31,12 +33,12 @@ namespace ISAAR.MSolve.FEM.Elements
 
         private readonly IDofType[][] dofTypes;
         private DynamicMaterial dynamicProperties;
-        private readonly IReadOnlyList<ElasticMaterial3D> materialsAtGaussPoints;
+        private readonly IReadOnlyList<IContinuumMaterial3D> materialsAtGaussPoints;
 
         public ContinuumElement3D(IReadOnlyList<Node> nodes, IIsoparametricInterpolation3D interpolation,
             IQuadrature3D quadratureForStiffness, IQuadrature3D quadratureForMass,
             IGaussPointExtrapolation3D gaussPointExtrapolation,
-            IReadOnlyList<ElasticMaterial3D> materialsAtGaussPoints, DynamicMaterial dynamicProperties)
+            IReadOnlyList<IContinuumMaterial3D> materialsAtGaussPoints, DynamicMaterial dynamicProperties)
         {
             this.dynamicProperties = dynamicProperties;
             this.materialsAtGaussPoints = materialsAtGaussPoints;
@@ -71,7 +73,7 @@ namespace ISAAR.MSolve.FEM.Elements
         {
             get
             {
-                foreach (ElasticMaterial3D material in materialsAtGaussPoints)
+                foreach (var material in materialsAtGaussPoints)
                 {
                     if (material.Modified) return true;
                 }
@@ -171,7 +173,23 @@ namespace ISAAR.MSolve.FEM.Elements
 
         public double[] CalculateForces(IElement element, double[] localTotalDisplacements, double[] localDisplacements)
         {
-            throw new NotImplementedException();
+            int numberOfDofs = 3 * Nodes.Count;
+            var Forces =  Vector.CreateZero(numberOfDofs);
+            IReadOnlyList<Matrix> shapeGradientsNatural =
+                Interpolation.EvaluateNaturalGradientsAtGaussPoints(QuadratureForStiffness);
+            for (int gp = 0; gp < QuadratureForStiffness.IntegrationPoints.Count; ++gp)
+            {
+                Vector Stresses =Vector.CreateFromArray( materialsAtGaussPoints[gp].Stresses);
+                var jacobian = new IsoparametricJacobian3D(Nodes, shapeGradientsNatural[gp]);
+                Matrix shapeGradientsCartesian =
+                    jacobian.TransformNaturalDerivativesToCartesian(shapeGradientsNatural[gp]);
+                Matrix deformation = BuildDeformationMatrix(shapeGradientsCartesian);
+                Vector gpForces = deformation.Transpose() * (Stresses);
+                double dA = jacobian.DirectDeterminant * QuadratureForStiffness.IntegrationPoints[gp].Weight;
+                gpForces.ScaleIntoThis(dA);
+                Forces.AddIntoThis(gpForces);
+            }
+            return Forces.CopyToArray();
         }
 
         public double[] CalculateForcesForLogging(IElement element, double[] localDisplacements)
@@ -182,7 +200,23 @@ namespace ISAAR.MSolve.FEM.Elements
         public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements,
             double[] localdDisplacements)
         {
-            throw new NotImplementedException();
+            int numberOfDofs = 3 * Nodes.Count;
+            var Forces = Vector.CreateZero(numberOfDofs);
+            IReadOnlyList<Matrix> shapeGradientsNatural =
+                Interpolation.EvaluateNaturalGradientsAtGaussPoints(QuadratureForStiffness);
+
+            double[] strains = new double[6];
+            for (int gp = 0; gp < QuadratureForStiffness.IntegrationPoints.Count; ++gp)
+            {
+                strains = new double[6];
+                var jacobian = new IsoparametricJacobian3D(Nodes, shapeGradientsNatural[gp]);
+                Matrix shapeGradientsCartesian =
+                    jacobian.TransformNaturalDerivativesToCartesian(shapeGradientsNatural[gp]);
+                Matrix deformation = BuildDeformationMatrix(shapeGradientsCartesian);
+                strains=deformation.Multiply(localDisplacements);
+                materialsAtGaussPoints[gp].UpdateMaterial(strains);
+            }
+            return new Tuple<double[], double[]>(strains, materialsAtGaussPoints[materialsAtGaussPoints.Count - 1].Stresses);
         }
 
         public double CalculateVolume()
@@ -205,6 +239,7 @@ namespace ISAAR.MSolve.FEM.Elements
 
         public void ClearMaterialState()
         {
+            //TODO: the next throws an exception. Investigate. Possible changes in Analyzers may be the cause.
             foreach (var material in materialsAtGaussPoints) material.ClearState();
         }
 

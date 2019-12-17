@@ -24,7 +24,7 @@ namespace ISAAR.MSolve.LinearAlgebra.Output
         /// <summary>
         /// Describes how the array entries will be formatted and justified.
         /// </summary>
-        public INumericFormat NumericFormat { get; set; } = new ExponentialFormat { NumDecimalDigits = 6 };
+        public INumericFormat NumericFormat { get; set; } = new ExponentialFormat { NumDecimalDigits = 16 };
 
         /// <summary>
         /// Writes the provided array to Console.
