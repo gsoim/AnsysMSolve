@@ -39,7 +39,8 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
 
         public IRVEbuilder Clone(int a)
         {
-            throw new NotImplementedException();
+            return new CompositeMaterialModeluilderTet(outterMaterial,innerMaterial,
+                L01, L02, L03, boundarySearchTol);
         }
 
         public Tuple<Model, Dictionary<int, Node>, double> GetModelAndBoundaryNodes()

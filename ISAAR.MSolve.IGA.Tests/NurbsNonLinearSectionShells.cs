@@ -484,7 +484,7 @@ namespace ISAAR.MSolve.IGA.Tests
             }
         }
 
-        //[Fact]
+        [Fact]
         public void IsogeometricCantileverShell()
         {
             var filename = "CantileverShellBenchmark16x1";
@@ -495,7 +495,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 YoungModulus = 1.2e06,
                 PoissonRatio = 0.0
             };
-            var modelReader = new IsogeometricShellReader(GeometricalFormulation.SectionNonLinear,filepath, material);
+            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear,filepath, material);
             var model=modelReader.GenerateModelFromFile();
 
             Value verticalDistributedLoad = delegate (double x, double y, double z)
@@ -512,7 +512,7 @@ namespace ISAAR.MSolve.IGA.Tests
             }
 
             // Solvers
-            var solverBuilder = new DenseMatrixSolver.Builder();
+            var solverBuilder = new SuiteSparseSolver.Builder();
             ISolver solver = solverBuilder.BuildSolver(model);
 
             // Structural problem provider

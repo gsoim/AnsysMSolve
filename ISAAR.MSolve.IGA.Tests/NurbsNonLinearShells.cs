@@ -7,6 +7,7 @@ using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Analyzers.NonLinear;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
+using ISAAR.MSolve.FEM.Materials;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
@@ -15,6 +16,8 @@ using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Logging;
 using ISAAR.MSolve.Materials;
+using ISAAR.MSolve.MultiscaleAnalysis;
+using ISAAR.MSolve.MultiscaleAnalysis.Interfaces;
 using ISAAR.MSolve.Problems;
 using ISAAR.MSolve.Solvers;
 using ISAAR.MSolve.Solvers.Direct;
@@ -199,6 +202,52 @@ namespace ISAAR.MSolve.IGA.Tests
             parentAnalyzer.Initialize();
             parentAnalyzer.Solve();
         }
+
+
+        [Fact]
+        public void IsogeometricCantileverShellMicrostructure()
+        {
+            var filename = "CantileverShellBenchmark16x1";
+            var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
+
+            var outterMaterial = new ElasticMaterial3DtotalStrain() { PoissonRatio = 0.4, YoungModulus = 3.5e9 }; 
+            var innerMaterial = new ElasticMaterial3DtotalStrain() { PoissonRatio = 0.4, YoungModulus = 3.5e9 };
+            IdegenerateRVEbuilder homogeneousRveBuilder1 = new CompositeMaterialModeluilderTet(outterMaterial, innerMaterial, 100, 100, 100);
+            var material = new MicrostructureShell2D(homogeneousRveBuilder1,
+                microModel => (new SkylineSolver.Builder()).BuildSolver(microModel), false, 1);
+
+            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath, material);
+            var model = modelReader.GenerateModelFromFile();
+
+            Value verticalDistributedLoad = delegate (double x, double y, double z)
+            {
+                return new double[] { 0, 0, 4 };
+            };
+            model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
+
+            for (int i = 0; i < 6; i++)
+            {
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+            }
+
+            // Solvers
+            var solverBuilder = new SuiteSparseSolver.Builder();
+            ISolver solver = solverBuilder.BuildSolver(model);
+
+            // Structural problem provider
+            var provider = new ProblemStructural(model, solver);
+
+            // Linear static analysis
+            var childAnalyzer = new LinearAnalyzer(model, solver, provider);
+            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
+
+            // Run the analysis
+            parentAnalyzer.Initialize();
+            parentAnalyzer.Solve();
+        }
+
 
         //[Fact]
         public void SlitAnnularPlate()
