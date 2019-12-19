@@ -50,6 +50,9 @@ namespace ISAAR.MSolve.SamplesConsole
 
             //MeshPartitioningExamples.PartitionMeshes();
 
+            //StochasticEmbeddedExample_10.Run2a_Elastic.SingleMatrix_NewtonRaphson_Stochastic(1);
+            StochasticEmbeddedExample_10.Run2a_Elastic.EBEembeddedInMatrix_NewtonRaphson_Stochastic(1);
+
         }
 
         private static void SolveBuildingInNoSoilSmall()
