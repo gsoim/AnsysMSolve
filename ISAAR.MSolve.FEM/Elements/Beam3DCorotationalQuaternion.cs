@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using ISAAR.MSolve.FEM.Elements.SupportiveClasses;
 using ISAAR.MSolve.FEM.Entities;
+using ISAAR.MSolve.FEM.Interfaces;
 using ISAAR.MSolve.Geometry;
 using ISAAR.MSolve.LinearAlgebra;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -9,7 +10,7 @@ using ISAAR.MSolve.Materials.Interfaces;
 
 namespace ISAAR.MSolve.FEM.Elements
 {
-    public class Beam3DCorotationalQuaternion : Beam3DCorotationalAbstract
+    public class Beam3DCorotationalQuaternion : Beam3DCorotationalAbstract, IEmbeddedBeamElement
     {
         private readonly double[] lastDisplacements;
         private readonly double[] currentDisplacements;
@@ -206,6 +207,23 @@ namespace ISAAR.MSolve.FEM.Elements
             rotationMatrixLocal.MultiplyIntoResult(tempBeamAxisZ, beamAxisZ);
             this.currentRotationMatrix = RotationMatrix.CalculateFromOrthonormalVectors(this.beamAxisX, this.beamAxisY, this.beamAxisZ);
         }
+
+        public Matrix CalculateRotationMatrix()
+        {
+            Matrix R = Matrix.CreateZero(3, 3);
+            R[0, 1] = currentRotationMatrix[0, 1];
+            R[0, 2] = currentRotationMatrix[0, 2];
+            R[1, 0] = currentRotationMatrix[1, 0];
+            R[0, 0] = currentRotationMatrix[0, 0];
+            R[1, 1] = currentRotationMatrix[1, 1];
+            R[1, 2] = currentRotationMatrix[1, 2];
+            R[2, 0] = currentRotationMatrix[2, 0];
+            R[2, 1] = currentRotationMatrix[2, 1];
+            R[2, 2] = currentRotationMatrix[2, 2];
+            return R;
+        }
+
+
 
     }
 }
