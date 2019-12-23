@@ -12,7 +12,7 @@ namespace ISAAR.MSolve.FEM.Embedding
     public class ElementEmbedder : IElementDofEnumerator
     {
         private readonly Model model;
-        private readonly Element embeddedElement;
+        protected readonly Element embeddedElement;
         private readonly IEmbeddedDOFInHostTransformationVector transformation;
         private readonly Dictionary<SuperElementDof, int> superElementMap = new Dictionary<SuperElementDof, int>();
         private readonly Dictionary<EmbeddedNode, Dictionary<IDofType, int>> dofToHostMapping = new Dictionary<EmbeddedNode, Dictionary<IDofType, int>>();
@@ -86,7 +86,7 @@ namespace ISAAR.MSolve.FEM.Embedding
             }
         }
 
-        private void CalculateTransformationMatrix()
+        protected virtual void CalculateTransformationMatrix()
         {
             var e = (IEmbeddedElement)(embeddedElement.ElementType);
             int row = 0;

@@ -24,4 +24,18 @@
   <ItemGroup>
     <Folder Include="SupportiveClasses\" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="InputFilesEmbBeam\connectivity.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="InputFilesEmbBeam\MATRIX_3D-L_x=10-L_y=10-L_z=20-1x1x1-ConnMatr_MSolve.inp">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="InputFilesEmbBeam\MATRIX_3D-L_x=10-L_y=10-L_z=20-1x1x1-Geometry_MSolve.inp">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="InputFilesEmbBeam\nodes_1.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>
