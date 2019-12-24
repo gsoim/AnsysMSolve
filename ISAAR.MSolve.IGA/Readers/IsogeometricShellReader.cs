@@ -318,7 +318,7 @@ namespace ISAAR.MSolve.IGA.Readers
                     switch (formulation)
                     {
                         case GeometricalFormulation.Linear:
-                            element = new KirchhoffLoveShellElement(_sectionaMaterial,nurbs, gaussPoints,Thickness)
+                            element = new Element
                             {
                                 ID = elementID,
                                 Patch = model.PatchesDictionary[0],

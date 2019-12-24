@@ -178,8 +178,7 @@ namespace ISAAR.MSolve.IGA.Readers
 						new Knot(){ID=3,Ksi=1,Heta = 1,Zeta = 0}
 					}).ToArray();
 
-			Element element = new KirchhoffLoveShellElement(
-                material, tsplines, gaussPoints,thickness)
+			var element = new Element
 			{
 				ID = elementIDCounter,
 				Patch = _model.PatchesDictionary[0],
