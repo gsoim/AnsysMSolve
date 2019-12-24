@@ -5,6 +5,7 @@ using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.FEM.Entities;
 using ISAAR.MSolve.Logging;
+using ISAAR.MSolve.MSAnalysis.RveTemplatesPaper;
 using ISAAR.MSolve.Problems;
 using ISAAR.MSolve.Solvers;
 using ISAAR.MSolve.Solvers.Direct;
@@ -51,8 +52,9 @@ namespace ISAAR.MSolve.SamplesConsole
             //MeshPartitioningExamples.PartitionMeshes();
 
             //StochasticEmbeddedExample_10.Run2a_Elastic.SingleMatrix_NewtonRaphson_Stochastic(1);
-            StochasticEmbeddedExample_10.Run2a_Elastic.EBEembeddedInMatrix_NewtonRaphson_Stochastic(1);
-
+            //StochasticEmbeddedExample_10.Run2a_Elastic.EBEembeddedInMatrix_NewtonRaphson_Stochastic(1);
+            var (volumeFraction, weightFraction) = VolumeFraction.CalculatePercentage();
+            Console.WriteLine($"{volumeFraction*100}%");
         }
 
         private static void SolveBuildingInNoSoilSmall()

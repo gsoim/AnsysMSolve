@@ -23,6 +23,7 @@ using ISAAR.MSolve.Solvers;
 using ISAAR.MSolve.Solvers.Direct;
 using MathNet.Numerics.Data.Matlab;
 using MathNet.Numerics.LinearAlgebra;
+using Troschuetz.Random;
 using Xunit;
 
 namespace ISAAR.MSolve.IGA.Tests
@@ -209,43 +210,59 @@ namespace ISAAR.MSolve.IGA.Tests
         {
             var filename = "CantileverShellBenchmark16x1";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
+            var numberOfRealizations = 2;
 
-            var outterMaterial = new ElasticMaterial3DtotalStrain() { PoissonRatio = 0.4, YoungModulus = 3.5e9 }; 
-            var innerMaterial = new ElasticMaterial3DtotalStrain() { PoissonRatio = 0.4, YoungModulus = 3.5e9 };
-            IdegenerateRVEbuilder homogeneousRveBuilder1 = new CompositeMaterialModeluilderTet(outterMaterial, innerMaterial, 100, 100, 100);
-            var material = new MicrostructureShell2D(homogeneousRveBuilder1,
-                microModel => (new SkylineSolver.Builder()).BuildSolver(microModel), false, 1);
+            var trandom= new TRandom();
+            var youngModulusSolutionPairs = new double[numberOfRealizations, 2];
 
-            var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath, material);
-            var model = modelReader.GenerateModelFromFile();
-
-            Value verticalDistributedLoad = delegate (double x, double y, double z)
+            for (int i = 0; i < numberOfRealizations; i++)
             {
-                return new double[] { 0, 0, 4 };
-            };
-            model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
+                var randomInnerE = trandom.Normal(3.5, 0.2);
+                youngModulusSolutionPairs[i, 0] = randomInnerE;
+                var outterMaterial = new ElasticMaterial3DtotalStrain() { PoissonRatio = 0.4, YoungModulus = 3.5 };
+                var innerMaterial = new ElasticMaterial3DtotalStrain() { PoissonRatio = 0.4, YoungModulus = randomInnerE };
+                var homogeneousRveBuilder1 = new CompositeMaterialModeluilderTet2(outterMaterial, innerMaterial, 100, 100, 100);
+                var material = new MicrostructureShell2D(homogeneousRveBuilder1,
+                    microModel => (new SuiteSparseSolver.Builder()).BuildSolver(microModel), false, 1);
 
-            for (int i = 0; i < 6; i++)
-            {
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-                model.ControlPointsDictionary[i].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+                //var material4 = new Shell2dRVEMaterialHostConst(1, 1, 1, homogeneousRveBuilder1,
+                //    constModel => (new SuiteSparseSolver.Builder()).BuildSolver(constModel));
+                var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath, material);
+                var model = modelReader.GenerateModelFromFile();
+
+                Value verticalDistributedLoad = delegate (double x, double y, double z)
+                {
+                    return new double[] { 0, 0, 4e9 };
+                };
+
+                model.Patches[0].EdgesDictionary[1].LoadingConditions.Add(new NeumannBoundaryCondition(verticalDistributedLoad));
+
+                for (int j = 0; j < 6; j++)
+                {
+                    model.ControlPointsDictionary[j].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                    model.ControlPointsDictionary[j].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+                    model.ControlPointsDictionary[j].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+                }
+
+                // Solvers
+                var solverBuilder = new SuiteSparseSolver.Builder();
+                ISolver solver = solverBuilder.BuildSolver(model);
+
+                // Structural problem provider
+                var provider = new ProblemStructural(model, solver);
+
+                // Linear static analysis
+                var childAnalyzer = new LinearAnalyzer(model, solver, provider);
+                var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
+
+                // Run the analysis
+                parentAnalyzer.Initialize();
+                parentAnalyzer.Solve();
+
+                var solutionLength = solver.LinearSystems[0].Solution.Length-1;
+                youngModulusSolutionPairs[i, 1] = solver.LinearSystems[0].Solution[solutionLength];
             }
-
-            // Solvers
-            var solverBuilder = new SuiteSparseSolver.Builder();
-            ISolver solver = solverBuilder.BuildSolver(model);
-
-            // Structural problem provider
-            var provider = new ProblemStructural(model, solver);
-
-            // Linear static analysis
-            var childAnalyzer = new LinearAnalyzer(model, solver, provider);
-            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
-
-            // Run the analysis
-            parentAnalyzer.Initialize();
-            parentAnalyzer.Solve();
+            
         }
 
 

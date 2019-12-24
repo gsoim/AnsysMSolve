@@ -164,9 +164,10 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
             return transformationMatrix;
         }
 
-        public double[] Stresses => throw new NotSupportedException();
+        private double[] trueStressVec;
+        public double[] Stresses => throw new NotImplementedException();
 
-        public int ID => throw new NotImplementedException();
+    public int ID => throw new NotImplementedException();
 
         public bool Modified => throw new NotImplementedException();
 
