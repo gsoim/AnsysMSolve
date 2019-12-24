@@ -8,6 +8,7 @@ using ISAAR.MSolve.Discretization.Integration.Quadratures;
 using ISAAR.MSolve.Discretization.Interfaces;
 using ISAAR.MSolve.Discretization.Mesh;
 using ISAAR.MSolve.FEM.Elements;
+using ISAAR.MSolve.FEM.Elements.SupportiveClasses;
 using ISAAR.MSolve.FEM.Embedding;
 using ISAAR.MSolve.FEM.Entities;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -16,6 +17,7 @@ using ISAAR.MSolve.Materials;
 using ISAAR.MSolve.Materials.Interfaces;
 using ISAAR.MSolve.MultiscaleAnalysis.Interfaces;
 using ISAAR.MSolve.Solvers.DomainDecomposition.Dual.FetiDP.CornerNodes;
+using Troschuetz.Random;
 
 namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
 {
@@ -72,10 +74,10 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
             var hostElements = model.Elements.Count();
             var hostNodes = model.Nodes.Count();
 
+
             (int[] cntNodeIds, double[,] cntNodecoords, int[,] cntElementConnectivity) = GetCntBeamsNodesData(hostNodes, hostElements);
-            AddCntBeamELements(model, cntNodeIds, cntNodecoords, cntElementConnectivity);
-
-
+            AddCntBeamElements(model, cntNodeIds, cntNodecoords, cntElementConnectivity);
+            
             var embeddedGrouping = EmbeddedBeam3DGrouping.CreateFullyBonded(model, model.ElementsDictionary
                         .Where(x => x.Key <= hostElements).Select(kv => kv.Value), model.ElementsDictionary.Where(x => x.Key > hostElements)
                         .Select(kv => kv.Value), true);
@@ -84,16 +86,71 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
 
         }
 
-        private void AddCntBeamELements(Model model, int[] cntNodeIds, double[,] cntNodecoords, int[,] cntElementConnectivity)
+        private void AddCntBeamElements(Model model, int[] cntNodeIds, double[,] cntNodeCoordinates, int[,] cntElementConnectivity)
         {
-            //implementation based on the following
-            //StochasticEmbeddedExample_10.EbeEmbeddedModelBuilder.EmbeddedElements_Stochastic(model, i);
-            throw new NotImplementedException();
+            var hostElements = model.Elements.Count;
+            for (int i = 0; i < cntNodeIds.Length; i++)
+            {
+                var nodeID = cntNodeIds[i];
+                var coordX = cntNodeCoordinates[i, 0];
+                var coordY = cntNodeCoordinates[i, 1];
+                var coordZ = cntNodeCoordinates[i, 2];
+
+                model.NodesDictionary.Add(nodeID, new Node(id: nodeID, x: coordX, y: coordY, z: coordZ));
+            }
+            
+            var beamSection =
+                new BeamSection3D(area, inertiaY, inertiaZ, torsionalInertia, effectiveAreaY, effectiveAreaZ);
+
+            for (int i = 0; i < cntElementConnectivity.GetLength(0); i++)
+            {
+                var elementNodes = new List<Node>
+                {
+                    model.NodesDictionary[cntElementConnectivity[i, 0]],
+                    model.NodesDictionary[cntElementConnectivity[i, 1]]
+                };
+
+                var beam_1 = new Beam3DCorotationalQuaternion(elementNodes, CntMaterial, 7.85, beamSection);
+                var beamElement = new Element { ID = i+hostElements, ElementType = beam_1 };
+
+                beamElement.AddNode(elementNodes[0]);
+                beamElement.AddNode(elementNodes[1]);
+
+                model.ElementsDictionary.Add(beamElement.ID, beamElement);
+                model.SubdomainsDictionary[0].Elements.Add(beamElement);
+            }
+            
         }
 
-        private (int[] cntNodeIds, double[,] cntNodecoords, int[,] cntElementConnectivity) GetCntBeamsNodesData(int hostNodes, int hostElements)
+        private (int[] cntNodeIds, double[,] cntNodeCoordinates, int[,] cntElementConnectivity) GetCntBeamsNodesData(int hostNodes, int hostElements)
         {
-            throw new NotImplementedException();
+            var cntNodeIds = new int[numberOfCnts*2];
+            var cntNodeCoordinates = new double[numberOfCnts * 2, 3];
+            var cntElementConnectivity = new int[numberOfCnts, 2];
+
+            var trandom = new TRandom();
+            for (int i = 0; i < numberOfCnts; i++)
+            {
+                var randomY = trandom.ContinuousUniform(0, L02);
+                var randomZ = trandom.ContinuousUniform(0, L03);
+
+                cntNodeIds[2 * i] = hostNodes + 2 * i;
+                cntNodeIds[2 * i + 1] = hostNodes + 2 * i + 1;
+
+                cntNodeCoordinates[2 * i, 0] = 1;
+                cntNodeCoordinates[2 * i, 1] = randomY;
+                cntNodeCoordinates[2 * i, 2] = randomZ;
+
+                cntNodeCoordinates[2 * i + 1, 0] = L01-1;
+                cntNodeCoordinates[2 * i + 1, 1] = randomY;
+                cntNodeCoordinates[2 * i + 1, 2] = randomZ;
+
+                cntElementConnectivity[i, 0] = cntNodeIds[2 * i];
+                cntElementConnectivity[i, 1] = cntNodeIds[2 * i + 1];
+            }
+
+
+            return (cntNodeIds, cntNodeCoordinates, cntElementConnectivity);
         }
 
         private void AddHexaElements(Model model, int[] nodeIds, double[,] node_coords, int[,] elementConnectivity)
@@ -107,7 +164,6 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
 
                 model.NodesDictionary.Add(nodeID, new Node(id: nodeID, x: nodeCoordX, y: nodeCoordY, z: nodeCoordZ));
             }
-
             
             var factoryOutter = new ContinuumElement3DFactory(matrixMaterial, null);
             for (int i1 = 0; i1 < elementConnectivity.GetLength(0); i1++)
