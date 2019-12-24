@@ -26,7 +26,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			string filepath = $"..\\..\\..\\InputFiles\\{filename}.iga";
 			var modelReader = new IgaFileReader(model, filepath);
 			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Linear,
-                new ShellElasticMaterial2Dtransformationb()
+                sectionMaterial:new ShellElasticSectionMaterial2D()
                 {
 					YoungModulus = 100,
 					PoissonRatio = 0.0
@@ -98,11 +98,12 @@ namespace ISAAR.MSolve.IGA.Tests
 			
 			var thickness = 1.0;
 
-			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness, new ShellElasticMaterial2D
-			{
-				PoissonRatio = 0.0,
-				YoungModulus = 100,
-			}, thickness);
+			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness, thickness:thickness,
+				shellMaterial: new ShellElasticMaterial2Dtransformationb()
+                {
+                    PoissonRatio = 0.0,
+                    YoungModulus = 100,
+                });
 			foreach (var controlPoint in model.ControlPointsDictionary.Values.Where(cp => cp.X < 3))
 			{
 				model.ControlPointsDictionary[controlPoint.ID].Constraints.Add(new Constraint(){DOF = StructuralDof.TranslationX});
@@ -222,11 +223,11 @@ namespace ISAAR.MSolve.IGA.Tests
 
 			var thickness = 1.0;
 			
-			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness ,new ShellElasticMaterial2D()
+			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness , shellMaterial:new ShellElasticMaterial2D()
 			{
 				PoissonRatio = 0.3,
 				YoungModulus = 10000
-			}, thickness);
+			}, thickness:thickness);
 			
 
 			for (int i = 0; i < 100; i++)

@@ -20,10 +20,14 @@ namespace ISAAR.MSolve.IGA.Elements
     public class TSplineKirchhoffLoveShellSectionElement: Element, IStructuralIsogeometricElement
 	{
         public TSplineKirchhoffLoveShellSectionElement(IShellSectionMaterial material,
-            ShapeTSplines2DFromBezierExtraction tsplines)
+            ShapeTSplines2DFromBezierExtraction tsplines,
+            GaussLegendrePoint3D[] gaussPoints,
+            double thickness)
         {
             _material = material;
             _tsplines = tsplines;
+            _gaussPoints = gaussPoints;
+            _thickness = thickness;
         }
 
 	    public Matrix ExtractionOperator { get; set; } 
@@ -36,7 +40,10 @@ namespace ISAAR.MSolve.IGA.Elements
 		protected IElementDofEnumerator dofEnumerator = new GenericDofEnumerator();
 		private DynamicMaterial dynamicProperties;
 		private IReadOnlyList<IShellSectionMaterial> materialsAtGaussPoints;
-        public CellType CellType { get; } = CellType.Unknown;
+        private readonly GaussLegendrePoint3D[] _gaussPoints;
+		private readonly double _thickness;
+
+		public CellType CellType { get; } = CellType.Unknown;
 
         public IElementDofEnumerator DofEnumerator
 		{
@@ -64,10 +71,9 @@ namespace ISAAR.MSolve.IGA.Elements
 		public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
 		{
 			var shellElement = (TSplineKirchhoffLoveShellElement)element;
-			IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			var ElementNodalForces = new double[shellElement.ControlPointsDictionary.Count * 3];
 			
-			for (int j = 0; j < gaussPoints.Count; j++)
+			for (int j = 0; j < _gaussPoints.Length; j++)
 			{
 				var jacobianMatrix = CalculateJacobian(shellElement, _tsplines, j);
 
@@ -94,10 +100,10 @@ namespace ISAAR.MSolve.IGA.Elements
 
 
                 var Fmembrane = Bmembrane.Multiply(MembraneForces, true);
-				Fmembrane.Scale(J1 * gaussPoints[j].WeightFactor);
+				Fmembrane.Scale(J1 * _gaussPoints[j].WeightFactor);
 
 				var Fbending = Bbending.Multiply(BendingMoments, true);
-				Fbending.Scale(J1 * gaussPoints[j].WeightFactor);
+				Fbending.Scale(J1 * _gaussPoints[j].WeightFactor);
 
 				ElementNodalForces.AddIntoThis(Fmembrane);
 				ElementNodalForces.AddIntoThis(Fbending);
@@ -140,10 +146,9 @@ namespace ISAAR.MSolve.IGA.Elements
 		public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements, double[] localdDisplacements)
 		{
 			var shellElement = (TSplineKirchhoffLoveShellElement)element;
-			IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			//Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
-			for (int j = 0; j < gaussPoints.Count; j++)
+			for (int j = 0; j < _gaussPoints.Length; j++)
 			{
 				var jacobianMatrix = CalculateJacobian(shellElement, _tsplines, j);
 
@@ -216,10 +221,9 @@ namespace ISAAR.MSolve.IGA.Elements
 		public IMatrix StiffnessMatrix(IElement element)
 		{
 			var shellElement = (TSplineKirchhoffLoveShellElement)element;
-            IList<GaussLegendrePoint3D> gaussPoints = CreateElementGaussPoints(shellElement);
 			Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
-			for (int j = 0; j < gaussPoints.Count; j++)
+			for (int j = 0; j < _gaussPoints.Length; j++)
 			{
 				var jacobianMatrix = CalculateJacobian(shellElement, _tsplines, j);
 
@@ -244,17 +248,17 @@ namespace ISAAR.MSolve.IGA.Elements
 				
 
 				var Kmembrane = Bmembrane.Transpose()*(Matrix)materialsAtGaussPoints[j].MembraneConstitutiveMatrix  * Bmembrane  * J1 *
-								gaussPoints[j].WeightFactor;
+								_gaussPoints[j].WeightFactor;
 
 				
 				var Kbending = Bbending.Transpose() * (Matrix)materialsAtGaussPoints[j].BendingConstitutiveMatrix * Bbending  * J1 *
-							   gaussPoints[j].WeightFactor;
+							   _gaussPoints[j].WeightFactor;
 
 				var KMembraneBending = Bmembrane.Transpose() * (Matrix)materialsAtGaussPoints[j].CouplingConstitutiveMatrix * Bbending * J1 *
-				               gaussPoints[j].WeightFactor;
+				               _gaussPoints[j].WeightFactor;
 
 				var KBendingMembrane = Bbending.Transpose() * (Matrix)materialsAtGaussPoints[j].CouplingConstitutiveMatrix * Bmembrane * J1 *
-				                       gaussPoints[j].WeightFactor;
+				                       _gaussPoints[j].WeightFactor;
 
 
 				stiffnessMatrixElement.AddIntoThis(Kmembrane);
@@ -461,17 +465,17 @@ namespace ISAAR.MSolve.IGA.Elements
 			return jacobianMatrix;
 		}
 
-        private IList<GaussLegendrePoint3D> CreateElementGaussPoints(TSplineKirchhoffLoveShellElement element)
-        {
-            GaussQuadrature gauss = new GaussQuadrature();
-            return gauss.CalculateElementGaussPoints(element.DegreeKsi, element.DegreeHeta, new List<Knot>
-                {
-                    new Knot(){ID=0,Ksi=-1,Heta = -1,Zeta = 0},
-                    new Knot(){ID=1,Ksi=-1,Heta = 1,Zeta = 0},
-                    new Knot(){ID=2,Ksi=1,Heta = -1,Zeta = 0},
-                    new Knot(){ID=3,Ksi=1,Heta = 1,Zeta = 0}
-                });
-		}
+  //      private IList<GaussLegendrePoint3D> CreateElementGaussPoints(TSplineKirchhoffLoveShellElement element)
+  //      {
+  //          GaussQuadrature gauss = new GaussQuadrature();
+  //          return gauss.CalculateElementGaussPoints(element.DegreeKsi, element.DegreeHeta, new List<Knot>
+  //              {
+  //                  new Knot(){ID=0,Ksi=-1,Heta = -1,Zeta = 0},
+  //                  new Knot(){ID=1,Ksi=-1,Heta = 1,Zeta = 0},
+  //                  new Knot(){ID=2,Ksi=1,Heta = -1,Zeta = 0},
+  //                  new Knot(){ID=3,Ksi=1,Heta = 1,Zeta = 0}
+  //              });
+		//}
 
 		public double[,] CalculateDisplacementsForPostProcessing(Element element, Matrix localDisplacements)
 		{

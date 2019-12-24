@@ -58,7 +58,8 @@ namespace ISAAR.MSolve.IGA.Readers
         /// <param name="shellType"><see cref="Enum"/> that specifies the type of the shells that will be generated.</param>
         /// <param name="shellMaterial">The material of the shell.</param>
         /// <param name="thickness">The thickness of the shell.</param>
-        public void CreateTSplineShellsModelFromFile(TSplineShellType shellType = TSplineShellType.Linear, IShellMaterial shellMaterial = null, double thickness = 1)
+        public void CreateTSplineShellsModelFromFile(TSplineShellType shellType = TSplineShellType.Linear, 
+            IShellMaterial shellMaterial = null, IShellSectionMaterial sectionMaterial=null, double thickness = 1)
 		{
 			char[] delimeters = { ' ', '=', '\t' };
 			Attributes? name = null;
@@ -144,7 +145,7 @@ namespace ISAAR.MSolve.IGA.Readers
 							switch (shellType)
 							{
 								case TSplineShellType.Linear:
-									CreateLinearShell(elementDegreeKsi, elementDegreeHeta, extractionOperator, connectivity, shellMaterial, thickness);
+									CreateLinearShell(elementDegreeKsi, elementDegreeHeta, extractionOperator, connectivity, sectionMaterial, thickness);
 									break;
 
 								case TSplineShellType.Thickness:
@@ -160,22 +161,28 @@ namespace ISAAR.MSolve.IGA.Readers
 			}
 		}
 
+
 		private void CreateLinearShell(int elementDegreeKsi, int elementDegreeHeta, Matrix extractionOperator,
-			int[] connectivity, IShellMaterial material, double thickness)
+			int[] connectivity, IShellSectionMaterial material, double thickness)
 		{
             var elementControlPoints= connectivity.Select(t => _model.ControlPointsDictionary[t]).ToArray();
             var tsplines = new ShapeTSplines2DFromBezierExtraction(elementDegreeKsi, elementDegreeHeta,
                 extractionOperator, elementControlPoints);
+			var gauss= new GaussQuadrature();
+			var gaussPoints= gauss.CalculateElementGaussPoints(elementDegreeKsi, elementDegreeHeta, new List<Knot>
+					{
+						new Knot(){ID=0,Ksi=-1,Heta = -1,Zeta = 0},
+						new Knot(){ID=1,Ksi=-1,Heta = 1,Zeta = 0},
+						new Knot(){ID=2,Ksi=1,Heta = -1,Zeta = 0},
+						new Knot(){ID=3,Ksi=1,Heta = 1,Zeta = 0}
+					}).ToArray();
 
 			Element element = new TSplineKirchhoffLoveShellElement(
-                material, tsplines, thickness)
+                material, tsplines, gaussPoints,thickness)
 			{
 				ID = elementIDCounter,
 				Patch = _model.PatchesDictionary[0],
-				ElementType = new TSplineKirchhoffLoveShellElement(material, tsplines, thickness),
-				DegreeKsi = elementDegreeKsi,
-				DegreeHeta = elementDegreeHeta,
-				ExtractionOperator = extractionOperator
+				ElementType = new TSplineKirchhoffLoveShellElement(material, tsplines, gaussPoints,thickness),
 			};
             element.AddControlPoints(elementControlPoints);
 			_model.ElementsDictionary.Add(elementIDCounter++, element);

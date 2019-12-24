@@ -24,34 +24,32 @@ namespace ISAAR.MSolve.IGA.Elements
 	/// </summary>
 	public class TSplineKirchhoffLoveShellElement : Element, IStructuralIsogeometricElement
 	{
-        public TSplineKirchhoffLoveShellElement(IShellMaterial material,
-            ShapeTSplines2DFromBezierExtraction tsplines,
-            double thickness)
+        public TSplineKirchhoffLoveShellElement(IShellSectionMaterial material,
+            ShapeTSplines2DFromBezierExtraction tsplines, GaussLegendrePoint3D[] gaussPoints,
+			double thickness)
         {
             _material = material;
             _tsplines = tsplines;
             _thickness = thickness;
-        }
+            _gaussPoints = gaussPoints;
+
+            foreach (var gaussPoint in _gaussPoints)
+                materialsAtThicknessGP.Add(gaussPoint, _material.Clone());
+		}
+
+        private readonly Dictionary<GaussLegendrePoint3D, IShellSectionMaterial> materialsAtThicknessGP =
+            new Dictionary<GaussLegendrePoint3D, IShellSectionMaterial>();
 		protected static readonly IDofType[] ControlPointDofTypes = new IDofType[] { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
-        private readonly IShellMaterial _material;
+        private readonly IShellSectionMaterial _material;
         private readonly ShapeTSplines2DFromBezierExtraction _tsplines;
         private readonly double _thickness;
-        private IDofType[][] _dofTypes;
+		private readonly GaussLegendrePoint3D[] _gaussPoints;
+		private IDofType[][] _dofTypes;
 
 		/// <summary>
 		/// Retrieves the type of Finite Element used. Since the element is Isogeometric its type is defined as unknown.
 		/// </summary>
 		public CellType CellType { get; } = CellType.Unknown;
-
-		/// <summary>
-		/// Property that Polynomial degree of the T-Splines shape functions per axis Heta.
-		/// </summary>
-		public int DegreeHeta { get; set; }
-
-		/// <summary>
-		/// Property that Polynomial degree of the T-Splines shape functions per axis Ksi.
-		/// </summary>
-		public int DegreeKsi { get; set; }
 
 		/// <summary>
 		/// Defines the way that elemental degrees of freedom will be enumerated.
@@ -63,12 +61,7 @@ namespace ISAAR.MSolve.IGA.Elements
 		/// Retrieves the number of Dimensions of the element.
 		/// </summary>
 		public ElementDimensions ElementDimensions => ElementDimensions.ThreeD;
-
-		/// <summary>
-		/// A <see cref="Matrix"/> that contains the Bezier extraction operator.
-		/// </summary>
-		public Matrix ExtractionOperator { get; set; }
-
+		
 		/// <summary>
 		/// Boolean property that determines whether the material used for this elements has been modified.
 		/// </summary>
@@ -268,12 +261,11 @@ namespace ISAAR.MSolve.IGA.Elements
 		public IMatrix StiffnessMatrix(IElement element)
 		{
 			var shellElement = (TSplineKirchhoffLoveShellElement)element;
-			var gaussPoints = CreateElementGaussPoints(shellElement);
 			var stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3,
 				shellElement.ControlPointsDictionary.Count * 3);
 			var elementControlPoints = shellElement.ControlPoints.ToArray();
 
-			for (var j = 0; j < gaussPoints.Count; j++)
+			for (var j = 0; j < _gaussPoints.Length; j++)
 			{
 				var jacobianMatrix = CalculateJacobian(elementControlPoints, _tsplines, j);
 
@@ -291,7 +283,14 @@ namespace ISAAR.MSolve.IGA.Elements
 				var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
 				var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
 
-				var constitutiveMatrix = CalculateConstitutiveMatrix(shellElement, surfaceBasisVector1, surfaceBasisVector2);
+                var material = materialsAtThicknessGP[_gaussPoints[j]];
+                material.TangentVectorV1 = surfaceBasisVector1.CopyToArray();
+                material.TangentVectorV2 = surfaceBasisVector2.CopyToArray();
+                material.NormalVectorV3 = surfaceBasisVector3.CopyToArray();
+                material.Thickness = this._thickness;
+
+                var membraneConstitutiveMatrix = material.MembraneConstitutiveMatrix;
+                var bendingConstitutiveMatrix = material.BendingConstitutiveMatrix;
 
 				var Bmembrane = CalculateMembraneDeformationMatrix(_tsplines, j, surfaceBasisVector1,
 					surfaceBasisVector2, elementControlPoints);
@@ -300,17 +299,12 @@ namespace ISAAR.MSolve.IGA.Elements
 					surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2,
 					surfaceBasisVectorDerivative12, elementControlPoints);
 
-				var membraneStiffness = _material.YoungModulus * _thickness /
-										   (1 - Math.Pow(_material.PoissonRatio, 2));
 
-				var Kmembrane = Bmembrane.Transpose() * constitutiveMatrix * Bmembrane * membraneStiffness * J1 *
-								gaussPoints[j].WeightFactor;
-
-				var bendingStiffness = _material.YoungModulus * Math.Pow(_thickness, 3) /
-										  12 / (1 - Math.Pow(_material.PoissonRatio, 2));
-
-				var Kbending = Bbending.Transpose() * constitutiveMatrix * Bbending * bendingStiffness * J1 *
-							   gaussPoints[j].WeightFactor;
+				var Kmembrane = Bmembrane.Transpose() * membraneConstitutiveMatrix * Bmembrane *  J1 *
+								_gaussPoints[j].WeightFactor;
+				
+				var Kbending = Bbending.Transpose() * bendingConstitutiveMatrix * Bbending  * J1 *
+							   _gaussPoints[j].WeightFactor;
 
 				stiffnessMatrixElement.AddIntoThis(Kmembrane);
 				stiffnessMatrixElement.AddIntoThis(Kbending);
@@ -514,16 +508,16 @@ namespace ISAAR.MSolve.IGA.Elements
 			return Bmembrane;
 		}
 
-		private IList<GaussLegendrePoint3D> CreateElementGaussPoints(TSplineKirchhoffLoveShellElement element)
-		{
-			GaussQuadrature gauss = new GaussQuadrature();
-			return gauss.CalculateElementGaussPoints(element.DegreeKsi, element.DegreeHeta, new List<Knot>
-				{
-					new Knot(){ID=0,Ksi=-1,Heta = -1,Zeta = 0},
-					new Knot(){ID=1,Ksi=-1,Heta = 1,Zeta = 0},
-					new Knot(){ID=2,Ksi=1,Heta = -1,Zeta = 0},
-					new Knot(){ID=3,Ksi=1,Heta = 1,Zeta = 0}
-				});
-		}
+		//private IList<GaussLegendrePoint3D> CreateElementGaussPoints(TSplineKirchhoffLoveShellElement element)
+		//{
+		//	GaussQuadrature gauss = new GaussQuadrature();
+		//	return gauss.CalculateElementGaussPoints(element.DegreeKsi, element.DegreeHeta, new List<Knot>
+		//		{
+		//			new Knot(){ID=0,Ksi=-1,Heta = -1,Zeta = 0},
+		//			new Knot(){ID=1,Ksi=-1,Heta = 1,Zeta = 0},
+		//			new Knot(){ID=2,Ksi=1,Heta = -1,Zeta = 0},
+		//			new Knot(){ID=3,Ksi=1,Heta = 1,Zeta = 0}
+		//		});
+		//}
 	}
 }

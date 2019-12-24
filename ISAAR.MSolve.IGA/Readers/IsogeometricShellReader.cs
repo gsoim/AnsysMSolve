@@ -27,6 +27,7 @@ namespace ISAAR.MSolve.IGA.Readers
 		private readonly string _filename;
         private readonly GeometricalFormulation _formulation;
         private readonly IShellMaterial _material;
+        private readonly IShellSectionMaterial _sectionaMaterial;
 
         private enum Attributes
 		{
@@ -46,11 +47,12 @@ namespace ISAAR.MSolve.IGA.Readers
 		/// <param name="modelCreator">An <see cref="ModelCreator"/> object responsible for generating the model.</param>
 		/// <param name="filename">The name of the file to be read.</param>
 		public IsogeometricShellReader(GeometricalFormulation formulation,
-            string filename, IShellMaterial material)
+            string filename, IShellMaterial material=null,IShellSectionMaterial sectionMaterial=null )
 		{
 			_filename = filename;
             _formulation = formulation;
             _material = material;
+            _sectionaMaterial = sectionMaterial;
         }
 
 		private Dictionary<int, int[]> ControlPointIDsDictionary = new Dictionary<int, int[]>();
@@ -315,11 +317,11 @@ namespace ISAAR.MSolve.IGA.Readers
                     switch (formulation)
                     {
                         case GeometricalFormulation.Linear:
-                            element = new NurbsKirchhoffLoveShellElement(_material,nurbs, gaussPoints,Thickness)
+                            element = new NurbsKirchhoffLoveShellElement(_sectionaMaterial,nurbs, gaussPoints,Thickness)
                             {
                                 ID = elementID,
                                 Patch = model.PatchesDictionary[0],
-                                ElementType = new NurbsKirchhoffLoveShellElement(_material, nurbs, gaussPoints, Thickness)
+                                ElementType = new NurbsKirchhoffLoveShellElement(_sectionaMaterial, nurbs, gaussPoints, Thickness)
                             };
                             element.AddKnots(knotsOfElement);
                             element.AddControlPoints(elementControlPoints);

@@ -27,7 +27,7 @@ namespace ISAAR.MSolve.IGA.Elements
 	/// </summary>
 	public class NurbsKirchhoffLoveShellElement : Element, IStructuralIsogeometricElement, ISurfaceLoadedElement
 	{
-        public NurbsKirchhoffLoveShellElement(IShellMaterial material,
+        public NurbsKirchhoffLoveShellElement(IShellSectionMaterial material,
             Nurbs2D nurbs, GaussLegendrePoint3D[] gaussPoints, 
             double thickness )
         {
@@ -35,10 +35,15 @@ namespace ISAAR.MSolve.IGA.Elements
             _nurbs = nurbs;
             _gaussPoints = gaussPoints;
             _thickness = thickness;
+
+            foreach (var gaussPoint in _gaussPoints)
+                materialsAtThicknessGP.Add(gaussPoint, _material.Clone());
         }
 
+        private readonly Dictionary<GaussLegendrePoint3D, IShellSectionMaterial> materialsAtThicknessGP =
+            new Dictionary<GaussLegendrePoint3D, IShellSectionMaterial>();
 		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
-        private readonly IShellMaterial _material;
+        private readonly IShellSectionMaterial _material;
         internal readonly Nurbs2D _nurbs;
         private readonly GaussLegendrePoint3D[] _gaussPoints;
         private readonly double _thickness;
@@ -246,22 +251,23 @@ namespace ISAAR.MSolve.IGA.Elements
 				var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
 				var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
 
-				Matrix constitutiveMatrix = CalculateConstitutiveMatrix(shellElement, surfaceBasisVector1, surfaceBasisVector2);
+                var material = materialsAtThicknessGP[_gaussPoints[j]];
+                material.TangentVectorV1 = surfaceBasisVector1.CopyToArray();
+                material.TangentVectorV2 = surfaceBasisVector2.CopyToArray();
+                material.NormalVectorV3 = surfaceBasisVector3.CopyToArray();
+                material.Thickness = this._thickness;
 
+                var membraneConstitutiveMatrix = material.MembraneConstitutiveMatrix;
+                var bendingConstitutiveMatrix = material.BendingConstitutiveMatrix;
+				
 				var Bmembrane = CalculateMembraneDeformationMatrix(_nurbs, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
 
 				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, _nurbs, j, surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, shellElement);
-
-				double membraneStiffness = _material.YoungModulus * _thickness /
-										   (1 - Math.Pow(_material.PoissonRatio, 2));
-
-				var Kmembrane = Bmembrane.Transpose() * constitutiveMatrix * Bmembrane * membraneStiffness * J1 *
+				
+				var Kmembrane = Bmembrane.Transpose() * membraneConstitutiveMatrix * Bmembrane *  J1 *
 								_gaussPoints[j].WeightFactor;
-
-				double bendingStiffness = _material.YoungModulus * Math.Pow(_thickness, 3) /
-										  12 / (1 - Math.Pow(_material.PoissonRatio, 2));
-
-				var Kbending = Bbending.Transpose() * constitutiveMatrix * Bbending * bendingStiffness * J1 *
+				
+				var Kbending = Bbending.Transpose() * bendingConstitutiveMatrix * Bbending  * J1 *
 							   _gaussPoints[j].WeightFactor;
 
 				stiffnessMatrixElement.AddIntoThis(Kmembrane);

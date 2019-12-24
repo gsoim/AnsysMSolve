@@ -484,7 +484,7 @@ namespace ISAAR.MSolve.IGA.Tests
             }
         }
 
-        [Fact]
+        //[Fact]
         public void IsogeometricCantileverShell()
         {
             var filename = "CantileverShellBenchmark16x1";

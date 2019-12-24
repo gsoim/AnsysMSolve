@@ -10,6 +10,7 @@ namespace ISAAR.MSolve.Materials.Interfaces
         new IShellSectionMaterial Clone();
 		double[] MembraneForces { get; }
 		double[] Moments { get; }
+		double Thickness { get; set; }
 		Matrix MembraneConstitutiveMatrix { get; }
 		Matrix BendingConstitutiveMatrix { get; }
 		Matrix CouplingConstitutiveMatrix { get; }

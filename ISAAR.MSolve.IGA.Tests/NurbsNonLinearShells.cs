@@ -157,7 +157,7 @@ namespace ISAAR.MSolve.IGA.Tests
 
             #endregion
 
-        [Fact]
+        //[Fact]
         public void IsogeometricCantileverShell()
         {
             var filename = "CantileverShellBenchmark16x1";
@@ -205,7 +205,7 @@ namespace ISAAR.MSolve.IGA.Tests
         }
 
 
-        [Fact]
+        //[Fact]
         public void IsogeometricCantileverShellMicrostructure()
         {
             var filename = "CantileverShellBenchmark16x1";

@@ -946,7 +946,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 }
 				var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
                     ElementControlPoints().ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
-				var material= new ShellElasticMaterial2Dtransformationb()
+				var material= new ShellElasticSectionMaterial2D()
                 {
                     YoungModulus = 100,
                     PoissonRatio = 0.0
