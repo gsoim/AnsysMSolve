@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Continuum;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Interfaces;
 using ISAAR.MSolve.IGA.SupportiveClasses;
@@ -204,16 +205,15 @@ namespace ISAAR.MSolve.IGA.Entities
 
 				int elementID = i;
                 var gaussQuadrature= new GaussQuadrature();
+                var gaussPoints = gaussQuadrature.CalculateElementGaussPoints(
+                    Degree, knotsOfElement).ToArray();
 				var edgeCP=CalculateEdgeControlPoints(this, elementControlPoints, _numberOfCpHeta, _numberOfCpZeta);
-				var nurbs = new Nurbs1D(Degree, KnotValueVector.CopyToArray(), edgeCP.ToArray(), 
-                    gaussQuadrature.CalculateElementGaussPoints(
-                        Degree, knotsOfElement).ToArray());
-                Element element = new NurbsElement1D(nurbs, _numberOfCpHeta, _numberOfCpZeta)
+                var nurbs = new Nurbs1D(Degree, KnotValueVector.CopyToArray(), edgeCP.ToArray(), gaussPoints);
+                var element = new Element
 				{
 					ID = elementID,
-					ElementType = new NurbsElement1D(nurbs,_numberOfCpHeta, _numberOfCpZeta),
+					ElementType = new ContinuumElement1D(nurbs, gaussPoints,_numberOfCpHeta, _numberOfCpZeta),
 					Patch = this.Patch,
-					Degree = this.Degree,
 					Model = Patch.Elements[0].Model
 				};
 
