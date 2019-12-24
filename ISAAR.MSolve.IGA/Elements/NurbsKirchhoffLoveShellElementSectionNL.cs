@@ -303,11 +303,11 @@ namespace ISAAR.MSolve.IGA.Elements
 					if (distributedLoad.ContainsKey(dofId))
 					{
 						distributedLoad[dofId] += loadMagnitude * J1 *
-                                                  _nurbs.NurbsValues[i, j] * gaussPoints[j].WeightFactor;
+                                                  _nurbs.Values[i, j] * gaussPoints[j].WeightFactor;
 					}
 					else
 					{
-						distributedLoad.Add(dofId, loadMagnitude * _nurbs.NurbsValues[i, j] * J1 * gaussPoints[j].WeightFactor);
+						distributedLoad.Add(dofId, loadMagnitude * _nurbs.Values[i, j] * J1 * gaussPoints[j].WeightFactor);
 					}
 				}
 			}
@@ -340,11 +340,11 @@ namespace ISAAR.MSolve.IGA.Elements
 						if (pressureLoad.ContainsKey(dofId))
 						{
 							pressureLoad[dofId] += pressureMagnitude * surfaceBasisVector3[k] *
-                                                   _nurbs.NurbsValues[i, j] * gaussPoints[j].WeightFactor;
+                                                   _nurbs.Values[i, j] * gaussPoints[j].WeightFactor;
 						}
 						else
 						{
-							pressureLoad.Add(dofId, pressureMagnitude * surfaceBasisVector3[k] * _nurbs.NurbsValues[i, j] * gaussPoints[j].WeightFactor);
+							pressureLoad.Add(dofId, pressureMagnitude * surfaceBasisVector3[k] * _nurbs.Values[i, j] * gaussPoints[j].WeightFactor);
 						}
 					}
 				}
@@ -615,23 +615,23 @@ namespace ISAAR.MSolve.IGA.Elements
 			for (var k = 0; k < controlPoints.Length; k++)
 			{
 				hessianMatrix[0, 0] +=
-					nurbs.NurbsSecondDerivativeValueKsi[k, j] * controlPoints[k].X;
+					nurbs.SecondDerivativeValuesKsi[k, j] * controlPoints[k].X;
 				hessianMatrix[0, 1] +=
-					nurbs.NurbsSecondDerivativeValueKsi[k, j] * controlPoints[k].Y;
+					nurbs.SecondDerivativeValuesKsi[k, j] * controlPoints[k].Y;
 				hessianMatrix[0, 2] +=
-					nurbs.NurbsSecondDerivativeValueKsi[k, j] * controlPoints[k].Z;
+					nurbs.SecondDerivativeValuesKsi[k, j] * controlPoints[k].Z;
 				hessianMatrix[1, 0] +=
-					nurbs.NurbsSecondDerivativeValueHeta[k, j] * controlPoints[k].X;
+					nurbs.SecondDerivativeValuesHeta[k, j] * controlPoints[k].X;
 				hessianMatrix[1, 1] +=
-					nurbs.NurbsSecondDerivativeValueHeta[k, j] * controlPoints[k].Y;
+					nurbs.SecondDerivativeValuesHeta[k, j] * controlPoints[k].Y;
 				hessianMatrix[1, 2] +=
-					nurbs.NurbsSecondDerivativeValueHeta[k, j] * controlPoints[k].Z;
+					nurbs.SecondDerivativeValuesHeta[k, j] * controlPoints[k].Z;
 				hessianMatrix[2, 0] +=
-					nurbs.NurbsSecondDerivativeValueKsiHeta[k, j] * controlPoints[k].X;
+					nurbs.SecondDerivativeValuesKsiHeta[k, j] * controlPoints[k].X;
 				hessianMatrix[2, 1] +=
-					nurbs.NurbsSecondDerivativeValueKsiHeta[k, j] * controlPoints[k].Y;
+					nurbs.SecondDerivativeValuesKsiHeta[k, j] * controlPoints[k].Y;
 				hessianMatrix[2, 2] +=
-					nurbs.NurbsSecondDerivativeValueKsiHeta[k, j] * controlPoints[k].Z;
+					nurbs.SecondDerivativeValuesKsiHeta[k, j] * controlPoints[k].Z;
 			}
 
 			return hessianMatrix;
@@ -642,12 +642,12 @@ namespace ISAAR.MSolve.IGA.Elements
 			var jacobianMatrix = new double[2, 3];
 			for (var k = 0; k < controlPoints.Length; k++)
 			{
-				jacobianMatrix[0, 0] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].X;
-				jacobianMatrix[0, 1] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].Y;
-				jacobianMatrix[0, 2] += nurbs.NurbsDerivativeValuesKsi[k, j] * controlPoints[k].Z;
-				jacobianMatrix[1, 0] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].X;
-				jacobianMatrix[1, 1] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].Y;
-				jacobianMatrix[1, 2] += nurbs.NurbsDerivativeValuesHeta[k, j] * controlPoints[k].Z;
+				jacobianMatrix[0, 0] += nurbs.DerivativeValuesKsi[k, j] * controlPoints[k].X;
+				jacobianMatrix[0, 1] += nurbs.DerivativeValuesKsi[k, j] * controlPoints[k].Y;
+				jacobianMatrix[0, 2] += nurbs.DerivativeValuesKsi[k, j] * controlPoints[k].Z;
+				jacobianMatrix[1, 0] += nurbs.DerivativeValuesHeta[k, j] * controlPoints[k].X;
+				jacobianMatrix[1, 1] += nurbs.DerivativeValuesHeta[k, j] * controlPoints[k].Y;
+				jacobianMatrix[1, 2] += nurbs.DerivativeValuesHeta[k, j] * controlPoints[k].Z;
 			}
 
 			return jacobianMatrix;
@@ -680,25 +680,25 @@ namespace ISAAR.MSolve.IGA.Elements
 				#region BI1
 
 				var BI1 = s3.CrossProduct(s1);
-				BI1.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
+				BI1.ScaleIntoThis(nurbs.DerivativeValuesHeta[column / 3, j]);
 				var auxVector = s2.CrossProduct(s3);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesKsi[column / 3, j]);
 				BI1.AddIntoThis(auxVector);
 
 				BI1.ScaleIntoThis(s3.DotProduct(s11));
 				auxVector = s1.CrossProduct(s11);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesHeta[column / 3, j]);
 				BI1.AddIntoThis(auxVector);
 
 				auxVector = s11.CrossProduct(s2);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesKsi[column / 3, j]);
 				BI1.AddIntoThis(auxVector);
 
 				BI1.ScaleIntoThis(1 / J1);
 				auxVector[0] = surfaceBasisVector3[0];
 				auxVector[1] = surfaceBasisVector3[1];
 				auxVector[2] = surfaceBasisVector3[2];
-				auxVector.ScaleIntoThis(-nurbs.NurbsSecondDerivativeValueKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(-nurbs.SecondDerivativeValuesKsi[column / 3, j]);
 				BI1.AddIntoThis(auxVector);
 
 				#endregion BI1
@@ -706,22 +706,22 @@ namespace ISAAR.MSolve.IGA.Elements
 				#region BI2
 
 				IVector BI2 = s3.CrossProduct(s1);
-				BI2.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
+				BI2.ScaleIntoThis(nurbs.DerivativeValuesHeta[column / 3, j]);
 				auxVector = s2.CrossProduct(s3);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesKsi[column / 3, j]);
 				BI2.AddIntoThis(auxVector);
 				BI2.ScaleIntoThis(s3.DotProduct(s22));
 				auxVector = s1.CrossProduct(s22);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesHeta[column / 3, j]);
 				BI2.AddIntoThis(auxVector);
 				auxVector = s22.CrossProduct(s2);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesKsi[column / 3, j]);
 				BI2.AddIntoThis(auxVector);
 				BI2.ScaleIntoThis(1 / J1);
 				auxVector[0] = surfaceBasisVector3[0];
 				auxVector[1] = surfaceBasisVector3[1];
 				auxVector[2] = surfaceBasisVector3[2];
-				auxVector.ScaleIntoThis(-nurbs.NurbsSecondDerivativeValueHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(-nurbs.SecondDerivativeValuesHeta[column / 3, j]);
 				BI2.AddIntoThis(auxVector);
 
 				#endregion BI2
@@ -729,22 +729,22 @@ namespace ISAAR.MSolve.IGA.Elements
 				#region BI3
 
 				var BI3 = s3.CrossProduct(s1);
-				BI3.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
+				BI3.ScaleIntoThis(nurbs.DerivativeValuesHeta[column / 3, j]);
 				auxVector = s2.CrossProduct(s3);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesKsi[column / 3, j]);
 				BI3.AddIntoThis(auxVector);
 				BI3.ScaleIntoThis(s3.DotProduct(s12));
 				auxVector = s1.CrossProduct(s12);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesHeta[column / 3, j]);
 				BI3.AddIntoThis(auxVector);
 				auxVector = s22.CrossProduct(s2);
-				auxVector.ScaleIntoThis(nurbs.NurbsDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(nurbs.DerivativeValuesKsi[column / 3, j]);
 				BI3.AddIntoThis(auxVector);
 				BI3.ScaleIntoThis(1 / J1);
 				auxVector[0] = surfaceBasisVector3[0];
 				auxVector[1] = surfaceBasisVector3[1];
 				auxVector[2] = surfaceBasisVector3[2];
-				auxVector.ScaleIntoThis(-nurbs.NurbsSecondDerivativeValueKsiHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(-nurbs.SecondDerivativeValuesKsiHeta[column / 3, j]);
 				BI3.AddIntoThis(auxVector);
 
 				#endregion BI3
@@ -835,20 +835,20 @@ namespace ISAAR.MSolve.IGA.Elements
 
             for (int i = 0; i < controlPoints.Length; i++)
 			{
-				var a1r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[i, j]);
-				var a2r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[i, j]);
+				var a1r = Matrix3by3.CreateIdentity().Scale(nurbs.DerivativeValuesKsi[i, j]);
+				var a2r = Matrix3by3.CreateIdentity().Scale(nurbs.DerivativeValuesHeta[i, j]);
 
-				var a11r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsi[i, j]);
-				var a22r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueHeta[i, j]);
-				var a12r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsiHeta[i, j]);
+				var a11r = Matrix3by3.CreateIdentity().Scale(nurbs.SecondDerivativeValuesKsi[i, j]);
+				var a22r = Matrix3by3.CreateIdentity().Scale(nurbs.SecondDerivativeValuesHeta[i, j]);
+				var a12r = Matrix3by3.CreateIdentity().Scale(nurbs.SecondDerivativeValuesKsiHeta[i, j]);
 				for (int k = 0; k < controlPoints.Length; k++)
 				{
-                    var a1s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[k, j]);
-                    var a2s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[k, j]);
+                    var a1s = Matrix3by3.CreateIdentity().Scale(nurbs.DerivativeValuesKsi[k, j]);
+                    var a2s = Matrix3by3.CreateIdentity().Scale(nurbs.DerivativeValuesHeta[k, j]);
                     
-                    var a11s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsi[k, j]);
-					var a22s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueHeta[k, j]);
-					var a12s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsSecondDerivativeValueKsiHeta[k, j]);
+                    var a11s = Matrix3by3.CreateIdentity().Scale(nurbs.SecondDerivativeValuesKsi[k, j]);
+					var a22s = Matrix3by3.CreateIdentity().Scale(nurbs.SecondDerivativeValuesHeta[k, j]);
+					var a12s = Matrix3by3.CreateIdentity().Scale(nurbs.SecondDerivativeValuesKsiHeta[k, j]);
 
                     var a3r = CalculateA3r(nurbs, i, j, surfaceBasisVector2, surfaceBasisVector1, a1r, a2r, surfaceBasisVector3, J1);
                     var a3s = CalculateA3r(nurbs, k, j, surfaceBasisVector2, surfaceBasisVector1, a1s, a2s, surfaceBasisVector3, J1);
@@ -1025,12 +1025,12 @@ namespace ISAAR.MSolve.IGA.Elements
 
 			for (var i = 0; i < controlPoints.Length; i++)
 			{
-				var a1r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[i, j]);
-				var a2r = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[i, j]);
+				var a1r = Matrix3by3.CreateIdentity().Scale(nurbs.DerivativeValuesKsi[i, j]);
+				var a2r = Matrix3by3.CreateIdentity().Scale(nurbs.DerivativeValuesHeta[i, j]);
 				for (int k = 0; k < controlPoints.Length; k++)
 				{
-					var a1s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesKsi[k, j]);
-					var a2s = Matrix3by3.CreateIdentity().Scale(nurbs.NurbsDerivativeValuesHeta[k, j]);
+					var a1s = Matrix3by3.CreateIdentity().Scale(nurbs.DerivativeValuesKsi[k, j]);
+					var a2s = Matrix3by3.CreateIdentity().Scale(nurbs.DerivativeValuesHeta[k, j]);
 
 					var klocal = membraneForces[0] * a1r * a1s + membraneForces[1] * a2r * a2s +
 								 membraneForces[2] * (a1r * a2s + a1s * a2r);
@@ -1065,20 +1065,20 @@ namespace ISAAR.MSolve.IGA.Elements
 			var bmembrane = new double[3, controlPoints.Length * 3];
 			for (int column = 0; column < controlPoints.Length * 3; column += 3)
 			{
-				bmembrane[0, column] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[0];
-				bmembrane[0, column + 1] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[1];
-				bmembrane[0, column + 2] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[2];
+				bmembrane[0, column] = nurbs.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[0];
+				bmembrane[0, column + 1] = nurbs.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[1];
+				bmembrane[0, column + 2] = nurbs.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[2];
 
-				bmembrane[1, column] = nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[0];
-				bmembrane[1, column + 1] = nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[1];
-				bmembrane[1, column + 2] = nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[2];
+				bmembrane[1, column] = nurbs.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[0];
+				bmembrane[1, column + 1] = nurbs.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[1];
+				bmembrane[1, column + 2] = nurbs.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[2];
 
-				bmembrane[2, column] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[0]+
-                                       nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[0] ;
-                bmembrane[2, column + 1] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[1] +
-                                           nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[1];
-				bmembrane[2, column + 2] = nurbs.NurbsDerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[2] +
-                                           nurbs.NurbsDerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[2];
+				bmembrane[2, column] = nurbs.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[0]+
+                                       nurbs.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[0] ;
+                bmembrane[2, column + 1] = nurbs.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[1] +
+                                           nurbs.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[1];
+				bmembrane[2, column + 2] = nurbs.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector2[2] +
+                                           nurbs.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector1[2];
 			}
 
 			return bmembrane;

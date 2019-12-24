@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.SupportiveClasses.Interfaces;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 
@@ -10,7 +11,7 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
     /// <summary>
 	/// Two-dimensional T-spline shape functions from Bezier extraction.
 	/// </summary>
-	public class ShapeTSplines2DFromBezierExtraction
+	public class ShapeTSplines2DFromBezierExtraction:IShapeFunction2D
 	{
 		/// <summary>
 		/// Two-dimensional T-spline shape functions from Bezier extraction for <see cref="TSplineKirchhoffLoveShellElement"/>.
@@ -84,12 +85,12 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 			Matrix rationalTSplineSecondDerivativesHeta = extractionOperator * bernsteinShapeFunctionSecondDerivativesHeta;
 			Matrix rationalTSplineSecondDerivativesKsiHeta = extractionOperator * bernsteinShapeFunctionSecondDerivativesKsiHeta;
 
-			TSplineValues = Matrix.CreateZero(controlPoints.Length, supportKsi * supportHeta);
-			TSplineDerivativeValuesKsi = Matrix.CreateZero(controlPoints.Length, supportKsi * supportHeta);
-			TSplineDerivativeValuesHeta = Matrix.CreateZero(controlPoints.Length, supportKsi * supportHeta);
-			TSplineSecondDerivativesValueKsi = Matrix.CreateZero(controlPoints.Length, supportKsi * supportHeta);
-			TSplineSecondDerivativesValueHeta = Matrix.CreateZero(controlPoints.Length, supportKsi * supportHeta);
-			TSplineSecondDerivativesValueKsiHeta = Matrix.CreateZero(controlPoints.Length, supportKsi * supportHeta);
+			Values = new double[controlPoints.Length, supportKsi * supportHeta];
+			DerivativeValuesKsi = new double[controlPoints.Length, supportKsi * supportHeta];
+			DerivativeValuesHeta = new double[controlPoints.Length, supportKsi * supportHeta];
+			SecondDerivativeValuesKsi = new double[controlPoints.Length, supportKsi * supportHeta];
+			SecondDerivativeValuesHeta = new double[controlPoints.Length, supportKsi * supportHeta];
+			SecondDerivativeValuesKsiHeta = new double[controlPoints.Length, supportKsi * supportHeta];
 
 			for (int i = 0; i < supportKsi; i++)
 			{
@@ -116,27 +117,27 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 
 					for (int k = 0; k < controlPoints.Length; k++)
 					{
-						TSplineValues[k, index] = rationalTSplines[k, index] * controlPoints[k].WeightFactor / sumKsiHeta;
-						TSplineDerivativeValuesKsi[k, index] = (rationalTSplineDerivativesKsi[k, index] * sumKsiHeta -
+						Values[k, index] = rationalTSplines[k, index] * controlPoints[k].WeightFactor / sumKsiHeta;
+						DerivativeValuesKsi[k, index] = (rationalTSplineDerivativesKsi[k, index] * sumKsiHeta -
 																rationalTSplines[k, index] * sumdKsiHeta) /
 															   Math.Pow(sumKsiHeta, 2) * controlPoints[k].WeightFactor;
-						TSplineDerivativeValuesHeta[k, index] = (rationalTSplineDerivativesHeta[k, index] * sumKsiHeta -
+						DerivativeValuesHeta[k, index] = (rationalTSplineDerivativesHeta[k, index] * sumKsiHeta -
 																 rationalTSplines[k, index] * sumKsidHeta) /
 																Math.Pow(sumKsiHeta, 2) * controlPoints[k].WeightFactor;
-						TSplineSecondDerivativesValueKsi[k, index] = (rationalTSplineSecondDerivativesKsi[k, index] / sumKsiHeta -
+						SecondDerivativeValuesKsi[k, index] = (rationalTSplineSecondDerivativesKsi[k, index] / sumKsiHeta -
 																	  2 * rationalTSplineDerivativesKsi[k, index] * sumdKsiHeta /
 																	  Math.Pow(sumKsiHeta, 2) -
 																	  rationalTSplines[k, index] * sumdKsidKsi / Math.Pow(sumKsiHeta, 2) +
 																	  2 * rationalTSplines[k, index] * Math.Pow(sumdKsiHeta, 2) /
 																	  Math.Pow(sumKsiHeta, 3)) * controlPoints[k].WeightFactor;
-						TSplineSecondDerivativesValueHeta[k, index] = (rationalTSplineSecondDerivativesHeta[k, index] / sumKsiHeta -
+						SecondDerivativeValuesHeta[k, index] = (rationalTSplineSecondDerivativesHeta[k, index] / sumKsiHeta -
 																	   2 * rationalTSplineDerivativesHeta[k, index] * sumKsidHeta /
 																	   Math.Pow(sumKsiHeta, 2) -
 																	   rationalTSplines[k, index] * sumdHetadHeta /
 																	   Math.Pow(sumKsiHeta, 2) +
 																	   2 * rationalTSplines[k, index] * Math.Pow(sumKsidHeta, 2) /
 																	   Math.Pow(sumKsiHeta, 3)) * controlPoints[k].WeightFactor;
-						TSplineSecondDerivativesValueKsiHeta[k, index] = (rationalTSplineSecondDerivativesKsiHeta[k, index] / sumKsiHeta -
+						SecondDerivativeValuesKsiHeta[k, index] = (rationalTSplineSecondDerivativesKsiHeta[k, index] / sumKsiHeta -
 																		  rationalTSplineDerivativesKsi[k, index] * sumKsidHeta /
 																		  Math.Pow(sumKsiHeta, 2) -
 																		  rationalTSplineDerivativesHeta[k, index] * sumdKsiHeta /
@@ -155,37 +156,37 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 		/// <see cref="Matrix"/> containing T-Spline shape function derivatives per axis Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix TSplineDerivativeValuesHeta { get; private set; }
+		public double[,] DerivativeValuesHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing T-Spline shape function derivatives per axis Ksi.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix TSplineDerivativeValuesKsi { get; private set; }
+		public double[,] DerivativeValuesKsi { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing T-Spline shape function second derivatives per axis Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix TSplineSecondDerivativesValueHeta { get; private set; }
+		public double[,] SecondDerivativeValuesHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing T-Spline shape function second derivatives per axis Ksi.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix TSplineSecondDerivativesValueKsi { get; private set; }
+		public double[,] SecondDerivativeValuesKsi { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing T-Spline shape function mixed second derivatives per axis Ksi and Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix TSplineSecondDerivativesValueKsiHeta { get; private set; }
+		public double[,] SecondDerivativeValuesKsiHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing T-Spline shape functions.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix TSplineValues { get; private set; }
+		public double[,] Values { get; private set; }
 
 		private static Matrix KroneckerProduct(Matrix A, Matrix B)
 		{

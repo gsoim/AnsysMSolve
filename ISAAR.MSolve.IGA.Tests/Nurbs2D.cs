@@ -308,8 +308,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			for (var p = 0; p < 16; p++)
 			{
 				var sum = 0.0;
-				for (var f = 0; f < nurbs2D.NurbsValues.GetLength(0); f++)
-					sum += nurbs2D.NurbsValues[f, p];
+				for (var f = 0; f < nurbs2D.Values.GetLength(0); f++)
+					sum += nurbs2D.Values[f, p];
 				Assert.True(Utilities.AreValuesEqual(1.0, sum, Tolerance));
 			}
 		}
@@ -324,7 +324,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				for (var j = 0; j < 16; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedValues[i, j], nurbs2D.NurbsValues[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedValues[i, j], nurbs2D.Values[i, j],
 						Tolerance));
 				}
 			}
@@ -342,7 +342,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				for (var j = 0; j < 16; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsDerivativeKsiExpectedValues[i, j], nurbs2D.NurbsDerivativeValuesKsi[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsDerivativeKsiExpectedValues[i, j], nurbs2D.DerivativeValuesKsi[i, j],
 						Tolerance));
 				}
 			}
@@ -359,7 +359,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				for (var j = 0; j < 16; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsDerivativeHetaExpectedValues[i, j], nurbs2D.NurbsDerivativeValuesHeta[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsDerivativeHetaExpectedValues[i, j], nurbs2D.DerivativeValuesHeta[i, j],
 						Tolerance));
 				}
 			}
@@ -376,7 +376,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				for (var j = 0; j < 12; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsSecondDerivativesKsiExpectedValues[i, j], nurbs2D.NurbsSecondDerivativeValueKsi[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsSecondDerivativesKsiExpectedValues[i, j], 
+                        nurbs2D.SecondDerivativeValuesKsi[i, j],
 						Tolerance));
 				}
 			}
@@ -393,7 +394,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				for (var j = 0; j < 12; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsSecondDerivativesHetaExpectedValues[i, j], nurbs2D.NurbsSecondDerivativeValueHeta[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsSecondDerivativesHetaExpectedValues[i, j],
+                        nurbs2D.SecondDerivativeValuesHeta[i, j],
 						Tolerance));
 				}
 			}
@@ -410,7 +412,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				for (var j = 0; j < 12; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsSecondDerivativesKsiHetaExpectedValues[i, j], nurbs2D.NurbsSecondDerivativeValueKsiHeta[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsSecondDerivativesKsiHetaExpectedValues[i, j], 
+                        nurbs2D.SecondDerivativeValuesKsiHeta[i, j],
 						Tolerance));
 				}
 			}

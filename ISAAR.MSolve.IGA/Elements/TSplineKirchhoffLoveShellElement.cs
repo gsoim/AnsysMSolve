@@ -184,9 +184,9 @@ namespace ISAAR.MSolve.IGA.Elements
 			{
 				for (int i = 0; i < elementControlPoints.Length; i++)
 				{
-					knotDisplacements[paraviewKnotRenumbering[j], 0] += _tsplines.TSplineValues[i, j] * elementControlPoints[i].X;
-					knotDisplacements[paraviewKnotRenumbering[j], 1] += _tsplines.TSplineValues[i, j] * elementControlPoints[i].Y;
-					knotDisplacements[paraviewKnotRenumbering[j], 2] += _tsplines.TSplineValues[i, j] * elementControlPoints[i].Z;
+					knotDisplacements[paraviewKnotRenumbering[j], 0] += _tsplines.Values[i, j] * elementControlPoints[i].X;
+					knotDisplacements[paraviewKnotRenumbering[j], 1] += _tsplines.Values[i, j] * elementControlPoints[i].Y;
+					knotDisplacements[paraviewKnotRenumbering[j], 2] += _tsplines.Values[i, j] * elementControlPoints[i].Z;
 				}
 			}
 
@@ -317,15 +317,15 @@ namespace ISAAR.MSolve.IGA.Elements
 			Matrix hessianMatrix = Matrix.CreateZero(3, 3);
 			for (int k = 0; k < elementControlPoints.Length; k++)
 			{
-				hessianMatrix[0, 0] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * elementControlPoints[k].X;
-				hessianMatrix[0, 1] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * elementControlPoints[k].Y;
-				hessianMatrix[0, 2] += tsplines.TSplineSecondDerivativesValueKsi[k, j] * elementControlPoints[k].Z;
-				hessianMatrix[1, 0] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * elementControlPoints[k].X;
-				hessianMatrix[1, 1] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * elementControlPoints[k].Y;
-				hessianMatrix[1, 2] += tsplines.TSplineSecondDerivativesValueHeta[k, j] * elementControlPoints[k].Z;
-				hessianMatrix[2, 0] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * elementControlPoints[k].X;
-				hessianMatrix[2, 1] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * elementControlPoints[k].Y;
-				hessianMatrix[2, 2] += tsplines.TSplineSecondDerivativesValueKsiHeta[k, j] * elementControlPoints[k].Z;
+				hessianMatrix[0, 0] += tsplines.SecondDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+				hessianMatrix[0, 1] += tsplines.SecondDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+				hessianMatrix[0, 2] += tsplines.SecondDerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
+				hessianMatrix[1, 0] += tsplines.SecondDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
+				hessianMatrix[1, 1] += tsplines.SecondDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
+				hessianMatrix[1, 2] += tsplines.SecondDerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
+				hessianMatrix[2, 0] += tsplines.SecondDerivativeValuesKsiHeta[k, j] * elementControlPoints[k].X;
+				hessianMatrix[2, 1] += tsplines.SecondDerivativeValuesKsiHeta[k, j] * elementControlPoints[k].Y;
+				hessianMatrix[2, 2] += tsplines.SecondDerivativeValuesKsiHeta[k, j] * elementControlPoints[k].Z;
 			}
 
 			return hessianMatrix;
@@ -336,12 +336,12 @@ namespace ISAAR.MSolve.IGA.Elements
 			var jacobianMatrix = Matrix.CreateZero(2, 3);
 			for (var k = 0; k < elementControlPoints.Length; k++)
 			{
-				jacobianMatrix[0, 0] += tsplines.TSplineDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-				jacobianMatrix[0, 1] += tsplines.TSplineDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
-				jacobianMatrix[0, 2] += tsplines.TSplineDerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
-				jacobianMatrix[1, 0] += tsplines.TSplineDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
-				jacobianMatrix[1, 1] += tsplines.TSplineDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
-				jacobianMatrix[1, 2] += tsplines.TSplineDerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
+				jacobianMatrix[0, 0] += tsplines.DerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+				jacobianMatrix[0, 1] += tsplines.DerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+				jacobianMatrix[0, 2] += tsplines.DerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
+				jacobianMatrix[1, 0] += tsplines.DerivativeValuesHeta[k, j] * elementControlPoints[k].X;
+				jacobianMatrix[1, 1] += tsplines.DerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
+				jacobianMatrix[1, 2] += tsplines.DerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
 			}
 
 			return jacobianMatrix;
@@ -366,19 +366,19 @@ namespace ISAAR.MSolve.IGA.Elements
 				#region BI1
 
 				var BI1 = surfaceBasisVector3.CrossProduct(surfaceBasisVector3);
-				BI1.ScaleIntoThis(tsplines.TSplineDerivativeValuesHeta[column / 3, j]);
+				BI1.ScaleIntoThis(tsplines.DerivativeValuesHeta[column / 3, j]);
 				var auxVector = surfaceBasisVector2.CrossProduct(surfaceBasisVector3);
-				auxVector.ScaleIntoThis(tsplines.TSplineDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(tsplines.DerivativeValuesKsi[column / 3, j]);
 				BI1.AddIntoThis(auxVector);
 				BI1.ScaleIntoThis(surfaceBasisVector3.DotProduct(surfaceBasisVectorDerivative1));
 				auxVector = surfaceBasisVector1.CrossProduct(surfaceBasisVectorDerivative1);
-				auxVector.ScaleIntoThis(tsplines.TSplineDerivativeValuesHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(tsplines.DerivativeValuesHeta[column / 3, j]);
 				BI1.AddIntoThis(auxVector);
 				BI1.ScaleIntoThis(1 / J1);
 				auxVector[0] = surfaceBasisVector3[0];
 				auxVector[1] = surfaceBasisVector3[1];
 				auxVector[2] = surfaceBasisVector3[2];
-				auxVector.ScaleIntoThis(-tsplines.TSplineSecondDerivativesValueKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(-tsplines.SecondDerivativeValuesKsi[column / 3, j]);
 				BI1.AddIntoThis(auxVector);
 
 				#endregion BI1
@@ -386,22 +386,22 @@ namespace ISAAR.MSolve.IGA.Elements
 				#region BI2
 
 				Vector BI2 = surfaceBasisVector3.CrossProduct(surfaceBasisVector3);
-				BI2.ScaleIntoThis(tsplines.TSplineDerivativeValuesHeta[column / 3, j]);
+				BI2.ScaleIntoThis(tsplines.DerivativeValuesHeta[column / 3, j]);
 				auxVector = surfaceBasisVector2.CrossProduct(surfaceBasisVector3);
-				auxVector.ScaleIntoThis(tsplines.TSplineDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(tsplines.DerivativeValuesKsi[column / 3, j]);
 				BI2.AddIntoThis(auxVector);
 				BI2.ScaleIntoThis(surfaceBasisVector3.DotProduct(surfaceBasisVectorDerivative2));
 				auxVector = surfaceBasisVector1.CrossProduct(surfaceBasisVectorDerivative2);
-				auxVector.ScaleIntoThis(tsplines.TSplineDerivativeValuesHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(tsplines.DerivativeValuesHeta[column / 3, j]);
 				BI2.AddIntoThis(auxVector);
 				auxVector = surfaceBasisVectorDerivative2.CrossProduct(surfaceBasisVector2);
-				auxVector.ScaleIntoThis(tsplines.TSplineDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(tsplines.DerivativeValuesKsi[column / 3, j]);
 				BI2.AddIntoThis(auxVector);
 				BI2.ScaleIntoThis(1 / J1);
 				auxVector[0] = surfaceBasisVector3[0];
 				auxVector[1] = surfaceBasisVector3[1];
 				auxVector[2] = surfaceBasisVector3[2];
-				auxVector.ScaleIntoThis(-tsplines.TSplineSecondDerivativesValueHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(-tsplines.SecondDerivativeValuesHeta[column / 3, j]);
 				BI2.AddIntoThis(auxVector);
 
 				#endregion BI2
@@ -409,22 +409,22 @@ namespace ISAAR.MSolve.IGA.Elements
 				#region BI3
 
 				Vector BI3 = surfaceBasisVector3.CrossProduct(surfaceBasisVector3);
-				BI3.ScaleIntoThis(tsplines.TSplineDerivativeValuesHeta[column / 3, j]);
+				BI3.ScaleIntoThis(tsplines.DerivativeValuesHeta[column / 3, j]);
 				auxVector = surfaceBasisVector2.CrossProduct(surfaceBasisVector3);
-				auxVector.ScaleIntoThis(tsplines.TSplineDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(tsplines.DerivativeValuesKsi[column / 3, j]);
 				BI3.AddIntoThis(auxVector);
 				BI3.ScaleIntoThis(surfaceBasisVector3.DotProduct(surfaceBasisVectorDerivative12));
 				auxVector = surfaceBasisVector1.CrossProduct(surfaceBasisVectorDerivative12);
-				auxVector.ScaleIntoThis(tsplines.TSplineDerivativeValuesHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(tsplines.DerivativeValuesHeta[column / 3, j]);
 				BI3.AddIntoThis(auxVector);
 				auxVector = surfaceBasisVectorDerivative2.CrossProduct(surfaceBasisVector2);
-				auxVector.ScaleIntoThis(tsplines.TSplineDerivativeValuesKsi[column / 3, j]);
+				auxVector.ScaleIntoThis(tsplines.DerivativeValuesKsi[column / 3, j]);
 				BI3.AddIntoThis(auxVector);
 				BI3.ScaleIntoThis(1 / J1);
 				auxVector[0] = surfaceBasisVector3[0];
 				auxVector[1] = surfaceBasisVector3[1];
 				auxVector[2] = surfaceBasisVector3[2];
-				auxVector.ScaleIntoThis(-tsplines.TSplineSecondDerivativesValueKsiHeta[column / 3, j]);
+				auxVector.ScaleIntoThis(-tsplines.SecondDerivativeValuesKsiHeta[column / 3, j]);
 				BI3.AddIntoThis(auxVector);
 
 				#endregion BI3
@@ -484,21 +484,21 @@ namespace ISAAR.MSolve.IGA.Elements
 			{
 				for (int m = 0; m < 3; m++)
 				{
-					dRIa[m, i] = tsplines.TSplineDerivativeValuesHeta[i, j] * surfaceBasisVector1[m] +
-								 tsplines.TSplineDerivativeValuesKsi[i, j] * surfaceBasisVector2[m];
+					dRIa[m, i] = tsplines.DerivativeValuesHeta[i, j] * surfaceBasisVector1[m] +
+								 tsplines.DerivativeValuesKsi[i, j] * surfaceBasisVector2[m];
 				}
 			}
 
 			Matrix Bmembrane = Matrix.CreateZero(3, elementControlPoints.Length * 3);
 			for (int column = 0; column < elementControlPoints.Length * 3; column += 3)
 			{
-				Bmembrane[0, column] = tsplines.TSplineDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[0];
-				Bmembrane[0, column + 1] = tsplines.TSplineDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[1];
-				Bmembrane[0, column + 2] = tsplines.TSplineDerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[2];
+				Bmembrane[0, column] = tsplines.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[0];
+				Bmembrane[0, column + 1] = tsplines.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[1];
+				Bmembrane[0, column + 2] = tsplines.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[2];
 
-				Bmembrane[1, column] = tsplines.TSplineDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[0];
-				Bmembrane[1, column + 1] = tsplines.TSplineDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[1];
-				Bmembrane[1, column + 2] = tsplines.TSplineDerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[2];
+				Bmembrane[1, column] = tsplines.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[0];
+				Bmembrane[1, column + 1] = tsplines.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[1];
+				Bmembrane[1, column + 2] = tsplines.DerivativeValuesHeta[column / 3, j] * surfaceBasisVector2[2];
 
 				Bmembrane[2, column] = dRIa[0, column / 3];
 				Bmembrane[2, column + 1] = dRIa[1, column / 3];

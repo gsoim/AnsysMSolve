@@ -231,10 +231,10 @@ namespace ISAAR.MSolve.IGA.Elements
 
 				for (int k = 0; k < elementControlPoints.Length; k++)
 				{
-					jacobianMatrix[0, 0] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-					jacobianMatrix[0, 1] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
-					jacobianMatrix[1, 0] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
-					jacobianMatrix[1, 1] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
+					jacobianMatrix[0, 0] += _nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+					jacobianMatrix[0, 1] += _nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+					jacobianMatrix[1, 0] += _nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].X;
+					jacobianMatrix[1, 1] += _nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
 				}
 
 				double jacdet = (jacobianMatrix[0, 0] * jacobianMatrix[1, 1])
@@ -254,10 +254,10 @@ namespace ISAAR.MSolve.IGA.Elements
 				Matrix B2 = Matrix.CreateZero(4, 2 * elementControlPoints.Length);
 				for (int column = 0; column < 2 * elementControlPoints.Length; column += 2)
 				{
-					B2[0, column] += _nurbs.NurbsDerivativeValuesKsi[column / 2, j];
-					B2[1, column] += _nurbs.NurbsDerivativeValuesHeta[column / 2, j];
-					B2[2, column + 1] += _nurbs.NurbsDerivativeValuesKsi[column / 2, j];
-					B2[3, column + 1] += _nurbs.NurbsDerivativeValuesHeta[column / 2, j];
+					B2[0, column] += _nurbs.DerivativeValuesKsi[column / 2, j];
+					B2[1, column] += _nurbs.DerivativeValuesHeta[column / 2, j];
+					B2[2, column + 1] += _nurbs.DerivativeValuesKsi[column / 2, j];
+					B2[3, column + 1] += _nurbs.DerivativeValuesHeta[column / 2, j];
 				}
 
 				Matrix B = B1 * B2;
@@ -293,7 +293,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 				if (neumannLoad.ContainsKey(dofIDX))
 				{
-					neumannLoad[dofIDX] += nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor *
+					neumannLoad[dofIDX] += nurbs.Values[k, j] * jacdet * gaussPoints[j].WeightFactor *
 										   neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[0] *
 										   surfaceBasisVector3[0];
 				}
@@ -301,13 +301,13 @@ namespace ISAAR.MSolve.IGA.Elements
 				{
 					neumannLoad.Add(
 						dofIDX,
-						nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor *
+						nurbs.Values[k, j] * jacdet * gaussPoints[j].WeightFactor *
 						neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[0] * surfaceBasisVector3[0]);
 				}
 
 				if (neumannLoad.ContainsKey(dofIDY))
 				{
-					neumannLoad[dofIDY] += nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor *
+					neumannLoad[dofIDY] += nurbs.Values[k, j] * jacdet * gaussPoints[j].WeightFactor *
 										   neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[1] *
 										   surfaceBasisVector3[1];
 				}
@@ -315,17 +315,17 @@ namespace ISAAR.MSolve.IGA.Elements
 				{
 					neumannLoad.Add(
 						dofIDY,
-						nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor * neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[1] * surfaceBasisVector3[1]);
+						nurbs.Values[k, j] * jacdet * gaussPoints[j].WeightFactor * neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[1] * surfaceBasisVector3[1]);
 				}
 
 				if (neumannLoad.ContainsKey(dofIDZ))
 				{
-					neumannLoad[dofIDZ] += nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor * neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[2] * surfaceBasisVector3[2];
+					neumannLoad[dofIDZ] += nurbs.Values[k, j] * jacdet * gaussPoints[j].WeightFactor * neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[2] * surfaceBasisVector3[2];
 				}
 				else
 				{
 					neumannLoad.Add(dofIDZ,
-						nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor * neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[2] * surfaceBasisVector3[2]);
+						nurbs.Values[k, j] * jacdet * gaussPoints[j].WeightFactor * neumann.Value(xGaussPoint, yGaussPoint, zGaussPoint)[2] * surfaceBasisVector3[2]);
 				}
 			}
 		}
@@ -340,15 +340,15 @@ namespace ISAAR.MSolve.IGA.Elements
 			zGaussPoint = 0;
 			for (int k = 0; k < elementControlPoints.Length; k++)
 			{
-				xGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
-				yGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
-				zGaussPoint += nurbs.NurbsValues[k, j] * elementControlPoints[k].Z;
-				jacobianMatrix[0, 0] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-				jacobianMatrix[0, 1] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
-				jacobianMatrix[0, 2] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
-				jacobianMatrix[1, 0] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
-				jacobianMatrix[1, 1] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
-				jacobianMatrix[1, 2] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
+				xGaussPoint += nurbs.Values[k, j] * elementControlPoints[k].X;
+				yGaussPoint += nurbs.Values[k, j] * elementControlPoints[k].Y;
+				zGaussPoint += nurbs.Values[k, j] * elementControlPoints[k].Z;
+				jacobianMatrix[0, 0] += nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+				jacobianMatrix[0, 1] += nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+				jacobianMatrix[0, 2] += nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
+				jacobianMatrix[1, 0] += nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].X;
+				jacobianMatrix[1, 1] += nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
+				jacobianMatrix[1, 2] += nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
 			}
 
 			return jacobianMatrix;
@@ -392,15 +392,15 @@ namespace ISAAR.MSolve.IGA.Elements
 				double zGaussPoint = 0;
 				for (int k = 0; k < elementControlPoints.Length; k++)
 				{
-					xGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
-					yGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
-					zGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Z;
-					jacobianMatrix[0, 0] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-					jacobianMatrix[0, 1] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
-					jacobianMatrix[0, 2] += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
-					jacobianMatrix[1, 0] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
-					jacobianMatrix[1, 1] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
-					jacobianMatrix[1, 2] += _nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
+					xGaussPoint += _nurbs.Values[k, j] * elementControlPoints[k].X;
+					yGaussPoint += _nurbs.Values[k, j] * elementControlPoints[k].Y;
+					zGaussPoint += _nurbs.Values[k, j] * elementControlPoints[k].Z;
+					jacobianMatrix[0, 0] += _nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+					jacobianMatrix[0, 1] += _nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+					jacobianMatrix[0, 2] += _nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
+					jacobianMatrix[1, 0] += _nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].X;
+					jacobianMatrix[1, 1] += _nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
+					jacobianMatrix[1, 2] += _nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
 				}
 
 				Vector surfaceBasisVector1 = Vector.CreateZero(3);
@@ -425,13 +425,13 @@ namespace ISAAR.MSolve.IGA.Elements
 						int dofID = element.Model.GlobalDofOrdering.GlobalFreeDofs[elementControlPoints[k], dofs[m]];
 						if (pressureLoad.ContainsKey(dofID))
 						{
-							pressureLoad[dofID] += _nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor *
+							pressureLoad[dofID] += _nurbs.Values[k, j] * jacdet * gaussPoints[j].WeightFactor *
 												   pressure.Value * surfaceBasisVector3[m];
 						}
 						else
 						{
 							pressureLoad.Add(dofID,
-                                _nurbs.NurbsValues[k, j] * jacdet * gaussPoints[j].WeightFactor * pressure.Value * surfaceBasisVector3[m]);
+                                _nurbs.Values[k, j] * jacdet * gaussPoints[j].WeightFactor * pressure.Value * surfaceBasisVector3[m]);
 						}
 					}
 				}

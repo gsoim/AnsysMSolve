@@ -4,6 +4,7 @@ using System.Linq;
 using ISAAR.MSolve.Geometry.Coordinates;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.SupportiveClasses.Interfaces;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 
 namespace ISAAR.MSolve.IGA.SupportiveClasses
@@ -11,7 +12,7 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
     /// <summary>
 	/// Two-dimensional NURBS shape functions.
 	/// </summary>
-	public class Nurbs2D
+	public class Nurbs2D:IShapeFunction2D
 	{
 		/// <summary>
 		/// Defines a 2D NURBS shape function for an element given the per axis gauss point coordinates.
@@ -37,12 +38,12 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 			int supportHeta = parametricGaussPointHeta.Length;
 			int numberOfElementControlPoints = (degreeKsi + 1) * (degreeHeta + 1);
 
-			NurbsValues = new double[numberOfElementControlPoints, parametricPointsCount];
-			NurbsDerivativeValuesKsi = new double[numberOfElementControlPoints, parametricPointsCount];
-			NurbsDerivativeValuesHeta = new double[numberOfElementControlPoints, parametricPointsCount];
-			NurbsSecondDerivativeValueKsi = new double[numberOfElementControlPoints, parametricPointsCount];
-			NurbsSecondDerivativeValueHeta = new double[numberOfElementControlPoints, parametricPointsCount];
-			NurbsSecondDerivativeValueKsiHeta = new double[numberOfElementControlPoints, parametricPointsCount];
+			Values = new double[numberOfElementControlPoints, parametricPointsCount];
+			DerivativeValuesKsi = new double[numberOfElementControlPoints, parametricPointsCount];
+			DerivativeValuesHeta = new double[numberOfElementControlPoints, parametricPointsCount];
+			SecondDerivativeValuesKsi = new double[numberOfElementControlPoints, parametricPointsCount];
+			SecondDerivativeValuesHeta = new double[numberOfElementControlPoints, parametricPointsCount];
+			SecondDerivativeValuesKsiHeta = new double[numberOfElementControlPoints, parametricPointsCount];
 
 			for (int i = 0; i < supportKsi; i++)
 			{
@@ -84,22 +85,22 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 						int indexKsi = controlPoints[k].ID / numberOfControlPointsHeta;
 						int indexHeta = controlPoints[k].ID % numberOfControlPointsHeta;
 
-						NurbsValues[k, i * supportHeta + j] =
+						Values[k, i * supportHeta + j] =
 							bsplinesKsi.BSPLineValues[indexKsi, i] *
 							bsplinesHeta.BSPLineValues[indexHeta, j] *
 							controlPoints[k].WeightFactor / sumKsiHeta;
 
-						NurbsDerivativeValuesKsi[k, i * supportHeta + j] =
+						DerivativeValuesKsi[k, i * supportHeta + j] =
 							bsplinesHeta.BSPLineValues[indexHeta, j] * controlPoints[k].WeightFactor *
 							(bsplinesKsi.BSPLineDerivativeValues[indexKsi, i] * sumKsiHeta -
 							 bsplinesKsi.BSPLineValues[indexKsi, i] * sumdKsiHeta) / Math.Pow(sumKsiHeta, 2);
 
-						NurbsDerivativeValuesHeta[k, i * supportHeta + j] =
+						DerivativeValuesHeta[k, i * supportHeta + j] =
 							bsplinesKsi.BSPLineValues[indexKsi, i] * controlPoints[k].WeightFactor *
 							(bsplinesHeta.BSPLineDerivativeValues[indexHeta, j] * sumKsiHeta -
 							 bsplinesHeta.BSPLineValues[indexHeta, j] * sumKsidHeta) / Math.Pow(sumKsiHeta, 2);
 
-						NurbsSecondDerivativeValueKsi[k, i * supportHeta + j] =
+						SecondDerivativeValuesKsi[k, i * supportHeta + j] =
 							bsplinesHeta.BSPLineValues[indexHeta, j] * controlPoints[k].WeightFactor *
 							(bsplinesKsi.BSPLineSecondDerivativeValues[indexKsi, i] / sumKsiHeta -
 							 2 * bsplinesKsi.BSPLineDerivativeValues[indexKsi, i] * sumdKsiHeta /
@@ -108,7 +109,7 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 							 2 * bsplinesKsi.BSPLineValues[indexKsi, i] * Math.Pow(sumdKsiHeta, 2) /
 							 Math.Pow(sumKsiHeta, 3));
 
-						NurbsSecondDerivativeValueHeta[k, i * supportHeta + j] =
+						SecondDerivativeValuesHeta[k, i * supportHeta + j] =
 							bsplinesKsi.BSPLineValues[indexKsi, i] * controlPoints[k].WeightFactor *
 							(bsplinesHeta.BSPLineSecondDerivativeValues[indexHeta, j] / sumKsiHeta -
 							 2 * bsplinesHeta.BSPLineDerivativeValues[indexHeta, j] * sumKsidHeta /
@@ -117,7 +118,7 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 							 2 * bsplinesHeta.BSPLineValues[indexHeta, j] * Math.Pow(sumKsidHeta, 2) /
 							 Math.Pow(sumKsiHeta, 3));
 
-						NurbsSecondDerivativeValueKsiHeta[k, i * supportHeta + j] =
+						SecondDerivativeValuesKsiHeta[k, i * supportHeta + j] =
 							controlPoints[k].WeightFactor *
 							(bsplinesKsi.BSPLineDerivativeValues[indexKsi, i] *
 							 bsplinesHeta.BSPLineDerivativeValues[indexHeta, j] / sumKsiHeta -
@@ -140,36 +141,36 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 		/// <see cref="Matrix"/> containing NURBS shape function derivatives per Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public double[,] NurbsDerivativeValuesHeta { get; private set; }
+		public double[,] DerivativeValuesHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function derivatives per Ksi.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public double[,] NurbsDerivativeValuesKsi { get; private set; }
+		public double[,] DerivativeValuesKsi { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function mixed second derivatives per Ksi and Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public double[,] NurbsSecondDerivativeValueHeta { get; private set; }
+		public double[,] SecondDerivativeValuesHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function second derivatives per Ksi.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public double[,] NurbsSecondDerivativeValueKsi { get; private set; }
+		public double[,] SecondDerivativeValuesKsi { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function second derivatives per Ksi and Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public double[,] NurbsSecondDerivativeValueKsiHeta { get; private set; }
+		public double[,] SecondDerivativeValuesKsiHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape functions.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public double[,] NurbsValues { get; private set; }
+		public double[,] Values { get; private set; }
 	}
 }
