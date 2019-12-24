@@ -88,24 +88,24 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 											 numberOfControlPointsZeta) %
 											numberOfControlPointsZeta;
 
-							sumKsiHetaZeta += bsplinesKsi.BSPLineValues[indexKsi, i] *
-											  bsplinesHeta.BSPLineValues[indexHeta, j] *
-											  bsplinesZeta.BSPLineValues[indexZeta, k] *
+							sumKsiHetaZeta += bsplinesKsi.Values[indexKsi, i] *
+											  bsplinesHeta.Values[indexHeta, j] *
+											  bsplinesZeta.Values[indexZeta, k] *
 											  controlPoints[m].WeightFactor;
 
-							sumdKsiHetaZeta += bsplinesKsi.BSPLineDerivativeValues[indexKsi, i] *
-											   bsplinesHeta.BSPLineValues[indexHeta, j] *
-											   bsplinesZeta.BSPLineValues[indexZeta, k] *
+							sumdKsiHetaZeta += bsplinesKsi.DerivativeValues[indexKsi, i] *
+											   bsplinesHeta.Values[indexHeta, j] *
+											   bsplinesZeta.Values[indexZeta, k] *
 											   controlPoints[m].WeightFactor;
 
-							sumKsidHetaZeta += bsplinesKsi.BSPLineValues[indexKsi, i] *
-											   bsplinesHeta.BSPLineDerivativeValues[indexHeta, j] *
-											   bsplinesZeta.BSPLineValues[indexZeta, k] *
+							sumKsidHetaZeta += bsplinesKsi.Values[indexKsi, i] *
+											   bsplinesHeta.DerivativeValues[indexHeta, j] *
+											   bsplinesZeta.Values[indexZeta, k] *
 											   controlPoints[m].WeightFactor;
 
-							sumKsiHetadZeta += bsplinesKsi.BSPLineValues[indexKsi, i] *
-											   bsplinesHeta.BSPLineValues[indexHeta, j] *
-											   bsplinesZeta.BSPLineDerivativeValues[indexZeta, k] *
+							sumKsiHetadZeta += bsplinesKsi.Values[indexKsi, i] *
+											   bsplinesHeta.Values[indexHeta, j] *
+											   bsplinesZeta.DerivativeValues[indexZeta, k] *
 											   controlPoints[m].WeightFactor;
 						}
 
@@ -124,30 +124,30 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 											numberOfControlPointsZeta;
 
 							NurbsValues[m, i * supportHeta * supportZeta + j * supportZeta + k] =
-								bsplinesKsi.BSPLineValues[indexKsi, i] *
-								bsplinesHeta.BSPLineValues[indexHeta, j] *
-								bsplinesZeta.BSPLineValues[indexZeta, k] *
+								bsplinesKsi.Values[indexKsi, i] *
+								bsplinesHeta.Values[indexHeta, j] *
+								bsplinesZeta.Values[indexZeta, k] *
 								controlPoints[m].WeightFactor / sumKsiHetaZeta;
 
 							NurbsDerivativeValuesKsi[m, i * supportHeta * supportZeta + j * supportZeta + k] =
-								(bsplinesKsi.BSPLineDerivativeValues[indexKsi, i] * sumKsiHetaZeta -
-								 bsplinesKsi.BSPLineValues[indexKsi, i] * sumdKsiHetaZeta) *
-								bsplinesHeta.BSPLineValues[indexHeta, j] *
-								bsplinesZeta.BSPLineValues[indexZeta, k] *
+								(bsplinesKsi.DerivativeValues[indexKsi, i] * sumKsiHetaZeta -
+								 bsplinesKsi.Values[indexKsi, i] * sumdKsiHetaZeta) *
+								bsplinesHeta.Values[indexHeta, j] *
+								bsplinesZeta.Values[indexZeta, k] *
 								controlPoints[m].WeightFactor / Math.Pow(sumKsiHetaZeta, 2);
 
 							NurbsDerivativeValuesHeta[m, i * supportHeta * supportZeta + j * supportZeta + k] =
-								bsplinesKsi.BSPLineValues[indexKsi, i] *
-								(bsplinesHeta.BSPLineDerivativeValues[indexHeta, j] * sumKsiHetaZeta -
-								 bsplinesHeta.BSPLineValues[indexHeta, j] * sumKsidHetaZeta) *
-								bsplinesZeta.BSPLineValues[indexZeta, k] *
+								bsplinesKsi.Values[indexKsi, i] *
+								(bsplinesHeta.DerivativeValues[indexHeta, j] * sumKsiHetaZeta -
+								 bsplinesHeta.Values[indexHeta, j] * sumKsidHetaZeta) *
+								bsplinesZeta.Values[indexZeta, k] *
 								controlPoints[m].WeightFactor / Math.Pow(sumKsiHetaZeta, 2);
 
 							NurbsDerivativeValuesZeta[m, i * supportHeta * supportZeta + j * supportZeta + k] =
-								bsplinesKsi.BSPLineValues[indexKsi, i] *
-								bsplinesHeta.BSPLineValues[indexHeta, j] *
-								(bsplinesZeta.BSPLineDerivativeValues[indexZeta, k] * sumKsiHetaZeta -
-								 bsplinesZeta.BSPLineValues[indexZeta, k] * sumKsiHetadZeta) *
+								bsplinesKsi.Values[indexKsi, i] *
+								bsplinesHeta.Values[indexHeta, j] *
+								(bsplinesZeta.DerivativeValues[indexZeta, k] * sumKsiHetaZeta -
+								 bsplinesZeta.Values[indexZeta, k] * sumKsiHetadZeta) *
 								controlPoints[m].WeightFactor / Math.Pow(sumKsiHetaZeta, 2);
 						}
 					}

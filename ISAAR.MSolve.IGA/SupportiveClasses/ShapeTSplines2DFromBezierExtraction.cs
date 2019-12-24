@@ -63,13 +63,13 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 			int supportKsi = degreeKsi + 1;
 			int supportHeta = degreeHeta + 1;
 
-			var bKsi = MatrixPart(supportKsi, bernsteinKsi.BSPLineValues);
-			var bdKsi = MatrixPart(supportKsi, bernsteinKsi.BSPLineDerivativeValues);
-			var bddKsi = MatrixPart(supportKsi, bernsteinKsi.BSPLineSecondDerivativeValues);
+			var bKsi = MatrixPart(supportKsi, bernsteinKsi.Values);
+			var bdKsi = MatrixPart(supportKsi, bernsteinKsi.DerivativeValues);
+			var bddKsi = MatrixPart(supportKsi, bernsteinKsi.SecondDerivativeValues);
 
-			var bheta = MatrixPart(supportHeta, bernsteinHeta.BSPLineValues);
-			var bdheta = MatrixPart(supportHeta, bernsteinHeta.BSPLineDerivativeValues);
-			var bddheta = MatrixPart(supportHeta, bernsteinHeta.BSPLineSecondDerivativeValues);
+			var bheta = MatrixPart(supportHeta, bernsteinHeta.Values);
+			var bdheta = MatrixPart(supportHeta, bernsteinHeta.DerivativeValues);
+			var bddheta = MatrixPart(supportHeta, bernsteinHeta.SecondDerivativeValues);
 
 			var bernsteinShapeFunctions = KroneckerProduct(bKsi, bheta);
 			Matrix bernsteinShapeFunctionDerivativesKsi = KroneckerProduct(bheta, bdKsi);

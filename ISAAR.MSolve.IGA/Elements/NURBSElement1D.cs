@@ -322,11 +322,11 @@ namespace ISAAR.MSolve.IGA.Elements
 				var elementControlPoints = element.ControlPointsDictionary.Values.ToArray();
 				for (int k = 0; k < elementControlPoints.Length; k++)
 				{
-					xGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
-					yGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
-					zGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Z;
-					jacobian1 += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-					jacobian2 += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+					xGaussPoint += _nurbs.Values[k, j] * elementControlPoints[k].X;
+					yGaussPoint += _nurbs.Values[k, j] * elementControlPoints[k].Y;
+					zGaussPoint += _nurbs.Values[k, j] * elementControlPoints[k].Z;
+					jacobian1 += _nurbs.DerivativeValues[k, j] * elementControlPoints[k].X;
+					jacobian2 += _nurbs.DerivativeValues[k, j] * elementControlPoints[k].Y;
 				}
 
 				double jacdet = Math.Sqrt(Math.Pow(jacobian1, 2) + Math.Pow(jacobian2, 2));
@@ -342,14 +342,14 @@ namespace ISAAR.MSolve.IGA.Elements
 								StructuralDof.TranslationX];
 						if (neumannLoad.ContainsKey(dofIDX))
 						{
-							neumannLoad[dofIDX] += jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] *
+							neumannLoad[dofIDX] += jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] *
 												   loadGaussPoint[0];
 						}
 						else
 						{
 							neumannLoad.Add(
 								dofIDX,
-								jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPoint[0]);
+								jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] * loadGaussPoint[0]);
 						}
 
 					}
@@ -364,13 +364,13 @@ namespace ISAAR.MSolve.IGA.Elements
 								StructuralDof.TranslationY];
 						if (neumannLoad.ContainsKey(dofIDY))
 						{
-							neumannLoad[dofIDY] += jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] *
+							neumannLoad[dofIDY] += jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] *
 							                       loadGaussPoint[1];
 						}
 						else
 						{
 							neumannLoad.Add(dofIDY,
-								jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPoint[1]);
+								jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] * loadGaussPoint[1]);
 						}
 					}
 
@@ -385,13 +385,13 @@ namespace ISAAR.MSolve.IGA.Elements
 								StructuralDof.TranslationZ];
 						if (neumannLoad.ContainsKey(dofIDZ))
 						{
-							neumannLoad[dofIDZ] += jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] *
+							neumannLoad[dofIDZ] += jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] *
 							                       loadGaussPoint[2];
 						}
 						else
 						{
 							neumannLoad.Add(dofIDZ,
-								jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPoint[2]);
+								jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] * loadGaussPoint[2]);
 						}
 					}
 
@@ -418,10 +418,10 @@ namespace ISAAR.MSolve.IGA.Elements
 				var elementControlPoints = element.ControlPointsDictionary.Values.ToArray();
 				for (int k = 0; k < elementControlPoints.Length; k++)
 				{
-					xGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].X;
-					yGaussPoint += _nurbs.NurbsValues[k, j] * elementControlPoints[k].Y;
-					jacobian1 += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-					jacobian2 += _nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+					xGaussPoint += _nurbs.Values[k, j] * elementControlPoints[k].X;
+					yGaussPoint += _nurbs.Values[k, j] * elementControlPoints[k].Y;
+					jacobian1 += _nurbs.DerivativeValues[k, j] * elementControlPoints[k].X;
+					jacobian2 += _nurbs.DerivativeValues[k, j] * elementControlPoints[k].Y;
 				}
 
 				double jacdet = Math.Sqrt(Math.Pow(jacobian1, 2) + Math.Pow(jacobian2, 2));
@@ -439,21 +439,21 @@ namespace ISAAR.MSolve.IGA.Elements
 					if (pressureLoad.ContainsKey(dofIDX))
 					{
 						pressureLoad[dofIDX] +=
-							jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPointX;
+							jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] * loadGaussPointX;
 					}
 					else
 					{
-						pressureLoad.Add(dofIDX, jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPointX);
+						pressureLoad.Add(dofIDX, jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] * loadGaussPointX);
 					}
 
 					if (pressureLoad.ContainsKey(dofIDY))
 					{
 						pressureLoad[dofIDY] +=
-							jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPointY;
+							jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] * loadGaussPointY;
 					}
 					else
 					{
-						pressureLoad.Add(dofIDY, jacdet * gaussPoints[j].WeightFactor * _nurbs.NurbsValues[k, j] * loadGaussPointY);
+						pressureLoad.Add(dofIDY, jacdet * gaussPoints[j].WeightFactor * _nurbs.Values[k, j] * loadGaussPointY);
 					}
 				}
 			}

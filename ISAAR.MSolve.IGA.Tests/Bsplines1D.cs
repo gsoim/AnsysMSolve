@@ -58,7 +58,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				for (var j = 0; j < 4; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(expectedValues[i, j], bsplines1D.BSPLineValues[i, j],
+					Assert.True(Utilities.AreValuesEqual(expectedValues[i, j], bsplines1D.Values[i, j],
 						Tolerance));
 				}
 			}
@@ -87,7 +87,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			{
 				for (var j = 0; j < 4; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(expectedDerivativeValues[i, j], bsplines1D.BSPLineDerivativeValues[i, j],
+					Assert.True(Utilities.AreValuesEqual(expectedDerivativeValues[i, j], bsplines1D.DerivativeValues[i, j],
 						Tolerance));
 				}
 			}
@@ -108,8 +108,8 @@ namespace ISAAR.MSolve.IGA.Tests
 			for (var p = 0; p < 4; p++)
 			{
 				var sum = 0.0;
-				for (var f = 0; f < bsplines1D.BSPLineValues.GetLength(0); f++)
-					sum += bsplines1D.BSPLineValues[f, p];
+				for (var f = 0; f < bsplines1D.Values.GetLength(0); f++)
+					sum += bsplines1D.Values[f, p];
 				Assert.True(Utilities.AreValuesEqual(1.0, sum, Tolerance));
 			}
 		}

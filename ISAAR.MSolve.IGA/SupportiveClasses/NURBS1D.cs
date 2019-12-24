@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.SupportiveClasses.Interfaces;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 
@@ -11,7 +12,7 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
     /// <summary>
 	/// One-dimensional NURBS shape functions.
 	/// </summary>
-	public class Nurbs1D
+	public class Nurbs1D:IShapeFunction1D
 	{
 		/// <summary>
 		/// Defines an 1D NURBS shape function for an element.
@@ -27,8 +28,8 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 			int supportKsi = degree + 1;
 			int numberOfElementControlPoints = supportKsi;
 
-			NurbsValues = Matrix.CreateZero(numberOfElementControlPoints, gaussPoints.Length);
-			NurbsDerivativeValuesKsi = Matrix.CreateZero(numberOfElementControlPoints, gaussPoints.Length);
+            Values = new double[numberOfElementControlPoints, gaussPoints.Length];
+			DerivativeValues = new double[numberOfElementControlPoints, gaussPoints.Length];
 			for (int i = 0; i < supportKsi; i++)
 			{
 				double sumKsi = 0;
@@ -37,15 +38,15 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 				for (int j = 0; j < numberOfElementControlPoints; j++)
 				{
 					int indexKsi = controlPoints[j].ID;
-					sumKsi += bsplinesKsi.BSPLineValues[indexKsi, i] * controlPoints[j].WeightFactor;
-					sumdKsi += bsplinesKsi.BSPLineDerivativeValues[indexKsi, i] * controlPoints[j].WeightFactor;
+					sumKsi += bsplinesKsi.Values[indexKsi, i] * controlPoints[j].WeightFactor;
+					sumdKsi += bsplinesKsi.DerivativeValues[indexKsi, i] * controlPoints[j].WeightFactor;
 				}
 				for (int j = 0; j < numberOfElementControlPoints; j++)
 				{
 					int indexKsi = controlPoints[j].ID;
-					NurbsValues[j, i] = bsplinesKsi.BSPLineValues[indexKsi, i] * controlPoints[j].WeightFactor / sumKsi;
-					NurbsDerivativeValuesKsi[j, i] = controlPoints[j].WeightFactor * (bsplinesKsi.BSPLineDerivativeValues[indexKsi, i] * sumKsi -
-						bsplinesKsi.BSPLineValues[indexKsi, i] * sumdKsi) / Math.Pow(sumKsi, 2);
+					Values[j, i] = bsplinesKsi.Values[indexKsi, i] * controlPoints[j].WeightFactor / sumKsi;
+					DerivativeValues[j, i] = controlPoints[j].WeightFactor * (bsplinesKsi.DerivativeValues[indexKsi, i] * sumKsi -
+						bsplinesKsi.Values[indexKsi, i] * sumdKsi) / Math.Pow(sumKsi, 2);
 				}
 			}
 		}
@@ -54,12 +55,14 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 		/// <see cref="Matrix"/> containing NURBS shape function derivatives.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsDerivativeValuesKsi { get; private set; }
+		public double[,] DerivativeValues { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape functions.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsValues { get; private set; }
+		public double[,] Values { get; private set; }
+
+		public double[,] SecondDerivativeValues => throw new NotImplementedException();
 	}
 }
