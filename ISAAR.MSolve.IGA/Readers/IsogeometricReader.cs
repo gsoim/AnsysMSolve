@@ -857,11 +857,11 @@ namespace ISAAR.MSolve.IGA.Readers
                             KnotValueVectorsKsiDictionary[0], KnotValueVectorsHetaDictionary[0],
                             KnotValueVectorsZetaDictionary[0], elementControlPoints.ToArray(), gaussPoints);
 
-                        Element element = new NurbsElement3D(_material3D, nurbs, gaussPoints)
+                        Element element = new Element
                         {
                             ID = elementID,
                             Patch = model.PatchesDictionary[0],
-                            ElementType = new NurbsElement3D(_material3D, nurbs, gaussPoints)
+                            ElementType = new ContinuumElement3D(_material3D, nurbs, gaussPoints)
                         };
                         element.AddKnots(knotsOfElement);
                         element.AddControlPoints(elementControlPoints.ToList());

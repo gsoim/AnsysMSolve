@@ -6,36 +6,35 @@ using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.Discretization.Interfaces;
 using ISAAR.MSolve.Discretization.Mesh;
-using ISAAR.MSolve.FEM.Entities;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Interfaces;
 using ISAAR.MSolve.IGA.SupportiveClasses;
+using ISAAR.MSolve.IGA.SupportiveClasses.Interfaces;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
-using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Materials.Interfaces;
 using Element = ISAAR.MSolve.IGA.Entities.Element;
 
-namespace ISAAR.MSolve.IGA.Elements
+namespace ISAAR.MSolve.IGA.Elements.Continuum
 {
     /// <summary>
 	/// A three-dimensional continuum element that utilizes NURBS for shape functions.
 	/// Authors: Dimitris Tsapetis.
 	/// </summary>
-	public class NurbsElement3D : Element, IStructuralIsogeometricElement
+	public class ContinuumElement3D : Element, IStructuralIsogeometricElement
 	{
 
-        public NurbsElement3D(IContinuumMaterial3D material,
-            Nurbs3D nurbs, GaussLegendrePoint3D[] gaussPoints)
+        public ContinuumElement3D(IContinuumMaterial3D material,
+            IShapeFunction3D shapeFunctions, GaussLegendrePoint3D[] gaussPoints)
         {
             _material = material;
-            _nurbs = nurbs;
+            _shapeFunctions = shapeFunctions;
             _gaussPoints = gaussPoints;
         }
 		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
 		private IDofType[][] _dofTypes;
         private readonly IContinuumMaterial3D _material;
-        internal readonly Nurbs3D _nurbs;
+        internal readonly IShapeFunction3D _shapeFunctions;
         private readonly GaussLegendrePoint3D[] _gaussPoints;
 
         /// <summary>
@@ -91,9 +90,9 @@ namespace ISAAR.MSolve.IGA.Elements
 			//{
 			//	for (int i = 0; i < elementControlPoints.Length; i++)
 			//	{
-			//		knotDisplacements[paraviewKnotRenumbering[j], 0] += nurbs.NurbsValues[i, j] * localDisplacements[i, 0];
-			//		knotDisplacements[paraviewKnotRenumbering[j], 1] += nurbs.NurbsValues[i, j] * localDisplacements[i, 1];
-			//		knotDisplacements[paraviewKnotRenumbering[j], 2] += nurbs.NurbsValues[i, j] * localDisplacements[i, 2];
+			//		knotDisplacements[paraviewKnotRenumbering[j], 0] += shapeFunction.NurbsValues[i, j] * localDisplacements[i, 0];
+			//		knotDisplacements[paraviewKnotRenumbering[j], 1] += shapeFunction.NurbsValues[i, j] * localDisplacements[i, 1];
+			//		knotDisplacements[paraviewKnotRenumbering[j], 2] += shapeFunction.NurbsValues[i, j] * localDisplacements[i, 2];
 			//	}
 			//}
 
@@ -187,10 +186,8 @@ namespace ISAAR.MSolve.IGA.Elements
 		public IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element)
 		{
 			Contract.Requires(element != null, "The element cannot be null");
-
-			var nurbsElement = (NurbsElement3D)element;
-			_dofTypes = new IDofType[nurbsElement.ControlPointsDictionary.Count][];
-			for (int i = 0; i < nurbsElement.ControlPointsDictionary.Count; i++)
+			_dofTypes = new IDofType[element.Nodes.Count][];
+			for (int i = 0; i < element.Nodes.Count; i++)
 			{
 				_dofTypes[i] = ControlPointDofTypes;
 			}
@@ -222,14 +219,14 @@ namespace ISAAR.MSolve.IGA.Elements
 		/// <returns>An <see cref="IMatrix"/> containing the stiffness matrix of an <see cref="NurbsElement3D"/>.</returns>
 		public IMatrix StiffnessMatrix(IElement element)
 		{
-			var nurbsElement = (NurbsElement3D)element;
-			var elementControlPoints = nurbsElement.ControlPoints.ToArray();
-			Matrix stiffnessMatrixElement = Matrix.CreateZero(nurbsElement.ControlPointsDictionary.Count * 3, nurbsElement.ControlPointsDictionary.Count * 3);
+			var elementControlPoints = element.Nodes.ToArray();
+            var numberOfCP = elementControlPoints.Length;
+			Matrix stiffnessMatrixElement = Matrix.CreateZero(numberOfCP * 3, numberOfCP * 3);
 
 
 			for (int j = 0; j < _gaussPoints.Length; j++)
 			{
-				Matrix jacobianMatrix = CalculateJacobian(elementControlPoints, _nurbs, j);
+				Matrix jacobianMatrix = CalculateJacobian(elementControlPoints, _shapeFunctions, j);
 
 				double jacdet = CalculateJacobianDeterminant(jacobianMatrix);
 
@@ -237,16 +234,16 @@ namespace ISAAR.MSolve.IGA.Elements
 
 				Matrix B1 = CalculateDeformationMatrix1(inverseJacobian);
 
-				Matrix B2 = CalculateDeformationMatrix2(elementControlPoints, _nurbs, j);
+				Matrix B2 = CalculateDeformationMatrix2(elementControlPoints, _shapeFunctions, j);
 
 				Matrix B = B1 * B2;
 
 				IMatrixView E = _material.ConstitutiveMatrix;
 				Matrix stiffnessMatrixGaussPoint = B.ThisTransposeTimesOtherTimesThis(E) * jacdet * _gaussPoints[j].WeightFactor;
 
-				for (int m = 0; m < elementControlPoints.Length * 3; m++)
+				for (int m = 0; m < numberOfCP * 3; m++)
 				{
-					for (int n = 0; n < elementControlPoints.Length * 3; n++)
+					for (int n = 0; n < numberOfCP * 3; n++)
 					{
 						stiffnessMatrixElement[m, n] += stiffnessMatrixGaussPoint[m, n];
 					}
@@ -294,22 +291,22 @@ namespace ISAAR.MSolve.IGA.Elements
 			return B1;
 		}
 
-		private static Matrix CalculateDeformationMatrix2(IList<ControlPoint> elementControlPoints, Nurbs3D nurbs, int j)
+		private static Matrix CalculateDeformationMatrix2(INode[] elementControlPoints, IShapeFunction3D shapeFunction, int j)
 		{
-			Matrix B2 = Matrix.CreateZero(9, 3 * elementControlPoints.Count);
-			for (int column = 0; column < 3 * elementControlPoints.Count; column += 3)
+			Matrix B2 = Matrix.CreateZero(9, 3 * elementControlPoints.Length);
+			for (int column = 0; column < 3 * elementControlPoints.Length; column += 3)
 			{
-				B2[0, column] += nurbs.NurbsDerivativeValuesKsi[column / 3, j];
-				B2[1, column] += nurbs.NurbsDerivativeValuesHeta[column / 3, j];
-				B2[2, column] += nurbs.NurbsDerivativeValuesZeta[column / 3, j];
+				B2[0, column] += shapeFunction.DerivativeValuesKsi[column / 3, j];
+				B2[1, column] += shapeFunction.DerivativeValuesHeta[column / 3, j];
+				B2[2, column] += shapeFunction.DerivativeValuesZeta[column / 3, j];
 
-				B2[3, column + 1] += nurbs.NurbsDerivativeValuesKsi[column / 3, j];
-				B2[4, column + 1] += nurbs.NurbsDerivativeValuesHeta[column / 3, j];
-				B2[5, column + 1] += nurbs.NurbsDerivativeValuesZeta[column / 3, j];
+				B2[3, column + 1] += shapeFunction.DerivativeValuesKsi[column / 3, j];
+				B2[4, column + 1] += shapeFunction.DerivativeValuesHeta[column / 3, j];
+				B2[5, column + 1] += shapeFunction.DerivativeValuesZeta[column / 3, j];
 
-				B2[6, column + 2] += nurbs.NurbsDerivativeValuesKsi[column / 3, j];
-				B2[7, column + 2] += nurbs.NurbsDerivativeValuesHeta[column / 3, j];
-				B2[8, column + 2] += nurbs.NurbsDerivativeValuesZeta[column / 3, j];
+				B2[6, column + 2] += shapeFunction.DerivativeValuesKsi[column / 3, j];
+				B2[7, column + 2] += shapeFunction.DerivativeValuesHeta[column / 3, j];
+				B2[8, column + 2] += shapeFunction.DerivativeValuesZeta[column / 3, j];
 			}
 
 			return B2;
@@ -335,21 +332,21 @@ namespace ISAAR.MSolve.IGA.Elements
 			return inverseJacobian;
 		}
 
-		private static Matrix CalculateJacobian(IList<ControlPoint> elementControlPoints, Nurbs3D nurbs, int j)
+		private static Matrix CalculateJacobian(INode[] elementControlPoints, IShapeFunction3D nurbs, int j)
 		{
 			Matrix jacobianMatrix = Matrix.CreateZero(3, 3);
 
-			for (int k = 0; k < elementControlPoints.Count; k++)
+			for (int k = 0; k < elementControlPoints.Length; k++)
 			{
-				jacobianMatrix[0, 0] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].X;
-				jacobianMatrix[0, 1] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
-				jacobianMatrix[0, 2] += nurbs.NurbsDerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
-				jacobianMatrix[1, 0] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].X;
-				jacobianMatrix[1, 1] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
-				jacobianMatrix[1, 2] += nurbs.NurbsDerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
-				jacobianMatrix[2, 0] += nurbs.NurbsDerivativeValuesZeta[k, j] * elementControlPoints[k].X;
-				jacobianMatrix[2, 1] += nurbs.NurbsDerivativeValuesZeta[k, j] * elementControlPoints[k].Y;
-				jacobianMatrix[2, 2] += nurbs.NurbsDerivativeValuesZeta[k, j] * elementControlPoints[k].Z;
+				jacobianMatrix[0, 0] += nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].X;
+				jacobianMatrix[0, 1] += nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
+				jacobianMatrix[0, 2] += nurbs.DerivativeValuesKsi[k, j] * elementControlPoints[k].Z;
+				jacobianMatrix[1, 0] += nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].X;
+				jacobianMatrix[1, 1] += nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].Y;
+				jacobianMatrix[1, 2] += nurbs.DerivativeValuesHeta[k, j] * elementControlPoints[k].Z;
+				jacobianMatrix[2, 0] += nurbs.DerivativeValuesZeta[k, j] * elementControlPoints[k].X;
+				jacobianMatrix[2, 1] += nurbs.DerivativeValuesZeta[k, j] * elementControlPoints[k].Y;
+				jacobianMatrix[2, 2] += nurbs.DerivativeValuesZeta[k, j] * elementControlPoints[k].Z;
 			}
 
 			return jacobianMatrix;

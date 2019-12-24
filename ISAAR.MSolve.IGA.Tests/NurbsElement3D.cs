@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Continuum;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -131,7 +132,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private NurbsElement3D Element
+		private ContinuumElement3D Element
 		{
 			get
 			{
@@ -155,7 +156,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 var nurbs = new Nurbs3D(numberOfControlPointsKsi, numberOfControlPointsHeta, numberOfControlPointsZeta,
                     degreeKsi, degreeHeta, degreeZeta, knotValueVectorKsi, knotValueVectorHeta, knotValueVectorZeta,
                     ElementControlPoints().ToArray(), gaussPoints);
-                var element = new NurbsElement3D(material, nurbs, gaussPoints);
+                var element = new ContinuumElement3D(material, nurbs, gaussPoints);
 				var patch = new Patch();
 				
 				foreach (var controlPoint in ElementControlPoints())

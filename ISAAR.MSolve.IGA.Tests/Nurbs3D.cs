@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Continuum;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -133,7 +134,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private NurbsElement3D Element
+		private ContinuumElement3D Element
 		{
 			get
 			{
@@ -153,7 +154,7 @@ namespace ISAAR.MSolve.IGA.Tests
 				var nurbs= new Nurbs3D(numberOfControlPointsKsi, numberOfControlPointsHeta, numberOfControlPointsZeta,
                     degreeKsi, degreeHeta, degreeZeta, knotValueVectorKsi, knotValueVectorHeta, knotValueVectorZeta,
                     ElementControlPoints().ToArray(), gaussPoints);
-				var element = new NurbsElement3D(null,nurbs, gaussPoints);
+				var element = new ContinuumElement3D(null,nurbs, gaussPoints);
 				var patch = new Patch();
 				foreach (var controlPoint in ElementControlPoints())
 					element.ControlPointsDictionary.Add(controlPoint.ID, controlPoint);
@@ -457,13 +458,13 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs3DPartitionOfUnity()
 		{
 			var element = Element;
-            var nurbs3D = element._nurbs;
+            var nurbs3D = element._shapeFunctions;
 
-			for (var p = 0; p < nurbs3D.NurbsValues.NumColumns; p++)
+			for (var p = 0; p < nurbs3D.Values.GetLength(1); p++)
 			{
 				var sum = 0.0;
-				for (var f = 0; f < nurbs3D.NurbsValues.NumRows; f++)
-					sum += nurbs3D.NurbsValues[f, p];
+				for (var f = 0; f < nurbs3D.Values.GetLength(0); f++)
+					sum += nurbs3D.Values[f, p];
 				Assert.True(Utilities.AreValuesEqual(1.0, sum, Tolerance));
 			}
 		}
@@ -472,13 +473,13 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs3DValues()
 		{
 			var element = Element;
-            var nurbs3D = element._nurbs;
+            var nurbs3D = element._shapeFunctions;
 
 			for (var i = 0; i < 64; i++)
 			{
 				for (var j = 0; j < 64; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedValues[i, j], nurbs3D.NurbsValues[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedValues[i, j], nurbs3D.Values[i, j],
 						Tolerance));
 				}
 			}
@@ -489,13 +490,13 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs3DDerivativeValuesKsi()
 		{
 			var element = Element;
-            var nurbs3D = element._nurbs;
+            var nurbs3D = element._shapeFunctions;
 
 			for (var i = 0; i < 64; i++)
 			{
 				for (var j = 0; j < 64; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedDerivativeValuesKsi[i, j], nurbs3D.NurbsDerivativeValuesKsi[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedDerivativeValuesKsi[i, j], nurbs3D.DerivativeValuesKsi[i, j],
 						Tolerance));
 				}
 			}
@@ -505,13 +506,13 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs3DDerivativeValuesHeta()
 		{
 			var element = Element;
-            var nurbs3D = element._nurbs;
+            var nurbs3D = element._shapeFunctions;
 
 			for (var i = 0; i < 64; i++)
 			{
 				for (var j = 0; j < 64; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedDerivativeValuesHeta[i, j], nurbs3D.NurbsDerivativeValuesHeta[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedDerivativeValuesHeta[i, j], nurbs3D.DerivativeValuesHeta[i, j],
 						Tolerance));
 				}
 			}
@@ -521,13 +522,13 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs3DDerivativeValuesZeta()
 		{
 			var element = Element;
-            var nurbs3D = element._nurbs;
+            var nurbs3D = element._shapeFunctions;
 
 			for (var i = 0; i < 64; i++)
 			{
 				for (var j = 0; j < 64; j++)
 				{
-					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedDerivativeValuesZeta[i, j], nurbs3D.NurbsDerivativeValuesZeta[i, j],
+					Assert.True(Utilities.AreValuesEqual(_nurbsExpectedDerivativeValuesZeta[i, j], nurbs3D.DerivativeValuesZeta[i, j],
 						Tolerance));
 				}
 			}

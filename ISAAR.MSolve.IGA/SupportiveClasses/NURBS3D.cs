@@ -4,12 +4,13 @@ using System.Linq;
 using ISAAR.MSolve.Geometry.Coordinates;
 using ISAAR.MSolve.IGA.Elements;
 using ISAAR.MSolve.IGA.Entities;
+using ISAAR.MSolve.IGA.SupportiveClasses.Interfaces;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 
 namespace ISAAR.MSolve.IGA.SupportiveClasses
 {
-    public class Nurbs3D
+    public class Nurbs3D: IShapeFunction3D
 	{
 		/// <summary>
 		/// Define 3D  NURBS shape function without needing an element definition.
@@ -58,10 +59,10 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 			int supportZeta = degreeZeta + 1;
 			int numberOfElementControlPoints = supportKsi * supportHeta * supportZeta;
 
-			NurbsValues = Matrix.CreateZero(numberOfElementControlPoints, numberOfGaussPoints);
-			NurbsDerivativeValuesKsi = Matrix.CreateZero(numberOfElementControlPoints, numberOfGaussPoints);
-			NurbsDerivativeValuesHeta = Matrix.CreateZero(numberOfElementControlPoints, numberOfGaussPoints);
-			NurbsDerivativeValuesZeta = Matrix.CreateZero(numberOfElementControlPoints, numberOfGaussPoints);
+			Values = new double[numberOfElementControlPoints, numberOfGaussPoints];
+			DerivativeValuesKsi = new double[numberOfElementControlPoints, numberOfGaussPoints];
+			DerivativeValuesHeta = new double[numberOfElementControlPoints, numberOfGaussPoints];
+			DerivativeValuesZeta = new double[numberOfElementControlPoints, numberOfGaussPoints];
 
 			for (int i = 0; i < supportKsi; i++)
 			{
@@ -123,27 +124,27 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 											 numberOfControlPointsZeta) %
 											numberOfControlPointsZeta;
 
-							NurbsValues[m, i * supportHeta * supportZeta + j * supportZeta + k] =
+							Values[m, i * supportHeta * supportZeta + j * supportZeta + k] =
 								bsplinesKsi.Values[indexKsi, i] *
 								bsplinesHeta.Values[indexHeta, j] *
 								bsplinesZeta.Values[indexZeta, k] *
 								controlPoints[m].WeightFactor / sumKsiHetaZeta;
 
-							NurbsDerivativeValuesKsi[m, i * supportHeta * supportZeta + j * supportZeta + k] =
+							DerivativeValuesKsi[m, i * supportHeta * supportZeta + j * supportZeta + k] =
 								(bsplinesKsi.DerivativeValues[indexKsi, i] * sumKsiHetaZeta -
 								 bsplinesKsi.Values[indexKsi, i] * sumdKsiHetaZeta) *
 								bsplinesHeta.Values[indexHeta, j] *
 								bsplinesZeta.Values[indexZeta, k] *
 								controlPoints[m].WeightFactor / Math.Pow(sumKsiHetaZeta, 2);
 
-							NurbsDerivativeValuesHeta[m, i * supportHeta * supportZeta + j * supportZeta + k] =
+							DerivativeValuesHeta[m, i * supportHeta * supportZeta + j * supportZeta + k] =
 								bsplinesKsi.Values[indexKsi, i] *
 								(bsplinesHeta.DerivativeValues[indexHeta, j] * sumKsiHetaZeta -
 								 bsplinesHeta.Values[indexHeta, j] * sumKsidHetaZeta) *
 								bsplinesZeta.Values[indexZeta, k] *
 								controlPoints[m].WeightFactor / Math.Pow(sumKsiHetaZeta, 2);
 
-							NurbsDerivativeValuesZeta[m, i * supportHeta * supportZeta + j * supportZeta + k] =
+							DerivativeValuesZeta[m, i * supportHeta * supportZeta + j * supportZeta + k] =
 								bsplinesKsi.Values[indexKsi, i] *
 								bsplinesHeta.Values[indexHeta, j] *
 								(bsplinesZeta.DerivativeValues[indexZeta, k] * sumKsiHetaZeta -
@@ -159,60 +160,60 @@ namespace ISAAR.MSolve.IGA.SupportiveClasses
 		/// <see cref="Matrix"/> containing NURBS shape function derivatives per Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsDerivativeValuesHeta { get; private set; }
+		public double[,] DerivativeValuesHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function derivatives per Ksi.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsDerivativeValuesKsi { get; private set; }
+		public double[,] DerivativeValuesKsi { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function derivatives per Zeta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsDerivativeValuesZeta { get; private set; }
+		public double[,] DerivativeValuesZeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function second derivatives per Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsSecondDerivativeValueHeta { get; private set; }
+		public double[,] SecondDerivativeValuesHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function mixed second derivatives per Heta and Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsSecondDerivativeValueHetaZeta { get; private set; }
+		public double[,] SecondDerivativeValuesHetaZeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function second derivatives per Ksi.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsSecondDerivativeValueKsi { get; private set; }
+		public double[,] SecondDerivativeValuesKsi { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function mixed second derivatives per Ksi and Heta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsSecondDerivativeValueKsiHeta { get; private set; }
+		public double[,] SecondDerivativeValuesKsiHeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function mixed second derivatives per Ksi and Zeta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsSecondDerivativeValueKsiZeta { get; private set; }
+		public double[,] SecondDerivativeValuesKsiZeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape function second derivatives per Zeta.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsSecondDerivativeValueZeta { get; private set; }
+		public double[,] SecondDerivativeValuesZeta { get; private set; }
 
 		/// <summary>
 		/// <see cref="Matrix"/> containing NURBS shape functions.
 		/// Row represent Control Points, while columns Gauss Points.
 		/// </summary>
-		public Matrix NurbsValues { get; private set; }
+		public double[,] Values { get; private set; }
 	}
 }
