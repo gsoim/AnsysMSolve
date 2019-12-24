@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Continuum;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -55,7 +56,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private NURBSElement2D Element
+		private ContinuumElement2D Element
 		{
 			get
 			{
@@ -89,7 +90,7 @@ namespace ISAAR.MSolve.IGA.Tests
 				var nurbs = new Nurbs2D(degreeKsi, knotValueVectorKsi, degreeHeta, knotValueVectorHeta,
                     ElementControlPoints().ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
 
-				var element = new NURBSElement2D(material,nurbs, gaussPoints, thickness);
+				var element = new ContinuumElement2D(material,nurbs, gaussPoints, thickness);
 				var patch = new Patch();
 				
 				foreach (var controlPoint in ElementControlPoints())

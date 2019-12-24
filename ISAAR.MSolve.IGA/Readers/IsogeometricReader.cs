@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Continuum;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
@@ -738,11 +739,11 @@ namespace ISAAR.MSolve.IGA.Readers
                     var nurbs = new Nurbs2D(DegreeKsiDictionary[0], KnotValueVectorsKsiDictionary[0],
                         DegreeHetaDictionary[0], KnotValueVectorsHetaDictionary[0],
                         elementControlPoints.ToArray(), parametricGaussPointKsi, parametricGaussPointHeta);
-                    Element element = new NURBSElement2D(_material2D,nurbs,gaussPoints,Thickness)
+                    Element element = new Element
                     {
                         ID = elementID,
                         Patch = model.PatchesDictionary[0],
-                        ElementType = new NURBSElement2D(_material2D, nurbs, gaussPoints, Thickness)
+                        ElementType = new ContinuumElement2D(_material2D, nurbs, gaussPoints, Thickness)
                     };
                     element.AddKnots(knotsOfElement);
                     element.AddControlPoints(elementControlPoints.ToList());

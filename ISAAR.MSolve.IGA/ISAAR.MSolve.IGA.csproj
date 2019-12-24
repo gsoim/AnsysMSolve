@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Elements\NURBSElement2D.cs" />
     <Compile Remove="Elements\NURBSElement2DCollocation.cs" />
     <Compile Remove="Elements\NURBSElement3DCollocation.cs" />
     <Compile Remove="Elements\NURBSKirchhoffLoveShellElement.cs" />

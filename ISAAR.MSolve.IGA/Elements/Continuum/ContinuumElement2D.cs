@@ -193,9 +193,8 @@ namespace ISAAR.MSolve.IGA.Elements.Continuum
 		public IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element)
 		{
 			Contract.Requires(element != null, "The element cannot be null");
-			var nurbsElement = (NURBSElement2D)element;
-			_dofTypes = new IDofType[nurbsElement.ControlPointsDictionary.Count][];
-			for (var i = 0; i < nurbsElement.ControlPointsDictionary.Count; i++)
+			_dofTypes = new IDofType[element.Nodes.Count][];
+			for (var i = 0; i < element.Nodes.Count; i++)
 			{
 				_dofTypes[i] = ControlPointDofTypes;
 			}
@@ -218,17 +217,16 @@ namespace ISAAR.MSolve.IGA.Elements.Continuum
 		public IMatrix StiffnessMatrix(IElement element)
 		{
 			Contract.Requires(element != null, "The element cannot be null");
-			var nurbsElement = (NURBSElement2D)element;
+            var numberOfCP = element.Nodes.Count;
 			var stiffnessMatrixElement = Matrix.CreateZero(
-				nurbsElement.ControlPointsDictionary.Count * 2,
-				nurbsElement.ControlPointsDictionary.Count * 2);
-			var elementControlPoints = nurbsElement.ControlPoints.ToArray();
+                numberOfCP * 2, numberOfCP * 2);
+            var elementControlPoints = element.Nodes.ToArray();
 
 			for (var j = 0; j < _gaussPoints.Length; j++)
 			{
 				var jacobianMatrix = Matrix.CreateZero(2, 2);
 
-				for (int k = 0; k < elementControlPoints.Length; k++)
+				for (int k = 0; k < numberOfCP; k++)
 				{
 					jacobianMatrix[0, 0] += _shapeFunctions.DerivativeValuesKsi[k, j] * elementControlPoints[k].X;
 					jacobianMatrix[0, 1] += _shapeFunctions.DerivativeValuesKsi[k, j] * elementControlPoints[k].Y;
@@ -250,8 +248,8 @@ namespace ISAAR.MSolve.IGA.Elements.Continuum
 				B1[2, 2] += jacobianMatrix[1, 1] / jacdet;
 				B1[2, 3] += -jacobianMatrix[0, 1] / jacdet;
 
-				Matrix B2 = Matrix.CreateZero(4, 2 * elementControlPoints.Length);
-				for (int column = 0; column < 2 * elementControlPoints.Length; column += 2)
+				Matrix B2 = Matrix.CreateZero(4, 2 * numberOfCP);
+				for (int column = 0; column < 2 * numberOfCP; column += 2)
 				{
 					B2[0, column] += _shapeFunctions.DerivativeValuesKsi[column / 2, j];
 					B2[1, column] += _shapeFunctions.DerivativeValuesHeta[column / 2, j];
@@ -264,9 +262,9 @@ namespace ISAAR.MSolve.IGA.Elements.Continuum
 				Matrix stiffnessMatrixGaussPoint = B.ThisTransposeTimesOtherTimesThis(elasticityMatrix);
 				stiffnessMatrixGaussPoint *= jacdet * _gaussPoints[j].WeightFactor * _thickness;
 
-				for (int m = 0; m < elementControlPoints.Length * 2; m++)
+				for (int m = 0; m < numberOfCP * 2; m++)
 				{
-					for (int n = 0; n < elementControlPoints.Length * 2; n++)
+					for (int n = 0; n < numberOfCP * 2; n++)
 					{
 						stiffnessMatrixElement[m, n] += stiffnessMatrixGaussPoint[m, n];
 					}

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Continuum;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Interfaces;
 using ISAAR.MSolve.IGA.SupportiveClasses;
@@ -212,10 +213,10 @@ namespace ISAAR.MSolve.IGA.Entities
                         Degrees[1], KnotValueVectors[1].CopyToArray(), elementControlPoints.ToArray(),
                         parametricGaussPointKsi, parametricGaussPointHeta);
 
-					Element element = new NURBSElement2D(null, nurbs, gaussPoints, 0)
+					Element element = new Element
 					{
 						ID = elementID,
-						ElementType = new NURBSElement2D(null, nurbs, gaussPoints, 0),
+						ElementType = new ContinuumElement2D(null, nurbs, gaussPoints, 0),
 						Patch = Patch,
 						Model = Patch.Elements[0].Model
 					};

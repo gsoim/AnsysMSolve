@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Continuum;
 using ISAAR.MSolve.IGA.Elements.Structural;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.SupportiveClasses;
@@ -56,7 +57,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private NURBSElement2D Element
+		private ContinuumElement2D Element
 		{
 			get
 			{
@@ -82,7 +83,7 @@ namespace ISAAR.MSolve.IGA.Tests
                     ElementControlPoints().ToArray(), parametricPointKsi, parametricPointHeta);
 
 
-				var element = new NURBSElement2D(null,nurbs, gaussPoints, 1);
+				var element = new ContinuumElement2D(null,nurbs, gaussPoints, 1);
 				var patch = new Patch();
 				foreach (var controlPoint in ElementControlPoints())
 					element.ControlPointsDictionary.Add(controlPoint.ID, controlPoint);
@@ -304,7 +305,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		{
 			var element = Element;
 
-            var nurbs2D = element._nurbs;
+            var nurbs2D = element._shapeFunctions;
 			
 			for (var p = 0; p < 16; p++)
 			{
@@ -319,7 +320,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DValues()
 		{
 			var element = Element;
-            var nurbs2D = element._nurbs;
+            var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 16; i++)
 			{
@@ -337,7 +338,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DDerivativeValuesKsi()
 		{
 			var element = Element;
-            var nurbs2D = element._nurbs;
+            var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 16; i++)
 			{
@@ -354,7 +355,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DDerivativeValuesHeta()
 		{
 			var element = Element;
-            var nurbs2D = element._nurbs;
+            var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 16; i++)
 			{
