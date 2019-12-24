@@ -193,9 +193,8 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 		/// <returns>A <see cref="IReadOnlyList{T}"/> that contains a <see cref="IReadOnlyList{T}"/> of <see cref="IDofType"/> with degrees of freedom for each elemental <see cref="ControlPoint"/>.</returns>
 		public IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element)
 		{
-			var nurbsElement = (KirchhoffLoveShellElement)element;
-			dofTypes = new IDofType[nurbsElement.ControlPointsDictionary.Count][];
-			for (int i = 0; i < nurbsElement.ControlPointsDictionary.Count; i++)
+			dofTypes = new IDofType[element.Nodes.Count][];
+			for (int i = 0; i < element.Nodes.Count; i++)
 			{
 				dofTypes[i] = ControlPointDofTypes;
 			}
@@ -226,17 +225,18 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 		/// <param name="element">An element of type <see cref="NurbsKirchhoffLoveShellElement"/>.</param>
 		/// <returns>An <see cref="IMatrix"/> containing the stiffness matrix of an <see cref="NurbsKirchhoffLoveShellElement"/>.</returns>
 		public IMatrix StiffnessMatrix(IElement element)
-		{
-			var shellElement = (KirchhoffLoveShellElement)element;
-			var elementControlPoints = shellElement.ControlPoints.ToArray();
-			Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
+        {
+            var numberOfCP = element.Nodes.Count;
+
+			Matrix stiffnessMatrixElement = Matrix.CreateZero(numberOfCP * 3,
+                numberOfCP * 3);
 
 
 			for (int j = 0; j < _gaussPoints.Length; j++)
 			{
-				var jacobianMatrix = CalculateJacobian(shellElement, _shapeFunctions, j);
+				var jacobianMatrix = CalculateJacobian(element, _shapeFunctions, j);
 
-				var hessianMatrix = CalculateHessian(shellElement, _shapeFunctions, j);
+				var hessianMatrix = CalculateHessian(element, _shapeFunctions, j);
 
 				var surfaceBasisVector1 = CalculateSurfaceBasisVector1(jacobianMatrix, 0);
 
@@ -258,10 +258,13 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 
                 var membraneConstitutiveMatrix = material.MembraneConstitutiveMatrix;
                 var bendingConstitutiveMatrix = material.BendingConstitutiveMatrix;
-				
-				var Bmembrane = CalculateMembraneDeformationMatrix(_shapeFunctions, j, surfaceBasisVector1, surfaceBasisVector2, shellElement);
 
-				var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, _shapeFunctions, j, surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1, surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, shellElement);
+                var Bmembrane = CalculateMembraneDeformationMatrix(_shapeFunctions, j, surfaceBasisVector1,
+                    surfaceBasisVector2, numberOfCP);
+
+                var Bbending = CalculateBendingDeformationMatrix(surfaceBasisVector3, _shapeFunctions, j,
+                    surfaceBasisVector2, surfaceBasisVectorDerivative1, surfaceBasisVector1, J1,
+                    surfaceBasisVectorDerivative2, surfaceBasisVectorDerivative12, numberOfCP);
 				
 				var Kmembrane = Bmembrane.Transpose() * membraneConstitutiveMatrix * Bmembrane *  J1 *
 								_gaussPoints[j].WeightFactor;
@@ -275,9 +278,9 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 			return stiffnessMatrixElement;
 		}
 
-		private static Matrix CalculateHessian(KirchhoffLoveShellElement shellElement, IShapeFunction2D nurbs, int j)
+		private static Matrix CalculateHessian(IElement shellElement, IShapeFunction2D nurbs, int j)
 		{
-			var elementControlPoints = shellElement.ControlPoints.ToArray();
+			var elementControlPoints = shellElement.Nodes.ToArray();
 			Matrix hessianMatrix = Matrix.CreateZero(3, 3);
 			for (int k = 0; k < elementControlPoints.Length; k++)
 			{
@@ -295,9 +298,9 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 			return hessianMatrix;
 		}
 
-		private static Matrix CalculateJacobian(KirchhoffLoveShellElement shellElement, IShapeFunction2D nurbs, int j)
+		private static Matrix CalculateJacobian(IElement shellElement, IShapeFunction2D nurbs, int j)
 		{
-			var elementControlPoints = shellElement.ControlPoints.ToArray();
+			var elementControlPoints = shellElement.Nodes.ToArray();
 			Matrix jacobianMatrix = Matrix.CreateZero(2, 3);
 			for (int k = 0; k < elementControlPoints.Length; k++)
 			{
@@ -323,11 +326,10 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 
 		private Matrix CalculateBendingDeformationMatrix(Vector surfaceBasisVector3, IShapeFunction2D nurbs, int j,
 			Vector surfaceBasisVector2, Vector surfaceBasisVectorDerivative1, Vector surfaceBasisVector1, double J1,
-			Vector surfaceBasisVectorDerivative2, Vector surfaceBasisVectorDerivative12, KirchhoffLoveShellElement element)
+			Vector surfaceBasisVectorDerivative2, Vector surfaceBasisVectorDerivative12, int numberOfControlPoints)
 		{
-			var elementControlPoints = element.ControlPoints.ToArray();
-			Matrix Bbending = Matrix.CreateZero(3, elementControlPoints.Length * 3);
-			for (int column = 0; column < elementControlPoints.Length * 3; column += 3)
+			Matrix Bbending = Matrix.CreateZero(3, numberOfControlPoints * 3);
+			for (int column = 0; column < numberOfControlPoints * 3; column += 3)
 			{
 				#region BI1
 
@@ -449,11 +451,10 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 		}
 
 		private Matrix CalculateMembraneDeformationMatrix(IShapeFunction2D nurbs, int j, Vector surfaceBasisVector1,
-			Vector surfaceBasisVector2, KirchhoffLoveShellElement element)
+			Vector surfaceBasisVector2, int numberOfControlPoints)
 		{
-			var elementControlPoints = element.ControlPoints.ToArray();
-			Matrix dRIa = Matrix.CreateZero(3, elementControlPoints.Length);
-			for (int i = 0; i < elementControlPoints.Length; i++)
+			Matrix dRIa = Matrix.CreateZero(3, numberOfControlPoints);
+			for (int i = 0; i < numberOfControlPoints; i++)
 			{
 				for (int m = 0; m < 3; m++)
 				{
@@ -462,8 +463,8 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 				}
 			}
 
-			Matrix Bmembrane = Matrix.CreateZero(3, elementControlPoints.Length * 3);
-			for (int column = 0; column < elementControlPoints.Length * 3; column += 3)
+			Matrix Bmembrane = Matrix.CreateZero(3, numberOfControlPoints * 3);
+			for (int column = 0; column < numberOfControlPoints * 3; column += 3)
 			{
 				Bmembrane[0, column] = nurbs.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[0];
 				Bmembrane[0, column + 1] = nurbs.DerivativeValuesKsi[column / 3, j] * surfaceBasisVector1[1];
