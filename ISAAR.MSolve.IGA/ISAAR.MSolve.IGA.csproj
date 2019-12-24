@@ -7,8 +7,10 @@
   <ItemGroup>
     <Compile Remove="Elements\NURBSElement2DCollocation.cs" />
     <Compile Remove="Elements\NURBSElement3DCollocation.cs" />
+    <Compile Remove="Elements\NURBSKirchhoffLoveShellElement.cs" />
     <Compile Remove="Elements\NurbsKLShellNonLinear.cs" />
     <Compile Remove="Elements\TSplineElement2D.cs" />
+    <Compile Remove="Elements\TSplineKirchhoffLoveShellElement.cs" />
     <Compile Remove="Entities\CollocationModel.cs" />
     <Compile Remove="Entities\CollocationPatch.cs" />
     <Compile Remove="Entities\CollocationPoint.cs" />

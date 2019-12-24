@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Structural;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -201,7 +202,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private NurbsKirchhoffLoveShellElement ShellElement
+		private KirchhoffLoveShellElement ShellElement
 		{
 			get
 			{
@@ -233,7 +234,7 @@ namespace ISAAR.MSolve.IGA.Tests
                     YoungModulus = 100,
                     PoissonRatio = 0.0
                 };
-				var element = new NurbsKirchhoffLoveShellElement(material,nurbs, gaussPoints, thickness);
+				var element = new KirchhoffLoveShellElement(material,nurbs, gaussPoints, thickness);
 				var patch = new Patch();
 				
 				foreach (var controlPoint in ShellElementControlPoints())
@@ -370,7 +371,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DSecondDerivativeValuesKsi()
 		{
 			var element = ShellElement;
-            var nurbs2D = element._nurbs;
+            var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 12; i++)
 			{
@@ -388,7 +389,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DSecondDerivativeValuesHeta()
 		{
 			var element = ShellElement;
-            var nurbs2D = element._nurbs;
+            var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 12; i++)
 			{
@@ -406,7 +407,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		public void TestShapeNurbs2DSecondDerivativeValuesKsiHeta()
 		{
 			var element = ShellElement;
-            var nurbs2D = element._nurbs;
+            var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 12; i++)
 			{

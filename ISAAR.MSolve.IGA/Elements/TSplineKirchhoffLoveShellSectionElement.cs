@@ -70,7 +70,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 		public double[] CalculateForces(IElement element, double[] localDisplacements, double[] localdDisplacements)
 		{
-			var shellElement = (TSplineKirchhoffLoveShellElement)element;
+			var shellElement = (TSplineKirchhoffLoveShellSectionElement)element;
 			var ElementNodalForces = new double[shellElement.ControlPointsDictionary.Count * 3];
 			
 			for (int j = 0; j < _gaussPoints.Length; j++)
@@ -145,7 +145,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 		public Tuple<double[], double[]> CalculateStresses(IElement element, double[] localDisplacements, double[] localdDisplacements)
 		{
-			var shellElement = (TSplineKirchhoffLoveShellElement)element;
+			var shellElement = (TSplineKirchhoffLoveShellSectionElement)element;
 			//Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
 			for (int j = 0; j < _gaussPoints.Length; j++)
@@ -199,7 +199,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 		public IReadOnlyList<IReadOnlyList<IDofType>> GetElementDofTypes(IElement element)
 		{
-			var nurbsElement = (TSplineKirchhoffLoveShellElement)element;
+			var nurbsElement = (TSplineKirchhoffLoveShellSectionElement)element;
 			dofTypes = new IDofType[nurbsElement.ControlPoints.Count()][];
 			for (int i = 0; i < nurbsElement.ControlPoints.Count(); i++)
 			{
@@ -220,7 +220,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 		public IMatrix StiffnessMatrix(IElement element)
 		{
-			var shellElement = (TSplineKirchhoffLoveShellElement)element;
+			var shellElement = (TSplineKirchhoffLoveShellSectionElement)element;
 			Matrix stiffnessMatrixElement = Matrix.CreateZero(shellElement.ControlPointsDictionary.Count * 3, shellElement.ControlPointsDictionary.Count * 3);
 
 			for (int j = 0; j < _gaussPoints.Length; j++)
@@ -269,7 +269,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			return stiffnessMatrixElement;
 		}
 
-		private Matrix CalculateConstitutiveMatrix(TSplineKirchhoffLoveShellElement element, Vector surfaceBasisVector1, Vector surfaceBasisVector2)
+		private Matrix CalculateConstitutiveMatrix(TSplineKirchhoffLoveShellSectionElement element, Vector surfaceBasisVector1, Vector surfaceBasisVector2)
 		{
             var auxMatrix1 = Matrix.CreateZero(2, 2);
             auxMatrix1[0, 0] = surfaceBasisVector1.DotProduct(surfaceBasisVector1);
@@ -302,7 +302,7 @@ namespace ISAAR.MSolve.IGA.Elements
 
 		private Matrix CalculateBendingDeformationMatrix(Vector surfaceBasisVector3, ShapeTSplines2DFromBezierExtraction tsplines, int j,
 			Vector surfaceBasisVector2, Vector surfaceBasisVectorDerivative1, Vector surfaceBasisVector1, double J1,
-			Vector surfaceBasisVectorDerivative2, Vector surfaceBasisVectorDerivative12, TSplineKirchhoffLoveShellElement element)
+			Vector surfaceBasisVectorDerivative2, Vector surfaceBasisVectorDerivative12, TSplineKirchhoffLoveShellSectionElement element)
 		{
 			Matrix Bbending = Matrix.CreateZero(3, element.ControlPoints.Count() * 3);
 			for (int column = 0; column < element.ControlPoints.Count() * 3; column+=3)
@@ -390,7 +390,7 @@ namespace ISAAR.MSolve.IGA.Elements
 		}
 
 		private Matrix CalculateMembraneDeformationMatrix(ShapeTSplines2DFromBezierExtraction tsplines, int j, Vector surfaceBasisVector1,
-			Vector surfaceBasisVector2, TSplineKirchhoffLoveShellElement element)
+			Vector surfaceBasisVector2, TSplineKirchhoffLoveShellSectionElement element)
 		{
 			Matrix dRIa = Matrix.CreateZero(3, element.ControlPoints.Count() * 3);
 			for (int i = 0; i < element.ControlPoints.Count(); i++)
@@ -430,7 +430,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			return surfaceBasisVector1;
 		}
 
-		private static Matrix CalculateHessian(TSplineKirchhoffLoveShellElement shellElement, ShapeTSplines2DFromBezierExtraction tsplines, int j)
+		private static Matrix CalculateHessian(TSplineKirchhoffLoveShellSectionElement shellElement, ShapeTSplines2DFromBezierExtraction tsplines, int j)
 		{
 			Matrix hessianMatrix = Matrix.CreateZero(3, 3);
 			for (int k = 0; k < shellElement.ControlPoints.Count(); k++)
@@ -449,7 +449,7 @@ namespace ISAAR.MSolve.IGA.Elements
 			return hessianMatrix;
 		}
 
-		private static Matrix CalculateJacobian(TSplineKirchhoffLoveShellElement shellElement, ShapeTSplines2DFromBezierExtraction tsplines, int j)
+		private static Matrix CalculateJacobian(TSplineKirchhoffLoveShellSectionElement shellElement, ShapeTSplines2DFromBezierExtraction tsplines, int j)
 		{
 			Matrix jacobianMatrix = Matrix.CreateZero(2, 3);
 			for (int k = 0; k < shellElement.ControlPoints.Count(); k++)

@@ -6,6 +6,7 @@ using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Structural;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Readers;
@@ -72,7 +73,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private NurbsKirchhoffLoveShellElement Element
+		private KirchhoffLoveShellElement Element
 		{
 			get
 			{
@@ -103,7 +104,7 @@ namespace ISAAR.MSolve.IGA.Tests
                     YoungModulus = 100,
                     PoissonRatio = 0.0
                 };
-                var element = new NurbsKirchhoffLoveShellElement(material, nurbs, gaussPoints, thickness);
+                var element = new KirchhoffLoveShellElement(material, nurbs, gaussPoints, thickness);
 				var patch = new Patch();
 				
 				foreach (var controlPoint in ElementControlPoints())

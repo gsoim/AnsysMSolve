@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Structural;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Matrices;
@@ -177,12 +178,12 @@ namespace ISAAR.MSolve.IGA.Readers
 						new Knot(){ID=3,Ksi=1,Heta = 1,Zeta = 0}
 					}).ToArray();
 
-			Element element = new TSplineKirchhoffLoveShellElement(
+			Element element = new KirchhoffLoveShellElement(
                 material, tsplines, gaussPoints,thickness)
 			{
 				ID = elementIDCounter,
 				Patch = _model.PatchesDictionary[0],
-				ElementType = new TSplineKirchhoffLoveShellElement(material, tsplines, gaussPoints,thickness),
+				ElementType = new KirchhoffLoveShellElement(material, tsplines, gaussPoints,thickness),
 			};
             element.AddControlPoints(elementControlPoints);
 			_model.ElementsDictionary.Add(elementIDCounter++, element);

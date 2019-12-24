@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using ISAAR.MSolve.IGA.Elements;
+using ISAAR.MSolve.IGA.Elements.Structural;
 using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.SupportiveClasses;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
@@ -317,11 +318,11 @@ namespace ISAAR.MSolve.IGA.Readers
                     switch (formulation)
                     {
                         case GeometricalFormulation.Linear:
-                            element = new NurbsKirchhoffLoveShellElement(_sectionaMaterial,nurbs, gaussPoints,Thickness)
+                            element = new KirchhoffLoveShellElement(_sectionaMaterial,nurbs, gaussPoints,Thickness)
                             {
                                 ID = elementID,
                                 Patch = model.PatchesDictionary[0],
-                                ElementType = new NurbsKirchhoffLoveShellElement(_sectionaMaterial, nurbs, gaussPoints, Thickness)
+                                ElementType = new KirchhoffLoveShellElement(_sectionaMaterial, nurbs, gaussPoints, Thickness)
                             };
                             element.AddKnots(knotsOfElement);
                             element.AddControlPoints(elementControlPoints);
