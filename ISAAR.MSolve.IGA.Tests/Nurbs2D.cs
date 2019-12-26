@@ -156,7 +156,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		
 		private const double Tolerance = 1e-14;
 
-		#region ShellElement
+		#region Shell
 		private List<ControlPoint> ShellElementControlPoints()
 		{
 			return new List<ControlPoint>
@@ -203,7 +203,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private KirchhoffLoveShellElement ShellElement
+		private KirchhoffLoveShell Shell
 		{
 			get
 			{
@@ -235,7 +235,7 @@ namespace ISAAR.MSolve.IGA.Tests
                     YoungModulus = 100,
                     PoissonRatio = 0.0
                 };
-				var element = new KirchhoffLoveShellElement(material,nurbs, gaussPoints, thickness);
+				var element = new KirchhoffLoveShell(material,nurbs, gaussPoints, thickness);
 				var patch = new Patch();
 				
 				foreach (var controlPoint in ShellElementControlPoints())
@@ -371,7 +371,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		[Fact]
 		public void TestShapeNurbs2DSecondDerivativeValuesKsi()
 		{
-			var element = ShellElement;
+			var element = Shell;
             var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 12; i++)
@@ -389,7 +389,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		[Fact]
 		public void TestShapeNurbs2DSecondDerivativeValuesHeta()
 		{
-			var element = ShellElement;
+			var element = Shell;
             var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 12; i++)
@@ -407,7 +407,7 @@ namespace ISAAR.MSolve.IGA.Tests
 		[Fact]
 		public void TestShapeNurbs2DSecondDerivativeValuesKsiHeta()
 		{
-			var element = ShellElement;
+			var element = Shell;
             var nurbs2D = element._shapeFunctions;
 
 			for (var i = 0; i < 12; i++)

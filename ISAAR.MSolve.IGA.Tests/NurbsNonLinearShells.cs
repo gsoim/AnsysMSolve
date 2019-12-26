@@ -13,6 +13,7 @@ using ISAAR.MSolve.IGA.Entities;
 using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Readers;
 using ISAAR.MSolve.IGA.SupportiveClasses;
+using ISAAR.MSolve.LinearAlgebra.Output;
 using ISAAR.MSolve.LinearAlgebra.Vectors;
 using ISAAR.MSolve.Logging;
 using ISAAR.MSolve.Materials;
@@ -205,12 +206,12 @@ namespace ISAAR.MSolve.IGA.Tests
         }
 
 
-        //[Fact]
+        [Fact]
         public void IsogeometricCantileverShellMicrostructure()
         {
             var filename = "CantileverShellBenchmark16x1";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt");
-            var numberOfRealizations = 2;
+            var numberOfRealizations = 1000;
 
             var trandom= new TRandom();
             var youngModulusSolutionPairs = new double[numberOfRealizations, 2];
@@ -225,9 +226,9 @@ namespace ISAAR.MSolve.IGA.Tests
                 var material = new MicrostructureShell2D(homogeneousRveBuilder1,
                     microModel => (new SuiteSparseSolver.Builder()).BuildSolver(microModel), false, 1);
 
-                //var material4 = new Shell2dRVEMaterialHostConst(1, 1, 1, homogeneousRveBuilder1,
-                //    constModel => (new SuiteSparseSolver.Builder()).BuildSolver(constModel));
-                var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath, material);
+                var material4 = new Shell2dRVEMaterialHostConst(1, 1, 1, homogeneousRveBuilder1,
+                    constModel => (new SuiteSparseSolver.Builder()).BuildSolver(constModel));
+                var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath,material4);
                 var model = modelReader.GenerateModelFromFile();
 
                 Value verticalDistributedLoad = delegate (double x, double y, double z)
@@ -259,10 +260,14 @@ namespace ISAAR.MSolve.IGA.Tests
                 parentAnalyzer.Initialize();
                 parentAnalyzer.Solve();
 
-                var solutionLength = solver.LinearSystems[0].Solution.Length-1;
+                var solutionLength =
+                    model.GlobalDofOrdering.GlobalFreeDofs[model.ControlPoints.Last(), StructuralDof.TranslationZ];
                 youngModulusSolutionPairs[i, 1] = solver.LinearSystems[0].Solution[solutionLength];
             }
-            
+
+            var writer = new Array2DWriter();
+            writer.WriteToFile(youngModulusSolutionPairs, Path.Combine(Directory.GetCurrentDirectory(), "MicrostructureTetResults"));
+
         }
 
 

@@ -28,7 +28,7 @@ namespace ISAAR.MSolve.IGA.Readers
 		private readonly string _filename;
         private readonly GeometricalFormulation _formulation;
         private readonly IShellMaterial _material;
-        private readonly IShellSectionMaterial _sectionaMaterial;
+        private readonly IShellSectionMaterial _sectionMaterial;
 
         private enum Attributes
 		{
@@ -53,7 +53,7 @@ namespace ISAAR.MSolve.IGA.Readers
 			_filename = filename;
             _formulation = formulation;
             _material = material;
-            _sectionaMaterial = sectionMaterial;
+            _sectionMaterial = sectionMaterial;
         }
 
 		private Dictionary<int, int[]> ControlPointIDsDictionary = new Dictionary<int, int[]>();
@@ -322,7 +322,7 @@ namespace ISAAR.MSolve.IGA.Readers
                             {
                                 ID = elementID,
                                 Patch = model.PatchesDictionary[0],
-                                ElementType = new KirchhoffLoveShellElement(_sectionaMaterial, nurbs, gaussPoints, Thickness)
+                                ElementType = new KirchhoffLoveShell(_sectionMaterial, nurbs, gaussPoints, Thickness)
                             };
                             element.AddKnots(knotsOfElement);
                             element.AddControlPoints(elementControlPoints);

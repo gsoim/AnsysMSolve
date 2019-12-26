@@ -182,7 +182,7 @@ namespace ISAAR.MSolve.IGA.Readers
 			{
 				ID = elementIDCounter,
 				Patch = _model.PatchesDictionary[0],
-				ElementType = new KirchhoffLoveShellElement(material, tsplines, gaussPoints,thickness),
+				ElementType = new KirchhoffLoveShell(material, tsplines, gaussPoints,thickness),
 			};
             element.AddControlPoints(elementControlPoints);
 			_model.ElementsDictionary.Add(elementIDCounter++, element);

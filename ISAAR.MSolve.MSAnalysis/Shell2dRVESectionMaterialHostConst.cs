@@ -12,7 +12,7 @@ using ISAAR.MSolve.Solvers;
 
 namespace ISAAR.MSolve.MultiscaleAnalysis
 {
-    public class Shell2dRVEMaterialHostConst : IShellMaterial
+    public class Shell2dRVESectionMaterialHostConst : IShellSectionMaterial
     {
         public double[] NormalVectorV3 { get; set; }
         public double[] TangentVectorV1 { get; set; }
@@ -32,7 +32,8 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
 
         private Func<Model, ISolver> rveSolver = model => (new Solvers.Direct.SkylineSolver.Builder()).BuildSolver(model);
 
-        public Shell2dRVEMaterialHostConst(int rveDatabaseSize, int gpsPerRve, int gpCounter, IdegenerateRVEbuilder rVEbuilder,Func<Model,ISolver> rveSolver)
+        public Shell2dRVESectionMaterialHostConst(int rveDatabaseSize, int gpsPerRve, int gpCounter,
+            IdegenerateRVEbuilder rVEbuilder,Func<Model,ISolver> rveSolver, double thickness)
         {
             this.rveDatabaseSize = rveDatabaseSize;
             this.gpsPerRve = gpsPerRve;
@@ -41,6 +42,7 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
             this.rveBuilderToClone = rVEbuilder;
             CreateConstitutiveTensorsDatabase();
             this.rveSolver = rveSolver;
+            Thickness = thickness;
         }
 
         private void CreateConstitutiveTensorsDatabase()
@@ -66,12 +68,12 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
         //    this.coreMaterial = coreMaterial;
         //}
 
-        private Shell2dRVEMaterialHostConst(double[,] coreCons)
+        private Shell2dRVESectionMaterialHostConst(double[,] coreCons)
         {
             this.coreConstitutive = coreCons;
         }
 
-        public IShellMaterial Clone()
+        public IShellSectionMaterial Clone()
         {
             gpCounter += 1;
 
@@ -82,7 +84,7 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
 
             int rve_id = 1;// ((gpCounter-1) / gpsPerRve) + 1;      //TODO: xrhsh tou rand()     
 
-            var sharedRVEmaterial = new Shell2dRVEMaterialHostConst(MaterialDatabase[rve_id]);
+            var sharedRVEmaterial = new Shell2dRVESectionMaterialHostConst(MaterialDatabase[rve_id]);
             return sharedRVEmaterial;
         }
 
@@ -165,9 +167,9 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
         }
 
         private double[] trueStressVec;
-        public double[] Stresses => new double[3];
+        public double[] Stresses => throw new NotImplementedException();
 
-    public int ID => throw new NotImplementedException();
+        public int ID => throw new NotImplementedException();
 
         public bool Modified => throw new NotImplementedException();
 
@@ -177,7 +179,20 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
 
         public double PoissonRatio => throw new NotSupportedException();
 
-        
+        public double[] MembraneForces => throw new NotImplementedException();
+
+        public double[] Moments => throw new NotImplementedException();
+
+        public double Thickness { get; set; }
+
+        public Matrix MembraneConstitutiveMatrix =>
+            ConstitutiveMatrix.CopyToFullMatrix();
+
+        public Matrix BendingConstitutiveMatrix =>
+            ConstitutiveMatrix.CopyToFullMatrix();
+
+        public Matrix CouplingConstitutiveMatrix => Matrix.CreateZero(3, 3);
+
         public void UpdateMaterial(double[] GLvec)
         {
             throw new NotSupportedException();
@@ -201,6 +216,11 @@ namespace ISAAR.MSolve.MultiscaleAnalysis
         public void ClearStresses()
         {
             throw new NotSupportedException();
+        }
+        
+        public void UpdateMaterial(double[] membraneStrains, double[] bendingStrains)
+        {
+            throw new NotImplementedException();
         }
     }
 }

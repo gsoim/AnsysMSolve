@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using ISAAR.MSolve.Discretization.Integration;
 
@@ -111,6 +112,22 @@ namespace ISAAR.MSolve.Discretization.Integration.Quadratures
             if (order < 1) throw new ArgumentException($"The integration rule order must be >= 1, but was {order}.");
             else if (order > 10) throw new NotImplementedException();
             else return quadratures[order];
+        }
+
+        public static GaussLegendre1D GetQuadratureOfSpan(int order, double spanStart, double spanEnd)
+        {
+            if (order < 1) throw new ArgumentException($"The integration rule order must be >= 1, but was {order}.");
+            else if (order > 10) throw new NotImplementedException();
+            else
+            {
+                var quadrature = quadratures[order];
+                var integrationPoints= quadrature.IntegrationPoints
+                    .Select(gaussPoint => 
+                        new GaussPoint(0.5 * (spanStart + spanEnd + (spanEnd - spanEnd) * gaussPoint.Xi), 
+                            0.5 * (spanEnd - spanStart) * gaussPoint.Weight)).ToArray();
+                return new GaussLegendre1D(integrationPoints);
+            }
+            
         }
 
         private GaussLegendre1D(params GaussPoint[] points)

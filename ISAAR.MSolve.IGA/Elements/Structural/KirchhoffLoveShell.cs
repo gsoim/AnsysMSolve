@@ -18,15 +18,36 @@ using Element = ISAAR.MSolve.IGA.Entities.Element;
 
 namespace ISAAR.MSolve.IGA.Elements.Structural
 {
+  //  public enum GeometricalFormulation
+  //  {
+		//Linear, 
+		//NonLinear
+  //  }
+
+  //  public class KirchhoffLoveShellFactory
+  //  {
+  //      public KirchhoffLoveShell CreateKirchhoffLoveShellElement(GeometricalFormulation formulation,
+  //          IShellSectionMaterial material, IShapeFunction2D shapeFunctions,
+  //          GaussLegendrePoint3D[] gaussPoints, double thickness)
+  //      {
+
+		//	//var geometricalCalculation= formulation==GeometricalFormulation.Linear? new LinearKLFormulation():new NonLinearKLFormulation;
+		//	return new KirchhoffLoveShell(material,shapeFunctions,gaussPoints,thickness);
+  //      }
+
+
+  //  }
+
+
     /// <summary>
 	/// An shell element that utilizes Non-Uniform Rational B-Splines for shape functions.
 	/// It is based on Kirchhoff-Love theory. Geometrically linear formulation.
 	/// For more information please refer to <see href="https://www.sciencedirect.com/science/article/pii/S0045782509002680"/>
 	/// Authors: Dimitris Tsapetis.
 	/// </summary>
-	public class KirchhoffLoveShellElement : Element, IStructuralIsogeometricElement, ISurfaceLoadedElement
+	public class KirchhoffLoveShell : Element, IStructuralIsogeometricElement, ISurfaceLoadedElement
 	{
-        public KirchhoffLoveShellElement(IShellSectionMaterial material,
+        public KirchhoffLoveShell(IShellSectionMaterial material,
             IShapeFunction2D shapeFunctions, GaussLegendrePoint3D[] gaussPoints, 
             double thickness )
         {
@@ -36,10 +57,10 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
             _thickness = thickness;
 
             foreach (var gaussPoint in _gaussPoints)
-                materialsAtThicknessGP.Add(gaussPoint, _material.Clone());
+                materialsAtMidsurfaceGP.Add(gaussPoint, _material.Clone());
         }
 
-        private readonly Dictionary<GaussLegendrePoint3D, IShellSectionMaterial> materialsAtThicknessGP =
+        private readonly Dictionary<GaussLegendrePoint3D, IShellSectionMaterial> materialsAtMidsurfaceGP =
             new Dictionary<GaussLegendrePoint3D, IShellSectionMaterial>();
 		protected static readonly IDofType[] ControlPointDofTypes = { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ };
         private readonly IShellSectionMaterial _material;
@@ -250,7 +271,7 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 				var surfaceBasisVectorDerivative2 = CalculateSurfaceBasisVector1(hessianMatrix, 1);
 				var surfaceBasisVectorDerivative12 = CalculateSurfaceBasisVector1(hessianMatrix, 2);
 
-                var material = materialsAtThicknessGP[_gaussPoints[j]];
+                var material = materialsAtMidsurfaceGP[_gaussPoints[j]];
                 material.TangentVectorV1 = surfaceBasisVector1.CopyToArray();
                 material.TangentVectorV2 = surfaceBasisVector2.CopyToArray();
                 material.NormalVectorV3 = surfaceBasisVector3.CopyToArray();
@@ -419,7 +440,7 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 			return Bbending;
 		}
 
-		private Matrix CalculateConstitutiveMatrix(KirchhoffLoveShellElement element, Vector surfaceBasisVector1, Vector surfaceBasisVector2)
+		private Matrix CalculateConstitutiveMatrix(KirchhoffLoveShell element, Vector surfaceBasisVector1, Vector surfaceBasisVector2)
 		{
 			var auxMatrix1 = Matrix.CreateZero(2, 2);
 			auxMatrix1[0, 0] = surfaceBasisVector1.DotProduct(surfaceBasisVector1);
@@ -484,7 +505,7 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 
 		public Dictionary<int, double> CalculateSurfacePressure(Element element, double pressureMagnitude)
 		{
-			var shellElement = (KirchhoffLoveShellElement)element;
+			var shellElement = (KirchhoffLoveShell)element;
 			var elementControlPoints = shellElement.ControlPoints.ToArray();
 			var pressureLoad = new Dictionary<int, double>();
 
@@ -521,7 +542,7 @@ namespace ISAAR.MSolve.IGA.Elements.Structural
 
 		public Dictionary<int, double> CalculateSurfaceDistributedLoad(Element element, IDofType loadedDof, double loadMagnitude)
 		{
-			var shellElement = (KirchhoffLoveShellElement)element;
+			var shellElement = (KirchhoffLoveShell)element;
 			var elementControlPoints = shellElement.ControlPoints.ToArray();
 			var distributedLoad = new Dictionary<int, double>();
 

@@ -74,7 +74,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			};
 		}
 
-		private KirchhoffLoveShellElement Element
+		private KirchhoffLoveShell Element
 		{
 			get
 			{
@@ -105,7 +105,7 @@ namespace ISAAR.MSolve.IGA.Tests
                     YoungModulus = 100,
                     PoissonRatio = 0.0
                 };
-                var element = new KirchhoffLoveShellElement(material, nurbs, gaussPoints, thickness);
+                var element = new KirchhoffLoveShell(material, nurbs, gaussPoints, thickness);
 				var patch = new Patch();
 				
 				foreach (var controlPoint in ElementControlPoints())
