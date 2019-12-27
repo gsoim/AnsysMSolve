@@ -477,7 +477,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 .ToString(CultureInfo.InvariantCulture);
 			var material = new ShellElasticMaterial2Dtransformationb()
             {
-                YoungModulus = 43200000000,
+                YoungModulus = 4.3210e8,
                 PoissonRatio = 0.0
             };
             var modelReader = new IsogeometricShellReader(GeometricalFormulation.NonLinear, filepath, material);

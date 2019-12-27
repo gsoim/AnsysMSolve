@@ -195,13 +195,28 @@ namespace ISAAR.MSolve.IGA.Readers
             var elementControlPoints = connectivity.Select(t => _model.ControlPointsDictionary[t]).ToArray();
             var tsplines = new ShapeTSplines2DFromBezierExtraction(elementDegreeKsi, elementDegreeHeta,
                 extractionOperator, elementControlPoints);
-            Element element = new TSplineKirchhoffLoveShellElementMaterial(elementIDCounter, null,
-					elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial,
-                    tsplines)
-			{
-				ElementType = new TSplineKirchhoffLoveShellElementMaterial(elementIDCounter, null,
-					elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial, tsplines)
+            Element element = new Element
+            {
+                ID = elementIDCounter,
+                Patch = _model.PatchesDictionary[0],
+				ElementType = new KirchhoffLoveShellNL(shellMaterial, new List<Knot>
+                    {
+                        new Knot() {ID = 0, Ksi = -1, Heta = -1, Zeta = 0},
+                        new Knot() {ID = 1, Ksi = -1, Heta = 1, Zeta = 0},
+                        new Knot() {ID = 2, Ksi = 1, Heta = -1, Zeta = 0},
+                        new Knot() {ID = 3, Ksi = 1, Heta = 1, Zeta = 0},
+                    }, tsplines, elementControlPoints,
+					_model.PatchesDictionary[0], thickness, elementDegreeKsi, elementDegreeHeta)
 			};
+                
+                
+   //             new TSplineKirchhoffLoveShellElementMaterial(elementIDCounter, null,
+			//		elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial,
+   //                 tsplines)
+			//{
+			//	ElementType = new TSplineKirchhoffLoveShellElementMaterial(elementIDCounter, null,
+			//		elementDegreeKsi, elementDegreeHeta, thickness, extractionOperator, shellMaterial, tsplines)
+			//};
             element.AddControlPoints(elementControlPoints);
 			_model.ElementsDictionary.Add(elementIDCounter++, element);
 			_model.PatchesDictionary[0].Elements.Add(element);
