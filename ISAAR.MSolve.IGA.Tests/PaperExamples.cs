@@ -24,7 +24,8 @@ using JetBrains.dotMemoryUnit;
 using Troschuetz.Random;
 using Xunit;
 
-[assembly:SuppressXUnitOutputException]
+[assembly: SuppressXUnitOutputException]
+
 namespace ISAAR.MSolve.IGA.Tests
 {
     public class PaperExamples
@@ -128,90 +129,95 @@ namespace ISAAR.MSolve.IGA.Tests
             });
 
             var writer = new Array2DWriter();
-            writer.WriteToFile(youngModulusSolutionPairs, Path.Combine(Directory.GetCurrentDirectory(), "ScordelisLoMultiscaleResults"));
+            writer.WriteToFile(youngModulusSolutionPairs,
+                Path.Combine(Directory.GetCurrentDirectory(), "ScordelisLoMultiscaleResults"));
         }
 
         [Fact]
         public void SimpleHoodBenchmark()
         {
             var filename = "attempt2";
-            var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles",$"{filename}.iga");
+            var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.iga");
 
-            var numberOfRealizations = 1;
-            var trandom = new TRandom();
-            var youngModulusSolutionPairs = new double[numberOfRealizations, 2];
+            for (int d = 0; d < 5; d++)
+            {
+                var numberOfRealizations = 500;
+                var trandom = new TRandom();
+                var youngModulusSolutionPairs = new double[numberOfRealizations, 2];
 
-            for (int realization = 0; realization < numberOfRealizations; realization++){
-                var randomCnts = trandom.DiscreteUniform(220, 790);
-                youngModulusSolutionPairs[realization, 0] = randomCnts;
-                var outterMaterial = new ElasticMaterial3DtotalStrain()
+                for (int realization = 0; realization < numberOfRealizations; realization++)
                 {
-                    YoungModulus = 4,//2.79e9,
-                    PoissonRatio = 0.4//0.4
-                };
-                var homogeneousRveBuilder1 = new CntReinforcedElasticNanocomposite(outterMaterial, 0);
-
-                var material4 = new Shell2dRVEMaterialHostConst(1, 1, 1, homogeneousRveBuilder1,
-                    constModel => (new SuiteSparseSolver.Builder()).BuildSolver(constModel));
-
-                var model = new Model();
-                //var material4= new ShellElasticMaterial2Dtransformationb()
-                //{
-                //    YoungModulus = 100,
-                //    PoissonRatio = 0.3
-                //};
-                var modelReader = new IgaFileReader(model, filepath);
-                modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness, material4);
-
-                for (int i = 0; i < 100; i++)
-                {
-                    var id = model.ControlPoints.ToList()[i].ID;
-                    model.ControlPointsDictionary[id].Constraints
-                        .Add(new Constraint() {DOF = StructuralDof.TranslationX});
-                    model.ControlPointsDictionary[id].Constraints
-                        .Add(new Constraint() {DOF = StructuralDof.TranslationY});
-                    model.ControlPointsDictionary[id].Constraints
-                        .Add(new Constraint() {DOF = StructuralDof.TranslationZ});
-                }
-
-                for (int i = model.ControlPoints.Count() - 100; i < model.ControlPoints.Count(); i++)
-                {
-                    var id = model.ControlPoints.ToList()[i].ID;
-                    model.Loads.Add(new Load()
+                    var randomCnts = trandom.DiscreteUniform(220, 790);
+                    youngModulusSolutionPairs[realization, 0] = randomCnts;
+                    var outterMaterial = new ElasticMaterial3DtotalStrain()
                     {
-                        Amount = 100/10e4,
-                        Node = model.ControlPointsDictionary[id],
-                        DOF = StructuralDof.TranslationZ
-                    });
+                        YoungModulus = 4, //2.79e9,
+                        PoissonRatio = 0.4 //0.4
+                    };
+                    var homogeneousRveBuilder1 = new CntReinforcedElasticNanocomposite(outterMaterial, 0);
+
+                    var material4 = new Shell2dRVEMaterialHostConst(1, 1, 1, homogeneousRveBuilder1,
+                        constModel => (new SuiteSparseSolver.Builder()).BuildSolver(constModel));
+
+                    var model = new Model();
+                    //var material4= new ShellElasticMaterial2Dtransformationb()
+                    //{
+                    //    YoungModulus = 100,
+                    //    PoissonRatio = 0.3
+                    //};
+                    var modelReader = new IgaFileReader(model, filepath);
+                    modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness, material4);
+
+                    for (int i = 0; i < 100; i++)
+                    {
+                        var id = model.ControlPoints.ToList()[i].ID;
+                        model.ControlPointsDictionary[id].Constraints
+                            .Add(new Constraint() {DOF = StructuralDof.TranslationX});
+                        model.ControlPointsDictionary[id].Constraints
+                            .Add(new Constraint() {DOF = StructuralDof.TranslationY});
+                        model.ControlPointsDictionary[id].Constraints
+                            .Add(new Constraint() {DOF = StructuralDof.TranslationZ});
+                    }
+
+                    for (int i = model.ControlPoints.Count() - 100; i < model.ControlPoints.Count(); i++)
+                    {
+                        var id = model.ControlPoints.ToList()[i].ID;
+                        model.Loads.Add(new Load()
+                        {
+                            Amount = 100 / 10e4,
+                            Node = model.ControlPointsDictionary[id],
+                            DOF = StructuralDof.TranslationZ
+                        });
+                    }
+
+                    var solverBuilder = new SuiteSparseSolver.Builder();
+                    ISolver solver = solverBuilder.BuildSolver(model);
+
+                    // Structural problem provider
+                    var provider = new ProblemStructural(model, solver);
+
+                    // Linear static analysis
+                    var childAnalyzer = new LinearAnalyzer(model, solver, provider);
+                    var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
+
+                    // Run the analysis
+                    parentAnalyzer.Initialize();
+                    parentAnalyzer.Solve();
+
+
+                    //var max=solver.LinearSystems[0].Solution.CopyToArray().Select(Math.Abs).Max();
+
+                    youngModulusSolutionPairs[realization, 1] = solver.LinearSystems[0].Solution[46448];
                 }
 
-                var solverBuilder = new SuiteSparseSolver.Builder();
-                ISolver solver = solverBuilder.BuildSolver(model);
-
-                // Structural problem provider
-                var provider = new ProblemStructural(model, solver);
-
-                // Linear static analysis
-                var childAnalyzer = new LinearAnalyzer(model, solver, provider);
-                var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
-
-                // Run the analysis
-                parentAnalyzer.Initialize();
-                parentAnalyzer.Solve();
-
-
-                //var max=solver.LinearSystems[0].Solution.CopyToArray().Select(Math.Abs).Max();
-                
-                youngModulusSolutionPairs[realization, 1] = solver.LinearSystems[0].Solution[46448];
+                var writer = new Array2DWriter();
+                writer.WriteToFile(youngModulusSolutionPairs,
+                    Path.Combine(Directory.GetCurrentDirectory(), $"BumperMultiscaleResults_{d}"));
             }
-
-            var writer = new Array2DWriter();
-            writer.WriteToFile(youngModulusSolutionPairs, Path.Combine(Directory.GetCurrentDirectory(), "BumperMultiscaleResults"));
 
 
             //var paraview= new ParaviewTsplineShells(model, solver.LinearSystems[0].Solution,filename);
             //paraview.CreateParaviewFile();
         }
-
     }
 }
