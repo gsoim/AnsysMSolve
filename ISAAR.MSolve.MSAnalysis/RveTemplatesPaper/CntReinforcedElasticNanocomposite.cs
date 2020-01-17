@@ -21,11 +21,11 @@ using Troschuetz.Random;
 
 namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
 {
-    public class CntReinforcedElasticNanocomposite //: IdegenerateRVEbuilder
+    public class CntReinforcedElasticNanocomposite : IdegenerateRVEbuilder
     {
-        int hexa1 = 5;
-        int hexa2 = 5;
-        int hexa3 = 5;
+        int hexa1 = 10;
+        int hexa2 = 10;
+        int hexa3 = 10;
 
         double L01 = 100;
         double L02 = 100;
@@ -37,13 +37,13 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
         IIsotropicContinuumMaterial3D CntMaterial;
         int numberOfCnts;
         // define mechanical properties
-        double youngModulus = 1.0; // 5490; // 
-        double shearModulus = 1.0; // 871; // 
+        private double youngModulus = 1.0;//1.051e12; // 5490; // 
+        private double shearModulus = 1.0;//0.45e12; // 871; // 
         double poissonRatio;  //2.15; // 0.034;
-        double area = 1776.65;  // CNT(20,20)-LinearEBE-TBT-L = 10nm
-        double inertiaY = 1058.55;
-        double inertiaZ = 1058.55;
-        double torsionalInertia = 496.38;
+        double area = 694.77; // 1776.65;  // CNT(20,20)-LinearEBE-TBT-L = 10nm
+        double inertiaY = 100.18; //1058.55;
+        double inertiaZ = 100.18; //1058.55;1058.55;
+        double torsionalInertia = 68.77; //496.38;
         double effectiveAreaY; 
         double effectiveAreaZ;
         int subdomainID = 0;
@@ -70,8 +70,9 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
             int [,] elementConnectivity= GetHexaRveConnectivity();
 
             Model model= new Model();
+            model.SubdomainsDictionary[0] = new Subdomain(0);
             AddHexaElements(model,NodeIds,node_coords, elementConnectivity);
-            var hostElements = model.Elements.Count();
+            var hostElements = model.Elements.Count()-1;
             var hostNodes = model.Nodes.Count();
 
 
@@ -82,8 +83,33 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
                         .Where(x => x.Key <= hostElements).Select(kv => kv.Value), model.ElementsDictionary.Where(x => x.Key > hostElements)
                         .Select(kv => kv.Value), true);
 
-            throw new NotImplementedException();
+            var boundaryNodesIds = GetBoundaryNodeIds();
+            boundaryNodesIds.Sort();
+            Dictionary<int, Node> boundaryNodes = boundaryNodesIds.ToDictionary(t => t, t => model.NodesDictionary[t]);
+            return new Tuple<Model, Dictionary<int, Node>, double>(model, boundaryNodes, L01 * L02 * L03);
+        }
 
+        private List<int> GetBoundaryNodeIds()
+        {
+            var boundaryNodes= new List<int>();
+
+            for (int k = 0; k < hexa3+1; k++)
+            {
+                var indexZeta = (hexa1 + 1) * (hexa2 + 1) * k;
+                for (int i = 0; i < hexa1+1; i++)
+                {
+                    boundaryNodes.Add(i + indexZeta);
+                    boundaryNodes.Add(i +(hexa1+1)*hexa2+ indexZeta);
+                }
+
+                for (int j = 0; j < hexa2+1; j++)
+                {
+                    boundaryNodes.Add(indexZeta + (hexa1 + 1) * j);
+                    boundaryNodes.Add(indexZeta + (hexa1 + 1) * j + hexa1);
+                }
+            }
+
+            return boundaryNodes.Distinct().ToList();
         }
 
         private void AddCntBeamElements(Model model, int[] cntNodeIds, double[,] cntNodeCoordinates, int[,] cntElementConnectivity)
@@ -131,17 +157,17 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
             var trandom = new TRandom();
             for (int i = 0; i < numberOfCnts; i++)
             {
-                var randomY = trandom.ContinuousUniform(0, L02);
-                var randomZ = trandom.ContinuousUniform(0, L03);
+                var randomY = trandom.ContinuousUniform(-L02/2.0, L02/2.0);
+                var randomZ = trandom.ContinuousUniform(-L03/2.0, L03/2.0);
 
                 cntNodeIds[2 * i] = hostNodes + 2 * i;
                 cntNodeIds[2 * i + 1] = hostNodes + 2 * i + 1;
 
-                cntNodeCoordinates[2 * i, 0] = 1;
+                cntNodeCoordinates[2 * i, 0] = -L01/2.0+1;
                 cntNodeCoordinates[2 * i, 1] = randomY;
                 cntNodeCoordinates[2 * i, 2] = randomZ;
 
-                cntNodeCoordinates[2 * i + 1, 0] = L01-1;
+                cntNodeCoordinates[2 * i + 1, 0] = L01/2.0-1;
                 cntNodeCoordinates[2 * i + 1, 1] = randomY;
                 cntNodeCoordinates[2 * i + 1, 2] = randomZ;
 
@@ -165,7 +191,8 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
                 model.NodesDictionary.Add(nodeID, new Node(id: nodeID, x: nodeCoordX, y: nodeCoordY, z: nodeCoordZ));
             }
             
-            var factoryOutter = new ContinuumElement3DFactory(matrixMaterial, null);
+            //var factoryOutter = new ContinuumElement3DFactory(matrixMaterial, null);
+            var renumbering = new int[]{0,3,2,1,4,7,6,5};
             for (int i1 = 0; i1 < elementConnectivity.GetLength(0); i1++)
             {
                 List<Node> nodeSet = new List<Node>();
@@ -175,15 +202,15 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
                     nodeSet.Add((Node)model.NodesDictionary[nodeID]);
                 }
 
-                Element e1 = new Element()
+                var e1 = new Element()
                 {
-                    ID = elementConnectivity[i1, 0],
-                    ElementType = factoryOutter.CreateElement(CellType.Hexa8, nodeSet) // dixws to e. exoume sfalma enw sto beambuilding oxi//edw kaleitai me ena orisma to Hexa8
+                    ID = i1,
+                    ElementType = new Hexa8NonLinear(matrixMaterial, GaussLegendre3D.GetQuadratureWithOrder(3, 3, 3)) // dixws to e. exoume sfalma enw sto beambuilding oxi//edw kaleitai me ena orisma to Hexa8
                 };
 
                 for (int j = 0; j < 8; j++)
                 {
-                    int nodeID = elementConnectivity[i1, j];
+                    int nodeID = elementConnectivity[i1, renumbering[j]];
                     e1.NodesDictionary.Add(nodeID, model.NodesDictionary[nodeID]);
                 }
                 model.ElementsDictionary.Add(e1.ID, e1);
@@ -205,13 +232,13 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
                     {
                         elementConnectivity[counterElement, 0] = k + (hexa1 + 1) * j + (hexa1 + 1) * (hexa2 + 1) * i;
                         elementConnectivity[counterElement, 1] = elementConnectivity[counterElement, 0] + 1;
-                        elementConnectivity[counterElement, 2] = elementConnectivity[counterElement, 0] + (hexa1 + 1);
-                        elementConnectivity[counterElement, 3] = elementConnectivity[counterElement, 2] + 1;
+                        elementConnectivity[counterElement, 2] = elementConnectivity[counterElement, 1] + (hexa1 + 1);
+                        elementConnectivity[counterElement, 3] = elementConnectivity[counterElement, 2] - 1;
 
                         elementConnectivity[counterElement, 4] = k + (hexa1 + 1) * j + (hexa1 + 1) * (hexa2 + 1) * (i+1);
                         elementConnectivity[counterElement, 5] = elementConnectivity[counterElement, 4] + 1;
-                        elementConnectivity[counterElement, 6] = elementConnectivity[counterElement, 4] + (hexa1 + 1);
-                        elementConnectivity[counterElement, 7] = elementConnectivity[counterElement, 6] + 1;
+                        elementConnectivity[counterElement, 6] = elementConnectivity[counterElement, 5] + (hexa1 + 1);
+                        elementConnectivity[counterElement, 7] = elementConnectivity[counterElement, 6] - 1;
                         
                         counterElement++;
                     }
@@ -247,8 +274,28 @@ namespace ISAAR.MSolve.MSAnalysis.RveTemplatesPaper
             return (NodeIds, node_coords);
         }
 
+        public Dictionary<Node, IList<IDofType>> GetModelRigidBodyNodeConstraints(Model model)
+        {
+            Dictionary<Node, IList<IDofType>> RigidBodyNodeConstraints = new Dictionary<Node, IList<IDofType>>();
+            var rigidNodes = RigidNodes;
 
+            RigidBodyNodeConstraints.Add(model.NodesDictionary[rigidNodes[0]], new List<IDofType>() { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ });
+            RigidBodyNodeConstraints.Add(model.NodesDictionary[rigidNodes[1]], new List<IDofType>() { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ });
+            RigidBodyNodeConstraints.Add(model.NodesDictionary[rigidNodes[2]], new List<IDofType>() { StructuralDof.TranslationX, StructuralDof.TranslationY, StructuralDof.TranslationZ });
 
+            return RigidBodyNodeConstraints;
+        }
 
+        private List<int> RigidNodes => new List<int>
+        {
+            { 0},
+            {hexa1 },
+            {(hexa1+1)*hexa2 }
+        };
+
+        public IRVEbuilder Clone(int a)
+        {
+            return new CntReinforcedElasticNanocomposite(this.matrixMaterial, numberOfCnts);
+        }
     }
 }

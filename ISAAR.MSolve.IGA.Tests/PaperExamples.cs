@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
@@ -14,29 +15,31 @@ using ISAAR.MSolve.IGA.Entities.Loads;
 using ISAAR.MSolve.IGA.Readers;
 using ISAAR.MSolve.LinearAlgebra.Output;
 using ISAAR.MSolve.Materials;
+using ISAAR.MSolve.MSAnalysis.RveTemplatesPaper;
 using ISAAR.MSolve.MultiscaleAnalysis;
 using ISAAR.MSolve.Problems;
 using ISAAR.MSolve.Solvers;
 using ISAAR.MSolve.Solvers.Direct;
+using JetBrains.dotMemoryUnit;
 using Troschuetz.Random;
 using Xunit;
 
+[assembly:SuppressXUnitOutputException]
 namespace ISAAR.MSolve.IGA.Tests
 {
     public class PaperExamples
     {
-        //[Fact]
+        [Fact]
         public static void ScordelisLoShell()
         {
             var filename = "ScordelisLoShell";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.txt")
                 .ToString(CultureInfo.InvariantCulture);
-            var numberOfRealizations = 20000;
+            var numberOfRealizations = 1;
             var trandom = new TRandom();
 
             var youngModulusSolutionPairs = new double[numberOfRealizations, 2];
-
-            for (int realization = 0; realization < numberOfRealizations; realization++)
+            Parallel.For(0, numberOfRealizations, realization =>
             {
                 // Data from https://www.researchgate.net/figure/Mechanical-properties-of-the-nano-hydroxyapatite-polyetheretherketone-nha-PeeK_tbl1_265175039
                 var randomInnerE = trandom.Normal(3.4e9, 0.2e9);
@@ -51,7 +54,8 @@ namespace ISAAR.MSolve.IGA.Tests
                     YoungModulus = randomInnerE,
                     PoissonRatio = 0.0
                 };
-                var homogeneousRveBuilder1 = new CompositeMaterialModeluilderTet2(outterMaterial, innerMaterial, 100, 100, 100);
+                var homogeneousRveBuilder1 =
+                    new CompositeMaterialModeluilderTet2(outterMaterial, innerMaterial, 100, 100, 100);
                 //var material = new MicrostructureShell2D(homogeneousRveBuilder1,
                 //    microModel => (new SuiteSparseSolver.Builder()).BuildSolver(microModel), false, 1);
 
@@ -66,14 +70,17 @@ namespace ISAAR.MSolve.IGA.Tests
                 // Rigid diaphragm for AB
                 for (var i = 0; i < 19; i++)
                 {
-                    model.ControlPointsDictionary[i * 19].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-                    model.ControlPointsDictionary[i * 19].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
+                    model.ControlPointsDictionary[i * 19].Constraints
+                        .Add(new Constraint() {DOF = StructuralDof.TranslationX});
+                    model.ControlPointsDictionary[i * 19].Constraints
+                        .Add(new Constraint() {DOF = StructuralDof.TranslationY});
                 }
 
                 // Symmetry for CD
                 for (var i = 0; i < 19; i++)
                 {
-                    model.ControlPointsDictionary[i * 19 + 18].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
+                    model.ControlPointsDictionary[i * 19 + 18].Constraints
+                        .Add(new Constraint() {DOF = StructuralDof.TranslationZ});
 
                     model.AddPenaltyConstrainedDofPair(new PenaltyDofPair(
                         new NodalDof(model.ControlPointsDictionary[i * 19 + 18], StructuralDof.TranslationX),
@@ -86,7 +93,8 @@ namespace ISAAR.MSolve.IGA.Tests
                 // Symmetry for AD
                 for (var j = 0; j < 19; j++)
                 {
-                    model.ControlPointsDictionary[j].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
+                    model.ControlPointsDictionary[j].Constraints
+                        .Add(new Constraint() {DOF = StructuralDof.TranslationX});
                     model.AddPenaltyConstrainedDofPair(new PenaltyDofPair(
                         new NodalDof(model.ControlPointsDictionary[j], StructuralDof.TranslationY),
                         new NodalDof(model.ControlPointsDictionary[j + 19], StructuralDof.TranslationY)));
@@ -117,58 +125,89 @@ namespace ISAAR.MSolve.IGA.Tests
                 var solution = solver.LinearSystems[0].Solution[dofA];
 
                 youngModulusSolutionPairs[realization, 1] = solution;
-            }
+            });
 
             var writer = new Array2DWriter();
             writer.WriteToFile(youngModulusSolutionPairs, Path.Combine(Directory.GetCurrentDirectory(), "ScordelisLoMultiscaleResults"));
         }
 
-        //[Fact]
+        [Fact]
         public void SimpleHoodBenchmark()
         {
-            Model model = new Model();
             var filename = "attempt2";
-            string filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles",$"{filename}.iga");
-            var modelReader = new IgaFileReader(model, filepath);
+            var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles",$"{filename}.iga");
 
-            modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness, new ShellElasticMaterial2Dtransformationb()
-            {
-                PoissonRatio = 0.3,
-                YoungModulus = 10000
-            });
+            var numberOfRealizations = 1;
+            var trandom = new TRandom();
+            var youngModulusSolutionPairs = new double[numberOfRealizations, 2];
 
-            for (int i = 0; i < 100; i++)
-            {
-                var id = model.ControlPoints.ToList()[i].ID;
-                model.ControlPointsDictionary[id].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationX });
-                model.ControlPointsDictionary[id].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationY });
-                model.ControlPointsDictionary[id].Constraints.Add(new Constraint() { DOF = StructuralDof.TranslationZ });
-            }
-
-            for (int i = model.ControlPoints.Count() - 100; i < model.ControlPoints.Count(); i++)
-            {
-                var id = model.ControlPoints.ToList()[i].ID;
-                model.Loads.Add(new Load()
+            for (int realization = 0; realization < numberOfRealizations; realization++){
+                var randomCnts = trandom.DiscreteUniform(220, 790);
+                youngModulusSolutionPairs[realization, 0] = randomCnts;
+                var outterMaterial = new ElasticMaterial3DtotalStrain()
                 {
-                    Amount = 100,
-                    Node = model.ControlPointsDictionary[id],
-                    DOF = StructuralDof.TranslationZ
-                });
+                    YoungModulus = 4,//2.79e9,
+                    PoissonRatio = 0.4//0.4
+                };
+                var homogeneousRveBuilder1 = new CntReinforcedElasticNanocomposite(outterMaterial, 0);
+
+                var material4 = new Shell2dRVEMaterialHostConst(1, 1, 1, homogeneousRveBuilder1,
+                    constModel => (new SuiteSparseSolver.Builder()).BuildSolver(constModel));
+
+                var model = new Model();
+                //var material4= new ShellElasticMaterial2Dtransformationb()
+                //{
+                //    YoungModulus = 100,
+                //    PoissonRatio = 0.3
+                //};
+                var modelReader = new IgaFileReader(model, filepath);
+                modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness, material4);
+
+                for (int i = 0; i < 100; i++)
+                {
+                    var id = model.ControlPoints.ToList()[i].ID;
+                    model.ControlPointsDictionary[id].Constraints
+                        .Add(new Constraint() {DOF = StructuralDof.TranslationX});
+                    model.ControlPointsDictionary[id].Constraints
+                        .Add(new Constraint() {DOF = StructuralDof.TranslationY});
+                    model.ControlPointsDictionary[id].Constraints
+                        .Add(new Constraint() {DOF = StructuralDof.TranslationZ});
+                }
+
+                for (int i = model.ControlPoints.Count() - 100; i < model.ControlPoints.Count(); i++)
+                {
+                    var id = model.ControlPoints.ToList()[i].ID;
+                    model.Loads.Add(new Load()
+                    {
+                        Amount = 100/10e4,
+                        Node = model.ControlPointsDictionary[id],
+                        DOF = StructuralDof.TranslationZ
+                    });
+                }
+
+                var solverBuilder = new SuiteSparseSolver.Builder();
+                ISolver solver = solverBuilder.BuildSolver(model);
+
+                // Structural problem provider
+                var provider = new ProblemStructural(model, solver);
+
+                // Linear static analysis
+                var childAnalyzer = new LinearAnalyzer(model, solver, provider);
+                var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
+
+                // Run the analysis
+                parentAnalyzer.Initialize();
+                parentAnalyzer.Solve();
+
+
+                //var max=solver.LinearSystems[0].Solution.CopyToArray().Select(Math.Abs).Max();
+                
+                youngModulusSolutionPairs[realization, 1] = solver.LinearSystems[0].Solution[46448];
             }
 
-            var solverBuilder = new SuiteSparseSolver.Builder();
-            ISolver solver = solverBuilder.BuildSolver(model);
+            var writer = new Array2DWriter();
+            writer.WriteToFile(youngModulusSolutionPairs, Path.Combine(Directory.GetCurrentDirectory(), "BumperMultiscaleResults"));
 
-            // Structural problem provider
-            var provider = new ProblemStructural(model, solver);
-
-            // Linear static analysis
-            var childAnalyzer = new LinearAnalyzer(model, solver, provider);
-            var parentAnalyzer = new StaticAnalyzer(model, solver, provider, childAnalyzer);
-
-            // Run the analysis
-            parentAnalyzer.Initialize();
-            parentAnalyzer.Solve();
 
             //var paraview= new ParaviewTsplineShells(model, solver.LinearSystems[0].Solution,filename);
             //paraview.CreateParaviewFile();

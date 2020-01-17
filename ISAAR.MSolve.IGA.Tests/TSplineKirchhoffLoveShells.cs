@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.IO;
+using System.Linq;
 using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
@@ -213,12 +215,12 @@ namespace ISAAR.MSolve.IGA.Tests
 			//paraview.CreateParaviewFile();
 		}
 
-		//[Fact]
+		[Fact]
 		public void SimpleHoodBenchmarkMKL()
 		{
 			Model model = new Model();
-			var filename = "attempt2";
-			string filepath = $"..\\..\\..\\InputFiles\\{filename}.iga";
+            var filename = "attempt2";
+            var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles",$"{filename}.iga");
 			var modelReader = new IgaFileReader(model, filepath);
 
 			var thickness = 1.0;
@@ -226,7 +228,7 @@ namespace ISAAR.MSolve.IGA.Tests
 			modelReader.CreateTSplineShellsModelFromFile(IgaFileReader.TSplineShellType.Thickness , shellMaterial:new ShellElasticMaterial2D()
 			{
 				PoissonRatio = 0.3,
-				YoungModulus = 10000
+				YoungModulus = 2.79
 			}, thickness:thickness);
 			
 
@@ -248,7 +250,7 @@ namespace ISAAR.MSolve.IGA.Tests
 					DOF = StructuralDof.TranslationZ
 				});
 			}
-			var solverBuilder = new SkylineSolver.Builder();
+			var solverBuilder = new SuiteSparseSolver.Builder();
 			//solverBuilder.DofOrderer = new DofOrderer(
 			//	new NodeMajorDofOrderingStrategy(), AmdReordering.CreateWithSuiteSparseAmd());
 			ISolver solver = solverBuilder.BuildSolver(model);
@@ -264,8 +266,10 @@ namespace ISAAR.MSolve.IGA.Tests
 			parentAnalyzer.Initialize();
 			parentAnalyzer.Solve();
 
-			//var paraview = new ParaviewTsplineShells(model, solver.LinearSystems[0].Solution, filename);
-			//paraview.CreateParaviewFile();
-		}
+            var max=solver.LinearSystems[0].Solution.CopyToArray().Select(Math.Abs).Max();
+
+            //var paraview = new ParaviewTsplineShells(model, solver.LinearSystems[0].Solution, filename);
+            //paraview.CreateParaviewFile();
+        }
 	}
 }
