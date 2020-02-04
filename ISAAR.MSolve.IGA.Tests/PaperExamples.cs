@@ -40,7 +40,7 @@ namespace ISAAR.MSolve.IGA.Tests
             var trandom = new TRandom();
 
             var youngModulusSolutionPairs = new double[numberOfRealizations, 2];
-            Parallel.For(0, numberOfRealizations, realization =>
+            for (var realization =0; realization<numberOfRealizations; realization++)
             {
                 // Data from https://www.researchgate.net/figure/Mechanical-properties-of-the-nano-hydroxyapatite-polyetheretherketone-nha-PeeK_tbl1_265175039
                 var randomInnerE = trandom.Normal(3.4e9, 0.2e9);
@@ -52,7 +52,13 @@ namespace ISAAR.MSolve.IGA.Tests
                 };
                 var innerMaterial = new ElasticMaterial3DtotalStrain()
                 {
-                    YoungModulus = randomInnerE,
+                    YoungModulus = 3.4e9,
+                    PoissonRatio = 0.0
+                };
+
+                var material3= new ElasticMaterial2D(StressState2D.PlaneStress)
+                {
+                    YoungModulus = 4.3210e8,
                     PoissonRatio = 0.0
                 };
                 var homogeneousRveBuilder1 =
@@ -126,7 +132,7 @@ namespace ISAAR.MSolve.IGA.Tests
                 var solution = solver.LinearSystems[0].Solution[dofA];
 
                 youngModulusSolutionPairs[realization, 1] = solution;
-            });
+            }
 
             var writer = new Array2DWriter();
             writer.WriteToFile(youngModulusSolutionPairs,
@@ -154,7 +160,7 @@ namespace ISAAR.MSolve.IGA.Tests
                         YoungModulus = 4, //2.79e9,
                         PoissonRatio = 0.4 //0.4
                     };
-                    var homogeneousRveBuilder1 = new CntReinforcedElasticNanocomposite(outterMaterial, 0);
+                    var homogeneousRveBuilder1 = new CntReinforcedElasticNanocomposite(outterMaterial, 200);
 
                     var material4 = new Shell2dRVEMaterialHostConst(1, 1, 1, homogeneousRveBuilder1,
                         constModel => (new SuiteSparseSolver.Builder()).BuildSolver(constModel));
@@ -218,6 +224,70 @@ namespace ISAAR.MSolve.IGA.Tests
 
             //var paraview= new ParaviewTsplineShells(model, solver.LinearSystems[0].Solution,filename);
             //paraview.CreateParaviewFile();
+        }
+
+        [Fact]
+        public void TestElasticAndMultiscaleMatricesCnt()
+        {
+            var material3 = new ShellElasticMaterial2Dtransformationb()
+            {
+                YoungModulus = 4,
+                PoissonRatio = 0.4,
+                TangentVectorV1 = new double[3] {1, 0, 0},
+                TangentVectorV2 = new double[3] {0, 1, 0}
+            };
+
+            var outterMaterial = new ElasticMaterial3DtotalStrain()
+            {
+                YoungModulus = 4, //2.79e9,
+                PoissonRatio = 0.4 //0.4
+            };
+            var homogeneousRveBuilder1 = new CntReinforcedElasticNanocomposite(outterMaterial, 800);
+
+            var material4 = new MicrostructureShell2D(homogeneousRveBuilder1,
+                model => (new SkylineSolver.Builder()).BuildSolver(model), false, 1)
+            {
+                TangentVectorV1 = new double[3] {1, 0, 0},
+                TangentVectorV2 = new double[3] {0, 1, 0}
+            };
+            material4.UpdateMaterial(new double[]{0,0,0});
+        }
+
+
+        [Fact]
+        public void TestElasticAndMultiscaleMatricesTet()
+        {
+            var material3 = new ShellElasticMaterial2Dtransformationb()
+            {
+                YoungModulus = 4.3210,
+                PoissonRatio = 0.0,
+                TangentVectorV1 = new double[3] {1, 0, 0},
+                TangentVectorV2 = new double[3] {0, 1, 0}
+            };
+
+            //var trandom = new TRandom();
+            //var randomInnerE = trandom.Normal(3.4e9, 0.2e9);
+            var outterMaterial = new ElasticMaterial3DtotalStrain()
+            {
+                YoungModulus = 4.3210,
+                PoissonRatio = 0.0
+            };
+            var innerMaterial = new ElasticMaterial3DtotalStrain()
+            {
+                YoungModulus = 34,
+                PoissonRatio = 0.0
+            };
+
+            var homogeneousRveBuilder1 =
+                new CompositeMaterialModeluilderTet2(outterMaterial, innerMaterial, 100, 100, 100);
+
+            var material4 = new MicrostructureShell2D(homogeneousRveBuilder1,
+                model => (new SkylineSolver.Builder()).BuildSolver(model), false, 1)
+            {
+                TangentVectorV1 = new double[3] {1, 0, 0},
+                TangentVectorV2 = new double[3] {0, 1, 0}
+            };
+            material4.UpdateMaterial(new double[]{0,0,0});
         }
     }
 }

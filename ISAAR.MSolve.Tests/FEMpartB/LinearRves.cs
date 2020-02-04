@@ -34,7 +34,12 @@ namespace ISAAR.MSolve.Tests.FEMpartB
             //material2.UpdateMaterial(strain);
             //double[] stressesCheck2 = new double[3] { material2.Stresses[0], material2.Stresses[1], material2.Stresses[2] };
 
-            var material3 = new ShellElasticMaterial2Dtransformationb() { YoungModulus = E_disp, PoissonRatio = ni_disp, TangentVectorV1 = new double[3] { Vec1[0], Vec1[1], Vec1[2] }, TangentVectorV2 = new double[3] { Vec2[0], Vec2[1], Vec2[2] } };
+            var material3 = new ShellElasticMaterial2Dtransformationb()
+            {
+                YoungModulus = E_disp, PoissonRatio = ni_disp,
+                TangentVectorV1 = new double[3] {Vec1[0], Vec1[1], Vec1[2]},
+                TangentVectorV2 = new double[3] {Vec2[0], Vec2[1], Vec2[2]}
+            };
             var Matrix1 = Matrix.CreateZero(3, 3); for (int i1 = 0; i1 < 3; i1++) { for (int i2 = 0; i2 < 3; i2++) { Matrix1[i1, i2] = material3.ConstitutiveMatrix[i1, i2]; } }
             material3.UpdateMaterial(strain);
             double[] stressesCheck3 = new double[3] { material3.Stresses[0], material3.Stresses[1], material3.Stresses[2] };
