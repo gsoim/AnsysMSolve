@@ -145,9 +145,9 @@ namespace ISAAR.MSolve.IGA.Tests
             var filename = "attempt2";
             var filepath = Path.Combine(Directory.GetCurrentDirectory(), "InputFiles", $"{filename}.iga");
 
-            for (int d = 0; d < 5; d++)
+            for (int d = 0; d < 1; d++)
             {
-                var numberOfRealizations = 500;
+                var numberOfRealizations = 1;
                 var trandom = new TRandom();
                 var youngModulusSolutionPairs = new double[numberOfRealizations, 2];
 
