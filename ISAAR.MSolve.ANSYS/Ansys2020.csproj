@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ISAAR.MSolve.Analyzers\ISAAR.MSolve.Analyzers.csproj" />
+    <ProjectReference Include="..\ISAAR.MSolve.Discretization\ISAAR.MSolve.Discretization.csproj" />
+    <ProjectReference Include="..\ISAAR.MSolve.FEM\ISAAR.MSolve.FEM.csproj" />
+    <ProjectReference Include="..\ISAAR.MSolve.Materials\ISAAR.MSolve.Materials.csproj" />
+    <ProjectReference Include="..\ISAAR.MSolve.Problems\ISAAR.MSolve.Problems.csproj" />
+    <ProjectReference Include="..\ISAAR.MSolve.Solvers\ISAAR.MSolve.Solvers.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Ans.EngineeringData.Material">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Addins\EngineeringData\bin\Win64\Ans.EngineeringData.Material.dll</HintPath>
+    </Reference>
+    <Reference Include="Ansys.ACT.Core">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Addins\ACT\bin\Win64\Ansys.ACT.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Ansys.ACT.Interfaces">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Addins\ACT\bin\Win64\Ansys.ACT.Interfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="Ansys.ACT.WB1">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\aisol\bin\winx64\Ansys.ACT.WB1.dll</HintPath>
+    </Reference>
+    <Reference Include="Ansys.Mechanical.DataModel">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\aisol\bin\winx64\Ansys.Mechanical.DataModel.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
