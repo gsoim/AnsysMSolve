@@ -1,4 +1,8 @@
-﻿using Ansys.ACT.Automation.Mechanical;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Ansys.ACT.Automation.Mechanical;
 using Ansys.ACT.Interfaces.Common;
 using Ansys.ACT.Interfaces.DataModel;
 using Ansys.ACT.Interfaces.Geometry;
@@ -14,13 +18,9 @@ using ISAAR.MSolve.Problems;
 using ISAAR.MSolve.Solvers;
 using ISAAR.MSolve.Solvers.Direct;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Model = ISAAR.MSolve.FEM.Entities.Model;
 
-namespace Ansys2020
+namespace AnsysMSolve
 {
 	public class MSolveStatic
 	{
@@ -217,52 +217,53 @@ namespace Ansys2020
 				{ElementTypeEnum.kPyramid13, CellType.Pyra13},
 			};
 
-		public MSolveStatic(IExtAPI api)
+		public MSolveStatic(IExtAPI api, IUserSolver solver)
 		{
 			_api = api as IMechanicalExtAPI;
-		}
+            _solver = solver;
+        }
 
-		public bool SolveStatic(IUserSolver userSolver, Func<int, string, bool> progressFunction)
+		public virtual bool onsolve(IUserSolver userSolver, Func<int, string, bool> progressFunction)
 		{
 			var solver = userSolver as IMechanicalUserSolver;
-			try
-			{
-				var model = new Model();
-				solver.Analysis.MeshData.Nodes.ToList()
-					.ForEach(n => model.NodesDictionary.Add(n.Id, new Node(n.Id, n.X, n.Y, n.Z)));
-				var mat = (Material)(_api.DataModel.GeoData.Assemblies[0].Parts[0].Bodies[0] as IGeoBody).Material;
-				//System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\materials.json", JsonConvert.SerializeObject(mat));
-				var elasticity = mat.PropertyByName("Elasticity");
-				var elementsList = new List<Element>();
-				var factory = new ContinuumElement3DFactory(null, null);
+			//try
+			//{
+			//	var model = new Model();
+			//	solver.Analysis.MeshData.Nodes.ToList()
+			//		.ForEach(n => model.NodesDictionary.Add(n.Id, new Node(n.Id, n.X, n.Y, n.Z)));
+			//	var mat = (Material)(_api.DataModel.GeoData.Assemblies[0].Parts[0].Bodies[0] as IGeoBody).Material;
+			//	//System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\materials.json", JsonConvert.SerializeObject(mat));
+			//	var elasticity = mat.PropertyByName("Elasticity");
+			//	var elementsList = new List<Element>();
+			//	var factory = new ContinuumElement3DFactory(null, null);
 
-				//System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\elements.json", JsonConvert.SerializeObject(solver.Analysis.MeshData.Elements));
+			//	//System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\elements.json", JsonConvert.SerializeObject(solver.Analysis.MeshData.Elements));
 
-				foreach (var ansysElement in solver.Analysis.MeshData.Elements)
-				{
-					var elementNodes = new List<Node>();
-					ansysElement.NodeIds.ToList().ForEach(id => elementNodes.Add(model.NodesDictionary[id]));
-					var element = factory.CreateElement(AnsysMSolveElementDictionary[ansysElement.Type], elementNodes);
-					var elementWrapper = new Element() { ID = ansysElement.Id, ElementType = element };
-					foreach (Node node in element.Nodes) elementWrapper.AddNode(node);
-					model.ElementsDictionary.Add(ansysElement.Id, elementWrapper);
-				}
+			//	foreach (var ansysElement in solver.Analysis.MeshData.Elements)
+			//	{
+			//		var elementNodes = new List<Node>();
+			//		ansysElement.NodeIds.ToList().ForEach(id => elementNodes.Add(model.NodesDictionary[id]));
+			//		var element = factory.CreateElement(AnsysMSolveElementDictionary[ansysElement.Type], elementNodes);
+			//		var elementWrapper = new Element() { ID = ansysElement.Id, ElementType = element };
+			//		foreach (Node node in element.Nodes) elementWrapper.AddNode(node);
+			//		model.ElementsDictionary.Add(ansysElement.Id, elementWrapper);
+			//	}
 
-				var staticStructural = _api.DataModel.Project.Model.Analyses[0];
+			//	var staticStructural = _api.DataModel.Project.Model.Analyses[0];
 
-				var solverBuilder = new SkylineSolver.Builder();
-				ISolver msolveSolver = solverBuilder.BuildSolver(model);
-				var provider = new ProblemStructural(model, msolveSolver);
-				var childAnalyzer = new LinearAnalyzer(model, msolveSolver, provider);
-				var parentAnalyzer = new StaticAnalyzer(model, msolveSolver, provider, childAnalyzer);
-				parentAnalyzer.Initialize();
-				parentAnalyzer.Solve();
-			}
-			catch (Exception e)
-			{
-				System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\error.json", JsonConvert.SerializeObject(e));
-				return false;
-			}
+			//	var solverBuilder = new SkylineSolver.Builder();
+			//	ISolver msolveSolver = solverBuilder.BuildSolver(model);
+			//	var provider = new ProblemStructural(model, msolveSolver);
+			//	var childAnalyzer = new LinearAnalyzer(model, msolveSolver, provider);
+			//	var parentAnalyzer = new StaticAnalyzer(model, msolveSolver, provider, childAnalyzer);
+			//	parentAnalyzer.Initialize();
+			//	parentAnalyzer.Solve();
+			//}
+			//catch (Exception e)
+			//{
+			//	System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\error.json", JsonConvert.SerializeObject(e));
+			//	return false;
+			//}
 
 			return true;
 		}
@@ -320,8 +321,9 @@ namespace Ansys2020
 		}
 
 		private Dictionary<int, List<IDofType>> _nodeConstrains = new Dictionary<int, List<IDofType>>();
+        private IUserSolver _solver;
 
-		public virtual void WriteInitialBoundaryValues(IUserLoad load, StringWriter filename)
+        public virtual void WriteInitialBoundaryValues(IUserLoad load, StringWriter filename)
 		{
 			var res = new List<double>();
 			IMeshData mesh = ((IMechanicalUserLoad)load).Analysis.MeshData;

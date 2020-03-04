@@ -63,7 +63,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ISAAR.MSolve.XFEM", "ISAAR.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ISAAR.MSolve.XFEM.Tests", "ISAAR.MSolve.XFEM.Tests\ISAAR.MSolve.XFEM.Tests.csproj", "{1DED65B8-03C8-447A-9766-F23C1223623D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ansys2020", "ISAAR.MSolve.ANSYS\Ansys2020.csproj", "{D3A8689F-705C-4596-8757-33D4A0997AC2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnsysMSolve", "ISAAR.MSolve.ANSYS\AnsysMSolve.csproj", "{D3A8689F-705C-4596-8757-33D4A0997AC2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
