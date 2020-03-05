@@ -231,6 +231,7 @@ namespace AnsysMSolve
 			try
 			{
 				var model = new Model();
+				model.SubdomainsDictionary.Add(0, new Subdomain(0));
 				solver.Analysis.MeshData.Nodes.ToList()
 					.ForEach(n => model.NodesDictionary.Add(n.Id, new Node(n.Id, n.X, n.Y, n.Z)));
 				var mat = (MaterialClass)(_api.DataModel.GeoData.Assemblies[0].Parts[0].Bodies[0] as IGeoBody).Material;
@@ -256,6 +257,7 @@ namespace AnsysMSolve
 					var elementWrapper = new Element() { ID = ansysElement.Id, ElementType = element };
 					foreach (Node node in element.Nodes) elementWrapper.AddNode(node);
 					model.ElementsDictionary.Add(ansysElement.Id, elementWrapper);
+					model.SubdomainsDictionary[0].Elements.Add(elementWrapper);
 				}
 
 				var solverBuilder = new SuiteSparseSolver.Builder();
