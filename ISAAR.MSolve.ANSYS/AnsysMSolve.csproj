@@ -18,8 +18,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Ans.ComponentSystem.Interop">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\scdm\Addins\Ansys 19.5\Ans.ComponentSystem.Interop.dll</HintPath>
+    </Reference>
+    <Reference Include="Ans.EngineeringData">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Addins\EngineeringData\bin\Win64\Ans.EngineeringData.dll</HintPath>
+    </Reference>
+    <Reference Include="Ans.EngineeringData.Core">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Addins\EngineeringData\bin\Win64\Ans.EngineeringData.Core.dll</HintPath>
+    </Reference>
     <Reference Include="Ans.EngineeringData.Material">
       <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Addins\EngineeringData\bin\Win64\Ans.EngineeringData.Material.dll</HintPath>
+    </Reference>
+    <Reference Include="Ans.TabularData.Interop">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Framework\bin\Win64\Ans.TabularData.Interop.dll</HintPath>
     </Reference>
     <Reference Include="Ansys.ACT.Core">
       <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Addins\ACT\bin\Win64\Ansys.ACT.Core.dll</HintPath>
