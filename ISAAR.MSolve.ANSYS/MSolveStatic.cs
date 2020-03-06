@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Ansys.ACT.Automation.Mechanical;
+using Ansys.ACT.Automation.Mechanical.BoundaryConditions;
 using Ansys.ACT.Interfaces.Common;
 using Ansys.ACT.Interfaces.DataModel;
 using Ansys.ACT.Interfaces.Geometry;
@@ -19,12 +21,14 @@ using ISAAR.MSolve.Materials;
 using ISAAR.MSolve.Problems;
 using ISAAR.MSolve.Solvers;
 using ISAAR.MSolve.Solvers.Direct;
+using ISAAR.MSolve.Solvers.Iterative;
 using Newtonsoft.Json;
+using Microsoft.Scripting.Hosting;
 using Model = ISAAR.MSolve.FEM.Entities.Model;
 
 namespace AnsysMSolve
 {
-	public class MSolveStatic
+	public class MSolveStatic:IExtension
 	{
 		private readonly IMechanicalExtAPI _api;
 		private Dictionary<ElementTypeEnum, Dictionary<int, int[]>> ElementTypesNodesDictionary =
@@ -225,8 +229,11 @@ namespace AnsysMSolve
             _solver = solver;
         }
 
+        private const string guid = "EB5D5C22-DF17-4755-AFAE-813C733F4791";
+
 		public virtual bool onsolve(IUserSolver userSolver, Func<int, string, bool> progressFunction)
 		{
+			
 			var solver = userSolver as IMechanicalUserSolver;
 			try
 			{
@@ -260,7 +267,22 @@ namespace AnsysMSolve
 					model.SubdomainsDictionary[0].Elements.Add(elementWrapper);
 				}
 
-				var solverBuilder = new SuiteSparseSolver.Builder();
+                var analysis = ((Analysis) solver.Analysis);
+                var analysisChildren = analysis.Children;
+                var force=analysisChildren.FirstOrDefault(c => c is Force);
+                var props=_api.Application.InvokeUIThread(() => force.VisibleProperties);
+                //var dataObjects = analysis.DataObjects.List;
+                //var loads=solver.Analysis.GetLoadObjects("AnsysMSolve");
+                //var loads1=solver.Analysis.GetLoadObjects(solver.Extension);
+                
+                //var loads1 = solver.Analysis.GetLoadObjects("ansysmsolve");
+                //var forces = dataObjects.Where(o => o.Name == "Force");
+                //var support = dataObjects.Where(o => o.Name == "FixedSupport");
+                //var analysisChildren = ((Analysis) solver.Analysis).Children;
+
+                
+
+                var solverBuilder = new PcgSolver.Builder();
 				ISolver msolveSolver = solverBuilder.BuildSolver(model);
 				var provider = new ProblemStructural(model, msolveSolver);
 				var childAnalyzer = new LinearAnalyzer(model, msolveSolver, provider);
@@ -270,7 +292,6 @@ namespace AnsysMSolve
 			}
 			catch (Exception e)
 			{
-				System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\error.json", JsonConvert.SerializeObject(e));
 				return false;
 			}
 
@@ -332,7 +353,7 @@ namespace AnsysMSolve
 		private Dictionary<int, List<IDofType>> _nodeConstrains = new Dictionary<int, List<IDofType>>();
         private IUserSolver _solver;
 
-        public virtual void WriteInitialBoundaryValues(IUserLoad load, StringWriter filename)
+        public virtual void ImposeInitialBoundaryValues(IUserLoad load, Model model)
 		{
 			var res = new List<double>();
 			IMeshData mesh = ((IMechanicalUserLoad)load).Analysis.MeshData;
@@ -382,7 +403,17 @@ namespace AnsysMSolve
 		public IEnumerable<IUserObject> Children { get; }
 		public string AnalysisType { get; }
 		public string PhysicsType { get; }
-	}
+
+        public int MinorVersion => 1;
+
+		public Microsoft.Scripting.Hosting.ScriptEngine ScriptEngine => throw new NotImplementedException();
+
+		public Microsoft.Scripting.Hosting.ScriptScope ScriptScope => throw new NotImplementedException();
+
+        public string UniqueId => "EB5D5C22-DF17-4755-AFAE-813C733F4791";
+
+        public string InstallDir => Directory.GetCurrentDirectory();
+    }
 
 	public class TempLoad
 	{
