@@ -12,6 +12,7 @@ using Ansys.ACT.Interfaces.Mechanical;
 using Ansys.ACT.Interfaces.Mesh;
 using Ansys.ACT.Interfaces.UserObject;
 using Ansys.EngineeringData.Material;
+using Ansys.Mechanical.DataModel.Enums;
 using ISAAR.MSolve.Analyzers;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.Discretization.Mesh;
@@ -267,10 +268,28 @@ namespace AnsysMSolve
 					model.SubdomainsDictionary[0].Elements.Add(elementWrapper);
 				}
 
-                var analysis = ((Analysis) solver.Analysis);
-                var analysisChildren = analysis.Children;
-                var force=analysisChildren.FirstOrDefault(c => c is Force);
-                var props=_api.Application.InvokeUIThread(() => force.VisibleProperties);
+                var forces =
+                    _api.Application.InvokeUIThread(() => _api.DataModel.Project.Model.Analyses[0].Children
+                        .Where(c => c.GetType() == typeof(Force)).ToList()) as List<DataModelObject>;
+
+                foreach (var ansysForce in forces)
+                {
+                    var force = ansysForce as Force;
+                    var isParsed = Enum.TryParse<LoadDefineBy>(_api.Application.InvokeUIThread(() => force.DefineBy).ToString(), out var defineBy);
+                    //if (defineBy == LoadDefineBy.Vector)
+                    //    CalculateVectorForce(_api,solver,model, force);
+                    //else
+                    //    CalculateComponentsForce(_api,solver,model, force);
+                }
+
+                //AnsysUtilities.GenerateElements(material, null, solver, model);
+                //AnsysUtilities.CalculateForces(_api,solver,model);
+                //AnsysUtilities.ImposeFixedSupport(_api,solver,model);
+
+                //var analysis = ((Analysis) solver.Analysis);
+                //var analysisChildren = analysis.Children;
+                //var force=analysisChildren.FirstOrDefault(c => c is Force);
+                //var props=_api.Application.InvokeUIThread(() => force.VisibleProperties);
                 //var dataObjects = analysis.DataObjects.List;
                 //var loads=solver.Analysis.GetLoadObjects("AnsysMSolve");
                 //var loads1=solver.Analysis.GetLoadObjects(solver.Extension);
