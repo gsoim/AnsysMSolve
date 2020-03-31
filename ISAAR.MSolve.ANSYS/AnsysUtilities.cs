@@ -7,7 +7,10 @@ using Ansys.ACT.Interfaces.Common;
 using Ansys.ACT.Interfaces.Geometry;
 using Ansys.ACT.Interfaces.Mechanical;
 using Ansys.ACT.Interfaces.Mesh;
+using Ansys.Core.Units;
 using Ansys.EngineeringData.Material;
+using Ansys.Mechanical.DataModel.Enums;
+using ISAAR.MSolve.Discretization;
 using ISAAR.MSolve.Discretization.FreedomDegrees;
 using ISAAR.MSolve.Discretization.Mesh;
 using ISAAR.MSolve.FEM.Elements;
@@ -19,18 +22,18 @@ namespace AnsysMSolve
 {
 	public static class AnsysUtilities
 	{
-		//private static readonly Dictionary<ElementTypeEnum, CellType> _ansysMSolveElementDictionary =
-		//	new Dictionary<ElementTypeEnum, CellType3D>
-		//	{
-		//		{ElementTypeEnum.kHex8, CellType3D.Hexa8},
-		//		{ElementTypeEnum.kHex20, CellType3D.Hexa20},
-		//		{ElementTypeEnum.kTet4, CellType3D.Tet4},
-		//		{ElementTypeEnum.kTet10, CellType3D.Tet10},
-		//		{ElementTypeEnum.kWedge6, CellType3D.Wedge6},
-		//		{ElementTypeEnum.kWedge15, CellType3D.Wedge15},
-		//		{ElementTypeEnum.kPyramid5, CellType3D.Pyra5},
-		//		{ElementTypeEnum.kPyramid13, CellType3D.Pyra13},
-		//	};
+		private static readonly Dictionary<ElementTypeEnum, CellType> _ansysMSolveElementDictionary =
+			new Dictionary<ElementTypeEnum, CellType>
+			{
+				{ElementTypeEnum.kHex8, CellType.Hexa8},
+				{ElementTypeEnum.kHex20, CellType.Hexa20},
+				{ElementTypeEnum.kTet4, CellType.Tet4},
+				{ElementTypeEnum.kTet10, CellType.Tet10},
+				{ElementTypeEnum.kWedge6, CellType.Wedge6},
+				{ElementTypeEnum.kWedge15, CellType.Wedge15},
+				{ElementTypeEnum.kPyramid5, CellType.Pyra5},
+				{ElementTypeEnum.kPyramid13, CellType.Pyra13},
+			};
 
 		private static readonly Dictionary<ElementTypeEnum, int[]> _ansysMSolveElementLocalCoordinates =
 			new Dictionary<ElementTypeEnum, int[]>()
@@ -87,11 +90,11 @@ namespace AnsysMSolve
 			return variablesDictionary;
 		}
 
-		//private static List<Node3D> RenumberNodesFromAnsysToMSolve(IReadOnlyList<Node3D> ansysNodes, ElementTypeEnum elementType)
-		//{
-		//	var connectivity = _ansysMSolveElementLocalCoordinates[elementType];
-		//	return ansysNodes.Select((t, i) => ansysNodes[connectivity[i]]).ToList();
-		//}
+		private static List<Node> RenumberNodesFromAnsysToMSolve(IReadOnlyList<Node> ansysNodes, ElementTypeEnum elementType)
+		{
+			var connectivity = _ansysMSolveElementLocalCoordinates[elementType];
+			return ansysNodes.Select((t, i) => ansysNodes[connectivity[i]]).ToList();
+		}
 
 
 		public static void ImposeFixedSupport(IMechanicalExtAPI _api,IMechanicalUserSolver solver, Model model)
@@ -109,9 +112,9 @@ namespace AnsysMSolve
 
 				foreach (var node in fixedNodes)
 				{
-					model.NodesDictionary[node.Id].Constraints.Add(StructuralDof.TranslationX);
-					model.NodesDictionary[node.Id].Constraints.Add(DOFType.Y);
-					model.NodesDictionary[node.Id].Constraints.Add(DOFType.Z);
+					model.NodesDictionary[node.Id].Constraints.Add(new Constraint(){DOF = StructuralDof.TranslationX});
+                    model.NodesDictionary[node.Id].Constraints.Add(new Constraint(){DOF = StructuralDof.TranslationY});
+                    model.NodesDictionary[node.Id].Constraints.Add(new Constraint(){DOF = StructuralDof.TranslationZ});
 				}
 			}
 		}
@@ -121,14 +124,14 @@ namespace AnsysMSolve
 			var factory = new ContinuumElement3DFactory(material, dynamicMaterial);
 			foreach (var ansysElement in solver.Analysis.MeshData.Elements)
 			{
-				var ansysNodes = new List<Node3D>();
-				ansysElement.NodeIds.ToList().ForEach(id => ansysNodes.Add((Node3D)model.NodesDictionary[id]));
+				var ansysNodes = new List<Node>();
+				ansysElement.NodeIds.ToList().ForEach(id => ansysNodes.Add(model.NodesDictionary[id]));
 				var msolveNodes = RenumberNodesFromAnsysToMSolve(ansysNodes, ansysElement.Type);
 				var element = factory.CreateElement(_ansysMSolveElementDictionary[ansysElement.Type], msolveNodes);
 				var elementWrapper = new Element() { ID = ansysElement.Id, ElementType = element };
 				foreach (var node in element.Nodes) elementWrapper.AddNode(node);
 				model.ElementsDictionary.Add(ansysElement.Id, elementWrapper);
-				model.SubdomainsDictionary[0].ElementsDictionary.Add(ansysElement.Id, elementWrapper);
+				model.SubdomainsDictionary[0].Elements.Add(elementWrapper);
 			}
 		}
 		
@@ -149,29 +152,58 @@ namespace AnsysMSolve
 			}
 		}
 
-		public static void CalculateAcceleration(IMechanicalExtAPI _api, IMechanicalUserSolver solver, Model model)
-		{
-			var accelerations = _api.Application.InvokeUIThread(() => _api.DataModel.Project.Model.Analyses[0].Children
-				.Where(c => c.GetType() == typeof(Acceleration)).ToList()) as List<DataModelObject>;
 
-			foreach (var ansysAcceleration in accelerations)
-			{
-				var acceleration = ansysAcceleration as Acceleration;
-				var accelerationLocation =
-					_api.Application.InvokeUIThread(() => acceleration.Location) as ISelectionInfo;
+        public static void CalculatePressure(IMechanicalExtAPI _api,IMechanicalUserSolver solver, Model model)
+        {
+            var pressures =
+                _api.Application.InvokeUIThread(() => _api.DataModel.Project.Model.Analyses[0].Children
+                    .Where(c => c.GetType() == typeof(Pressure)).ToList()) as List<DataModelObject>;
 
-				var xValues = _api.Application.InvokeUIThread(() => acceleration.XComponent.Output.DiscreteValues) as List<Quantity>;
-				var yValues = _api.Application.InvokeUIThread(() => acceleration.YComponent.Output.DiscreteValues) as List<Quantity>;
-				var zValues = _api.Application.InvokeUIThread(() => acceleration.ZComponent.Output.DiscreteValues) as List<Quantity>;
+            foreach (var ansysPressures in pressures)
+            {
+                var pressure = ansysPressures as Pressure;
+                var isParsed = Enum.TryParse<LoadDefineBy>(_api.Application.InvokeUIThread(() => pressure.DefineBy).ToString(), out var defineBy);
 
-				model.MassAccelerationHistoryLoads.Add(
-					new MassAccelerationHistoryLoad(xValues.Select(v => v.Value).ToList()) {DOF = DOFType.X});
-				model.MassAccelerationHistoryLoads.Add(
-					new MassAccelerationHistoryLoad(yValues.Select(v => v.Value).ToList()) { DOF = DOFType.Y });
-				model.MassAccelerationHistoryLoads.Add(
-					new MassAccelerationHistoryLoad(zValues.Select(v => v.Value).ToList()) { DOF = DOFType.Z });
-			}
-		}
+                var forceLocation = _api.Application.InvokeUIThread(() => pressure.Location) as ISelectionInfo;
+                var forceSurfaceId = forceLocation.Ids[0];
+                var forceNodes = solver.Analysis.MeshData.MeshRegionById(forceSurfaceId).Nodes;
+                var a = solver.Analysis.MeshData.MeshRegionById(forceSurfaceId);
+
+                a.Mesh.GetQuad4ExteriorFaces(out int[] quad4Elements);
+
+                solver.Analysis.MeshData.ElementById(quad4Elements[0]);
+                var element = solver.Analysis.MeshData.ElementById(quad4Elements[0]);
+				
+                //if (defineBy == LoadDefineBy.Vector)
+                //    CalculateVectorForce(_api,solver,model, force);
+                //else
+                //    CalculateComponentsForce(_api,solver,model, force);
+            }
+        }
+
+		//public static void CalculateAcceleration(IMechanicalExtAPI _api, IMechanicalUserSolver solver, Model model)
+		//{
+		//	var accelerations = _api.Application.InvokeUIThread(() => _api.DataModel.Project.Model.Analyses[0].Children
+		//		.Where(c => c.GetType() == typeof(Acceleration)).ToList()) as List<DataModelObject>;
+
+		//	foreach (var ansysAcceleration in accelerations)
+		//	{
+		//		var acceleration = ansysAcceleration as Acceleration;
+		//		var accelerationLocation =
+		//			_api.Application.InvokeUIThread(() => acceleration.Location) as ISelectionInfo;
+
+		//		var xValues = _api.Application.InvokeUIThread(() => acceleration.XComponent.Output.DiscreteValues) as List<Quantity>;
+		//		var yValues = _api.Application.InvokeUIThread(() => acceleration.YComponent.Output.DiscreteValues) as List<Quantity>;
+		//		var zValues = _api.Application.InvokeUIThread(() => acceleration.ZComponent.Output.DiscreteValues) as List<Quantity>;
+
+		//		model.MassAccelerationHistoryLoads.Add(
+		//			new MassAccelerationHistoryLoad(xValues.Select(v => v.Value).ToList()) {DOF =  StructuralDof.TranslationX});
+		//		model.MassAccelerationHistoryLoads.Add(
+		//			new MassAccelerationHistoryLoad(yValues.Select(v => v.Value).ToList()) { DOF =  StructuralDof.TranslationY });
+		//		model.MassAccelerationHistoryLoads.Add(
+		//			new MassAccelerationHistoryLoad(zValues.Select(v => v.Value).ToList()) { DOF =  StructuralDof.TranslationZ });
+		//	}
+		//}
 
 
 		public static void CalculateComponentsForce(IMechanicalExtAPI _api,IMechanicalUserSolver solver,Model model, Force force)
@@ -189,19 +221,19 @@ namespace AnsysMSolve
 				{
 					Amount = xValue.Value / forceNodes.Count,
 					Node = model.NodesDictionary[node.Id],
-					DOF = DOFType.X
+					DOF =StructuralDof.TranslationX
 				});
 				model.Loads.Add(new Load()
 				{
 					Amount = yValue.Value / forceNodes.Count,
 					Node = model.NodesDictionary[node.Id],
-					DOF = DOFType.Y
+					DOF = StructuralDof.TranslationY
 				});
 				model.Loads.Add(new Load()
 				{
 					Amount = zValue.Value / forceNodes.Count,
 					Node = model.NodesDictionary[node.Id],
-					DOF = DOFType.Z
+					DOF = StructuralDof.TranslationZ
 				});
 			}
 		}
@@ -215,26 +247,30 @@ namespace AnsysMSolve
 			var magnitude = _api.Application.InvokeUIThread(() => force.Magnitude.Output.DiscreteValues[1]) as Quantity;
 			var forceSurfaceId = forceLocation.Ids[0];
 			var forceNodes = solver.Analysis.MeshData.MeshRegionById(forceSurfaceId).Nodes;
+            var a = solver.Analysis.MeshData.MeshRegionById(forceSurfaceId);
 
+            a.Mesh.GetQuad4ExteriorFaces(out int[] quad4Elements);
+            var element = solver.Analysis.MeshData.ElementById(quad4Elements[0]);
+			
 			foreach (var node in forceNodes)
 			{
 				model.Loads.Add(new Load()
 				{
 					Amount = xValue.Value * magnitude.Value / forceNodes.Count,
 					Node = model.NodesDictionary[node.Id],
-					DOF = DOFType.X
+					DOF = StructuralDof.TranslationX
 				});
 				model.Loads.Add(new Load()
 				{
 					Amount = yValue.Value * magnitude.Value / forceNodes.Count,
 					Node = model.NodesDictionary[node.Id],
-					DOF = DOFType.Y
+					DOF = StructuralDof.TranslationY
 				});
 				model.Loads.Add(new Load()
 				{
 					Amount = zValue.Value * magnitude.Value / forceNodes.Count,
 					Node = model.NodesDictionary[node.Id],
-					DOF = DOFType.Z
+					DOF = StructuralDof.TranslationZ
 				});
 			}
 		}

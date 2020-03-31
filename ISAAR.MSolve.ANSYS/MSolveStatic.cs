@@ -32,6 +32,7 @@ namespace AnsysMSolve
 	public class MSolveStatic:IExtension
 	{
 		private readonly IMechanicalExtAPI _api;
+		private IMechanicalUserSolver _solver;
 		private Dictionary<ElementTypeEnum, Dictionary<int, int[]>> ElementTypesNodesDictionary =
 			new Dictionary<ElementTypeEnum, Dictionary<int, int[]>>()
 			{
@@ -227,7 +228,7 @@ namespace AnsysMSolve
 		public MSolveStatic(IExtAPI api, IUserSolver solver)
 		{
 			_api = api as IMechanicalExtAPI;
-            _solver = solver;
+            _solver = (IMechanicalUserSolver)solver;
         }
 
         private const string guid = "EB5D5C22-DF17-4755-AFAE-813C733F4791";
@@ -268,22 +269,10 @@ namespace AnsysMSolve
 					model.SubdomainsDictionary[0].Elements.Add(elementWrapper);
 				}
 
-                var forces =
-                    _api.Application.InvokeUIThread(() => _api.DataModel.Project.Model.Analyses[0].Children
-                        .Where(c => c.GetType() == typeof(Force)).ToList()) as List<DataModelObject>;
 
-                foreach (var ansysForce in forces)
-                {
-                    var force = ansysForce as Force;
-                    var isParsed = Enum.TryParse<LoadDefineBy>(_api.Application.InvokeUIThread(() => force.DefineBy).ToString(), out var defineBy);
-                    //if (defineBy == LoadDefineBy.Vector)
-                    //    CalculateVectorForce(_api,solver,model, force);
-                    //else
-                    //    CalculateComponentsForce(_api,solver,model, force);
-                }
+                AnsysUtilities.CalculateForces(_api,solver,model);
+				AnsysUtilities.CalculatePressure(_api, _solver, model);
 
-                //AnsysUtilities.GenerateElements(material, null, solver, model);
-                //AnsysUtilities.CalculateForces(_api,solver,model);
                 //AnsysUtilities.ImposeFixedSupport(_api,solver,model);
 
                 //var analysis = ((Analysis) solver.Analysis);
@@ -317,87 +306,8 @@ namespace AnsysMSolve
 			return true;
 		}
 
-
-		public virtual IEnumerable<double> NodeLoadValues(IUserLoad load, IEnumerable<int> nodeIds)
-		{
-			IMeshData mesh = ((IMechanicalUserLoad)load).Analysis.MeshData;
-			var valueX = Convert.ToDouble(load.Properties["ValueX"]);
-			var valueY = Convert.ToDouble(load.Properties["ValueY"]);
-			var valueZ = Convert.ToDouble(load.Properties["ValueZ"]);
-
-			var a = nodeIds.Select(nodeId => mesh.NodeById(nodeId))
-				.Select(node => Math.Sqrt(valueX * valueX + valueY * valueY + valueZ * valueZ)).ToList();
-
-			System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\loadNodes.json", JsonConvert.SerializeObject(a));
-			return a;
-		}
-
+		
 		private List<TempLoad> _loads = new List<TempLoad>();
-
-		public virtual void WriteInitialLoadValues(IUserLoad load, StringWriter filename)
-		{
-			var res = new List<double>();
-			IMeshData mesh = ((IMechanicalUserLoad)load).Analysis.MeshData;
-			var valueX = Convert.ToDouble(load.Properties["ValueX"]);
-			var valueY = Convert.ToDouble(load.Properties["ValueY"]);
-			var valueZ = Convert.ToDouble(load.Properties["ValueZ"]);
-
-			var propGeo = load.Properties["Geometry"];
-			var refIds = (propGeo.Value as Surface).Ids;
-
-			foreach (var refId in refIds)
-			{
-				var meshRegion = mesh.MeshRegionById(refId);
-				var nodeIds = meshRegion.NodeIds;
-				foreach (var nodeId in nodeIds)
-				{
-					INode node = mesh.NodeById(nodeId);
-					_loads.Add(new TempLoad { Amount = valueX, DofType = StructuralDof.TranslationX, nodeId = nodeId });
-					_loads.Add(new TempLoad { Amount = valueY, DofType = StructuralDof.TranslationY, nodeId = nodeId });
-					_loads.Add(new TempLoad { Amount = valueZ, DofType = StructuralDof.TranslationZ, nodeId = nodeId });
-				}
-			}
-		}
-
-		public virtual IEnumerable<double> NodeBoundaryValues(IUserLoad load, IEnumerable<int> nodeIds)
-		{
-			IMeshData mesh = ((IMechanicalUserLoad)load).Analysis.MeshData;
-			var b = nodeIds.Select(nodeId => mesh.NodeById(nodeId)).Select(node => 0.0).ToList();
-
-			System.IO.File.WriteAllText(@"C:\Users\Dimitris\Desktop\ANSYS Models\boundaryNodes.json", JsonConvert.SerializeObject(b));
-
-			return b;
-		}
-
-		private Dictionary<int, List<IDofType>> _nodeConstrains = new Dictionary<int, List<IDofType>>();
-        private IUserSolver _solver;
-
-        public virtual void ImposeInitialBoundaryValues(IUserLoad load, Model model)
-		{
-			var res = new List<double>();
-			IMeshData mesh = ((IMechanicalUserLoad)load).Analysis.MeshData;
-			var valueX = Convert.ToInt32(load.Properties["ConstraintX"]);
-			var valueY = Convert.ToInt32(load.Properties["ConstraintX"]);
-			var valueZ = Convert.ToInt32(load.Properties["ConstraintZ"]);
-
-			var propGeo = load.Properties["Geometry"];
-			var refIds = (propGeo.Value as Surface).Ids;
-
-			foreach (var refId in refIds)
-			{
-				var meshRegion = mesh.MeshRegionById(refId);
-				var nodeIds = meshRegion.NodeIds;
-				foreach (var nodeId in nodeIds)
-				{
-					if (!_nodeConstrains.ContainsKey(nodeId))
-						_nodeConstrains.Add(nodeId, new List<IDofType>());
-					if (valueX == 1) _nodeConstrains[nodeId].Add(StructuralDof.TranslationX);
-					if (valueY == 1) _nodeConstrains[nodeId].Add(StructuralDof.TranslationY);
-					if (valueZ == 1) _nodeConstrains[nodeId].Add(StructuralDof.TranslationZ);
-					_nodeConstrains[nodeId].Distinct();
-				}
-			}
-		}
 
 		public ObjectTypeEnum ObjectType { get; }
 		public ObjectLocationEnum ObjectLocation { get; }

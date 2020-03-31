@@ -5,10 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="AnsysUtilities.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="IronPython" Version="2.7.5" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
   </ItemGroup>
@@ -25,6 +21,9 @@
   <ItemGroup>
     <Reference Include="Ans.ComponentSystem.Interop">
       <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\scdm\Addins\Ansys 19.5\Ans.ComponentSystem.Interop.dll</HintPath>
+    </Reference>
+    <Reference Include="Ans.Core">
+      <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\scdm\Addins\Ansys 19.5\Ans.Core.dll</HintPath>
     </Reference>
     <Reference Include="Ans.EngineeringData">
       <HintPath>..\..\..\..\..\..\Program Files\ANSYS Inc\ANSYS Student\v195\Addins\EngineeringData\bin\Win64\Ans.EngineeringData.dll</HintPath>
