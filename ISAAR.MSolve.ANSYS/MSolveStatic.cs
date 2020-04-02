@@ -269,8 +269,8 @@ namespace AnsysMSolve
 					model.SubdomainsDictionary[0].Elements.Add(elementWrapper);
 				}
 
-
-                AnsysUtilities.CalculateForces(_api,solver,model);
+				AnsysUtilities.CalculateDisplacements(_api, solver, model);
+				AnsysUtilities.CalculateForces(_api, solver, model);
 				AnsysUtilities.CalculatePressure(_api, _solver, model);
 
                 //AnsysUtilities.ImposeFixedSupport(_api,solver,model);
@@ -287,8 +287,7 @@ namespace AnsysMSolve
                 //var forces = dataObjects.Where(o => o.Name == "Force");
                 //var support = dataObjects.Where(o => o.Name == "FixedSupport");
                 //var analysisChildren = ((Analysis) solver.Analysis).Children;
-
-                
+				             
 
                 var solverBuilder = new PcgSolver.Builder();
 				ISolver msolveSolver = solverBuilder.BuildSolver(model);

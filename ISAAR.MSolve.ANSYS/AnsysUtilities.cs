@@ -152,8 +152,49 @@ namespace AnsysMSolve
 			}
 		}
 
+		public static void CalculateDisplacements(IMechanicalExtAPI _api, IMechanicalUserSolver solver, Model model)
+		{
+			var displacements =
+				_api.Application.InvokeUIThread(() => _api.DataModel.Project.Model.Analyses[0].Children
+					.Where(c => c.GetType() == typeof(Displacement)).ToList()) as List<DataModelObject>;
 
-        public static void CalculatePressure(IMechanicalExtAPI _api,IMechanicalUserSolver solver, Model model)
+			foreach (var ansysDisplacements in displacements)
+			{
+				var displacement = ansysDisplacements as Displacement;
+				CalculateComponentsDisplacement(_api, solver, model, displacement);
+			}
+		}
+
+		public static void CalculateComponentsDisplacement(IMechanicalExtAPI _api, IMechanicalUserSolver solver, Model model, Displacement displacement)
+		{
+			var displacementLocation = _api.Application.InvokeUIThread(() => displacement.Location) as ISelectionInfo;
+			var xValue = _api.Application.InvokeUIThread(() => displacement.XComponent.Output.DiscreteValues[1]) as Quantity;
+			var yValue = _api.Application.InvokeUIThread(() => displacement.YComponent.Output.DiscreteValues[1]) as Quantity;
+			var zValue = _api.Application.InvokeUIThread(() => displacement.ZComponent.Output.DiscreteValues[1]) as Quantity;
+			var displacementSurfaceId = displacementLocation.Ids[0];
+			var displacementNodes = solver.Analysis.MeshData.MeshRegionById(displacementSurfaceId).Nodes;
+
+			foreach (var node in displacementNodes)
+			{
+				model.NodesDictionary[node.Id].Constraints.Add(new Constraint()
+				{
+					Amount = xValue.Value,
+					DOF = StructuralDof.TranslationX
+				});
+				model.NodesDictionary[node.Id].Constraints.Add(new Constraint()
+				{
+					Amount = yValue.Value,
+					DOF = StructuralDof.TranslationY
+				});
+				model.NodesDictionary[node.Id].Constraints.Add(new Constraint()
+				{
+					Amount = zValue.Value,
+					DOF = StructuralDof.TranslationZ
+				});
+			}
+		}
+		
+		public static void CalculatePressure(IMechanicalExtAPI _api,IMechanicalUserSolver solver, Model model)
         {
             var pressures =
                 _api.Application.InvokeUIThread(() => _api.DataModel.Project.Model.Analyses[0].Children
@@ -274,7 +315,5 @@ namespace AnsysMSolve
 				});
 			}
 		}
-
-
 	}
 }
