@@ -234,8 +234,7 @@ namespace AnsysMSolve
         private const string guid = "EB5D5C22-DF17-4755-AFAE-813C733F4791";
 
 		public virtual bool onsolve(IUserSolver userSolver, Func<int, string, bool> progressFunction)
-		{
-			
+		{			
 			var solver = userSolver as IMechanicalUserSolver;
 			try
 			{
